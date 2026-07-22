@@ -1,0 +1,12 @@
+.git
+.gitignore
+**/.next
+**/node_modules
+**/.env
+**/.env.*
+!**/.env.example
+backend
+*.html
+PROJECT_DOCUMENTATION.md
+web/.next
+web/node_modules

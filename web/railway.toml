@@ -1,0 +1,9 @@
+# Used when Railway service Root Directory = web
+[build]
+buildCommand = "npm run build"
+
+[deploy]
+startCommand = "npm start"
+releaseCommand = "npx prisma db push"
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 10
