@@ -1,0 +1,129 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;900&family=Noto+Sans+SC:wght@300;400;500;700&display=swap");
+@import "tailwindcss";
+
+:root {
+  --bg: #0a0a0a;
+  --fg: #f1f1f1;
+  --accent: #e11d48;
+}
+
+body {
+  font-family: "Inter", "Noto Sans SC", system-ui, sans-serif;
+  background-color: var(--bg);
+  color: var(--fg);
+}
+
+.glass {
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.nav-item {
+  position: relative;
+}
+.nav-item::after {
+  content: "";
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  width: 0;
+  height: 2px;
+  background: var(--accent);
+  transition: width 0.2s ease;
+}
+.nav-item:hover::after,
+.nav-item.nav-active::after {
+  width: 100%;
+}
+.nav-active {
+  color: var(--accent);
+}
+
+.mode-tab {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.mode-tab.active {
+  background-color: var(--accent);
+  color: white;
+  box-shadow: 0 10px 15px -3px rgb(225 29 72 / 0.2);
+}
+
+.generate-btn {
+  background: linear-gradient(90deg, #e11d48, #be123c);
+  transition: all 0.3s ease;
+}
+.generate-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 20px 25px -5px rgb(225 29 72 / 0.3);
+}
+
+.result-card {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.result-card:hover {
+  transform: translateY(-4px);
+}
+
+.prompt-box {
+  resize: vertical;
+  min-height: 120px;
+}
+
+.nsfw-badge {
+  background: linear-gradient(90deg, #e11d48, #9f1239);
+  color: white;
+  font-size: 10px;
+  padding: 1px 8px;
+  border-radius: 9999px;
+}
+
+.credit-display {
+  background: #111;
+  border: 1px solid #333;
+}
+
+.package-card {
+  transition: all 0.2s ease;
+}
+.package-card:hover,
+.package-card.selected {
+  border-color: var(--accent);
+  transform: translateY(-2px);
+}
+
+.modal-pop {
+  animation: modalPop 0.2s ease forwards;
+}
+@keyframes modalPop {
+  from {
+    opacity: 0;
+    transform: scale(0.95) translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.fake-image {
+  background: linear-gradient(135deg, #1f1f1f, #111);
+  position: relative;
+  overflow: hidden;
+}
+.fake-image::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    45deg,
+    transparent,
+    transparent 10px,
+    rgba(225, 29, 72, 0.06) 10px,
+    rgba(225, 29, 72, 0.06) 20px
+  );
+}
+
+.stat-number {
+  font-variant-numeric: tabular-nums;
+}

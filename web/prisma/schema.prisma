@@ -1,0 +1,203 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id             Int       @id @default(autoincrement())
+  username       String    @unique
+  hashedPassword String
+  role           String    @default("user") // user | moderator | admin
+  balance        Int       @default(20)
+  isVip          Boolean   @default(false)
+  vipExpiresAt   DateTime?
+  disabledAt     DateTime? // 封禁时间；非空表示禁止登录且会话失效
+  createdAt      DateTime  @default(now())
+
+  generations    Generation[]
+  transactions   Transaction[]
+  cryptoPayments CryptoPayment[]
+  featuredWorks  PublicWork[]
+}
+
+/** Cryptomus 商户配置：Merchant ID 与 Payment API Key 一一对应；同一时间最多一个 isActive=true */
+model CryptomusMerchant {
+  id                 Int      @id @default(autoincrement())
+  label              String // 管理端备注名，如「主商户」「备用」
+  merchantId         String   @unique // Cryptomus Merchant UUID
+  paymentApiKeyEnc   String // AES-256-GCM 加密后的 Payment API Key
+  isActive           Boolean  @default(false)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  payments CryptoPayment[]
+}
+
+model CryptoPayment {
+  id            Int      @id @default(autoincrement())
+  userId        Int
+  orderId       String   @unique
+  invoiceUuid   String?
+  credits       Int
+  amountUsdCents Int
+  status        String   @default("check")
+  txid          String?
+  network       String?
+  payerCurrency String?
+  credited      Boolean  @default(false)
+  merchantRefId Int? // 创建订单时使用的 CryptomusMerchant.id
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  user     User               @relation(fields: [userId], references: [id])
+  merchant CryptomusMerchant? @relation(fields: [merchantRefId], references: [id], onDelete: SetNull)
+
+  @@index([userId, createdAt])
+}
+
+/** Zen Creator 账户：API Key 加密存储；同一时间最多一个 isActive=true */
+model ZenAccount {
+  id                  Int       @id @default(autoincrement())
+  label               String // 管理端备注名
+  apiKeyEnc           String // zc_live_… AES-256-GCM 加密
+  isActive            Boolean   @default(false)
+  lastKnownBalance    Int? // 最近一次从 Zen GET /balance 同步的 credits
+  lastBalanceSyncedAt DateTime?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  generations Generation[]
+}
+
+model Generation {
+  id             Int       @id @default(autoincrement())
+  userId         Int
+  mode           String
+  prompt         String
+  negativePrompt String?
+  params         String
+  zenJobId       String? // 对应 Zen Creator 的 generation_id（taskId）
+  zenAccountId   Int? // 创建该任务时使用的 ZenAccount
+  status         String    @default("pending") // pending|queued|processing|succeeded|partial|failed
+  progress       Int       @default(0) // 0-100，来自 Zen 轮询
+  zenError       String? // Zen 返回的失败原因
+  resultUrls     String?
+  cost           Int // 本站用户扣点
+  zenCreditsCost Int? // 估算或记录的 Zen 侧消耗（成功时按本站 cost×系数）
+  deletedAt      DateTime?
+  visibility     String    @default("private") // private | featured | hidden
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @default(now()) @updatedAt
+
+  user       User        @relation(fields: [userId], references: [id])
+  zenAccount ZenAccount? @relation(fields: [zenAccountId], references: [id], onDelete: SetNull)
+
+  @@index([userId, createdAt])
+  @@index([deletedAt, status, createdAt])
+  @@index([zenJobId])
+  @@index([zenAccountId, createdAt])
+}
+
+model PublicWork {
+  id                 Int      @id @default(autoincrement())
+  title              String?
+  mode               String
+  prompt             String
+  negativePrompt     String?
+  params             String   @default("{}")
+  mediaUrl           String
+  thumbUrl           String?
+  source             String // user_feature | zen_import
+  sourceGenerationId Int?
+  sourceZenJobId     String?
+  sortOrder          Int      @default(0)
+  isPublished        Boolean  @default(true)
+  featuredById       Int?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  featuredBy User? @relation(fields: [featuredById], references: [id])
+
+  @@index([isPublished, sortOrder, createdAt])
+}
+
+/** Stripe 账户配置：Secret Key + Webhook Secret 成对；同一时间最多一个 isActive=true */
+model StripeAccount {
+  id                Int      @id @default(autoincrement())
+  label             String // 管理端备注名
+  publishableKey    String? // pk_… 可公开，明文存储（选填）
+  secretKeyEnc      String // sk_… AES-256-GCM 加密
+  webhookSecretEnc  String // whsec_… AES-256-GCM 加密
+  isActive          Boolean  @default(false)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  transactions Transaction[]
+}
+
+/** 对象存储账户（S3 兼容 API）；同一时间最多一个 isActive=true */
+model OssAccount {
+  id                 Int      @id @default(autoincrement())
+  label              String
+  provider           String   @default("s3") // s3 | aliyun | minio | r2
+  endpoint           String
+  region             String   @default("us-east-1")
+  bucket             String
+  accessKeyId        String
+  secretAccessKeyEnc String
+  publicBaseUrl      String?
+  pathPrefix         String   @default("media")
+  mirrorZenResults   Boolean  @default(true)
+  forcePathStyle     Boolean  @default(false)
+  isActive           Boolean  @default(false)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+}
+
+model Transaction {
+  id              Int      @id @default(autoincrement())
+  userId          Int
+  type            String
+  amount          Int
+  priceCents      Int?
+  stripePaymentId String?
+  method          String?
+  stripeAccountRefId Int? // 创建 Checkout 时使用的 StripeAccount.id
+  createdAt       DateTime @default(now())
+
+  user          User           @relation(fields: [userId], references: [id])
+  stripeAccount StripeAccount? @relation(fields: [stripeAccountRefId], references: [id], onDelete: SetNull)
+
+  @@index([userId, createdAt])
+}
+
+/** 管理端操作审计：人工入账、VIP、余额、角色、封禁等 */
+model AdminAuditLog {
+  id         Int      @id @default(autoincrement())
+  adminId    Int
+  action     String // crypto_manual_credit | user_vip | user_balance | user_role | user_disable | mod_grant | mod_toggle
+  targetType String?
+  targetId   String?
+  detail     String? // JSON
+  createdAt  DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([action])
+}
+
+/** 支付 Webhook 事件日志：Stripe / Cryptomus */
+model WebhookEventLog {
+  id         Int      @id @default(autoincrement())
+  provider   String // stripe | cryptomus
+  eventType  String?
+  externalId String?
+  status     String // ok | ignored | error
+  detail     String?
+  createdAt  DateTime @default(now())
+
+  @@index([provider, createdAt])
+}
