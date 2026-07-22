@@ -1,0 +1,1047 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AVClubs • AI 成人内容生成器（已连接后端）</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&amp;family=Noto+Sans+SC:wght@300;400;500;700&amp;display=swap');
+        
+        body { font-family: 'Inter', 'Noto Sans SC', system-ui, sans-serif; }
+        
+        .dark-theme { background-color: #0a0a0a; color: #f1f1f1; }
+        
+        .nav-active { color: #e11d48; border-bottom: 2px solid #e11d48; }
+        
+        .section { display: none; }
+        .section.active { display: block; }
+        
+        .mode-tab { transition: all 0.2s cubic-bezier(0.4, 0.0, 0.2, 1); }
+        .mode-tab.active { background-color: #e11d48; color: white; box-shadow: 0 10px 15px -3px rgb(225 29 72 / 0.2); }
+        
+        .generate-btn { background: linear-gradient(90deg, #e11d48, #be123c); transition: all 0.3s ease; }
+        .generate-btn:hover { transform: translateY(-2px); box-shadow: 0 20px 25px -5px rgb(225 29 72 / 0.3); }
+        
+        .glass { background: rgba(255,255,255,0.05); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.1); }
+        
+        .result-card { transition: transform 0.2s ease, box-shadow 0.2s ease; }
+        .result-card:hover { transform: translateY(-4px); }
+        
+        .prompt-box { resize: vertical; min-height: 120px; }
+        
+        .nsfw-badge { background: linear-gradient(90deg, #e11d48, #9f1239); color: white; font-size: 10px; padding: 1px 8px; border-radius: 9999px; }
+        
+        .credit-display { background: #111; border: 1px solid #333; }
+        
+        .package-card { transition: all 0.2s ease; }
+        .package-card:hover, .package-card.selected { border-color: #e11d48; transform: translateY(-2px); }
+        
+        .modal { animation: modalPop 0.2s ease forwards; }
+        @keyframes modalPop { from { opacity: 0; transform: scale(0.95) translateY(10px); } to { opacity: 1; transform: scale(1) translateY(0); } }
+        
+        .history-grid { scrollbar-width: thin; scrollbar-color: #333 #111; }
+        
+        .fake-image { background: linear-gradient(135deg, #1f1f1f, #111); position: relative; overflow: hidden; }
+        .fake-image::after { content: ''; position: absolute; inset: 0; background: repeating-linear-gradient(45deg, transparent, transparent 10px, rgba(225,29,72,0.06) 10px, rgba(225,29,72,0.06) 20px); }
+        
+        .nav-item { position: relative; }
+        .nav-item:after { content: ''; position: absolute; bottom: -1px; left: 0; width: 0; height: 2px; background: #e11d48; transition: width 0.2s ease; }
+        .nav-item:hover:after, .nav-item.active:after { width: 100%; }
+        
+        .stat-number { font-variant-numeric: tabular-nums; }
+        
+        .backend-status { font-size: 10px; padding: 1px 8px; border-radius: 9999px; }
+    </style>
+</head>
+<body class="dark-theme min-h-screen">
+    <!-- Age Gate -->
+    <div id="age-gate" class="fixed inset-0 bg-black/95 z-[100] flex items-center justify-center">
+        <div class="max-w-md w-full mx-4 glass rounded-3xl p-8 text-center border border-white/10">
+            <div class="w-20 h-20 mx-auto mb-6 rounded-full bg-gradient-to-br from-rose-600 to-red-800 flex items-center justify-center">
+                <i class="fas fa-exclamation-triangle text-white text-4xl"></i>
+            </div>
+            <h2 class="text-3xl font-bold mb-2">18+ 成人内容</h2>
+            <p class="text-gray-400 mb-6">本网站包含AI生成的成人向（NSFW）内容，仅限18岁及以上成年人访问。</p>
+            
+            <div class="flex flex-col gap-3">
+                <button onclick="confirmAge(true)" 
+                        class="w-full py-3.5 bg-white text-black font-semibold rounded-2xl hover:bg-gray-200 transition-colors">
+                    我已满18岁，进入网站
+                </button>
+                <button onclick="confirmAge(false)" 
+                        class="w-full py-3 text-sm text-gray-400 hover:text-white transition-colors">
+                    我未满18岁，离开
+                </button>
+            </div>
+            <p class="text-[10px] text-gray-500 mt-6">所有内容均为AI虚构生成 • 已连接后端服务</p>
+        </div>
+    </div>
+
+    <!-- Header -->
+    <header class="sticky top-0 z-50 border-b border-white/10 bg-[#0a0a0a]/95 backdrop-blur-xl">
+        <div class="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
+            <!-- Logo -->
+            <div class="flex items-center gap-x-3">
+                <div class="w-9 h-9 rounded-2xl bg-gradient-to-br from-rose-600 via-red-600 to-pink-700 flex items-center justify-center shadow-inner">
+                    <span class="font-black text-white text-2xl tracking-tighter">AV</span>
+                </div>
+                <div>
+                    <span class="font-bold text-2xl tracking-tight">AVClubs</span>
+                    <span class="text-[10px] text-rose-500 font-mono ml-1">FULLSTACK</span>
+                </div>
+            </div>
+
+            <!-- Desktop Nav -->
+            <nav class="hidden md:flex items-center gap-x-1 text-sm">
+                <button onclick="showPage('make')" class="nav-item px-5 py-2 text-sm font-medium nav-active" id="nav-make">创作中心</button>
+                <button onclick="showPage('history')" class="nav-item px-5 py-2 text-sm font-medium text-gray-300 hover:text-white" id="nav-history">我的作品</button>
+                <button onclick="showPage('profile')" class="nav-item px-5 py-2 text-sm font-medium text-gray-300 hover:text-white" id="nav-profile">个人中心</button>
+            </nav>
+
+            <!-- User Area -->
+            <div class="flex items-center gap-x-3">
+                <!-- Backend Status -->
+                <div id="backend-status" 
+                     class="hidden md:flex items-center gap-x-1.5 px-3 py-1 bg-emerald-900/30 text-emerald-400 text-xs rounded-2xl border border-emerald-500/30">
+                    <i class="fas fa-plug"></i>
+                    <span>后端已连接</span>
+                </div>
+
+                <!-- Balance -->
+                <div onclick="showRechargeModal()" class="credit-display flex items-center gap-x-2 px-4 h-9 rounded-2xl cursor-pointer hover:border-rose-500/50 transition-colors">
+                    <div class="flex items-center gap-x-1.5">
+                        <i class="fas fa-coins text-amber-400"></i>
+                        <span id="header-balance" class="font-mono font-semibold text-lg stat-number">128</span>
+                    </div>
+                    <span class="text-xs text-gray-400">点数</span>
+                </div>
+
+                <!-- User -->
+                <div onclick="showProfile()" class="flex items-center gap-x-2 cursor-pointer">
+                    <div class="w-8 h-8 rounded-full overflow-hidden border border-white/20">
+                        <img src="https://i.pravatar.cc/32?img=28" alt="User" class="w-full h-full object-cover">
+                    </div>
+                    <div class="hidden md:block">
+                        <div id="header-username" class="text-sm font-medium">demo_user</div>
+                        <div class="text-[10px] text-emerald-400 -mt-0.5">已登录</div>
+                    </div>
+                </div>
+
+                <button onclick="showRechargeModal()" 
+                        class="hidden md:flex items-center gap-x-2 px-4 h-9 text-sm font-semibold bg-white/5 hover:bg-white/10 border border-white/10 rounded-2xl transition-all active:scale-[0.985]">
+                    <i class="fas fa-wallet mr-1.5"></i>
+                    <span>充值</span>
+                </button>
+
+                <button class="md:hidden w-9 h-9 flex items-center justify-center text-xl" onclick="toggleMobileNav()">
+                    <i class="fas fa-bars"></i>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <div class="max-w-7xl mx-auto px-6 pt-8 pb-16">
+        
+        <!-- MAKE PAGE -->
+        <div id="page-make" class="section active">
+            <div class="flex items-end justify-between mb-6">
+                <div>
+                    <h1 class="text-4xl font-bold tracking-tighter">创作中心</h1>
+                    <p class="text-gray-400 mt-1">已连接后端 + Zen Creator API</p>
+                </div>
+                <div class="hidden md:flex items-center gap-2 text-xs px-3 py-1.5 bg-emerald-900/20 text-emerald-400 rounded-2xl border border-emerald-500/30">
+                    <div class="w-2 h-2 bg-emerald-400 rounded-full animate-pulse"></div>
+                    <span>后端实时同步</span>
+                </div>
+            </div>
+
+            <!-- Mode Selector -->
+            <div class="flex flex-wrap gap-2 mb-6">
+                <button onclick="switchMode(0)" class="mode-tab active flex-1 md:flex-none px-6 py-3 text-sm font-semibold rounded-3xl flex items-center justify-center gap-x-2 bg-white/5 border border-white/10" id="mode-0">
+                    <i class="fas fa-font"></i>
+                    <span>文字生图</span>
+                    <span class="text-[10px] px-1.5 py-px bg-white/10 rounded">2点</span>
+                </button>
+                <button onclick="switchMode(1)" class="mode-tab flex-1 md:flex-none px-6 py-3 text-sm font-semibold rounded-3xl flex items-center justify-center gap-x-2 bg-white/5 border border-white/10" id="mode-1">
+                    <i class="fas fa-video"></i>
+                    <span>文字生视频</span>
+                    <span class="text-[10px] px-1.5 py-px bg-white/10 rounded">15点</span>
+                </button>
+                <button onclick="switchMode(2)" class="mode-tab flex-1 md:flex-none px-6 py-3 text-sm font-semibold rounded-3xl flex items-center justify-center gap-x-2 bg-white/5 border border-white/10" id="mode-2">
+                    <i class="fas fa-image"></i>
+                    <span>图片生图</span>
+                    <span class="text-[10px] px-1.5 py-px bg-white/10 rounded">3点</span>
+                </button>
+                <button onclick="switchMode(3)" class="mode-tab flex-1 md:flex-none px-6 py-3 text-sm font-semibold rounded-3xl flex items-center justify-center gap-x-2 bg-white/5 border border-white/10" id="mode-3">
+                    <i class="fas fa-film"></i>
+                    <span>图片生视频</span>
+                    <span class="text-[10px] px-1.5 py-px bg-white/10 rounded">20点</span>
+                </button>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                
+                <!-- Input Panel -->
+                <div class="lg:col-span-7 glass rounded-3xl p-6 border border-white/10">
+                    <div class="mb-5">
+                        <div class="flex items-center justify-between mb-2">
+                            <label class="text-sm font-semibold text-gray-300">提示词 (Prompt)</label>
+                            <button onclick="useExamplePrompt()" class="text-xs flex items-center gap-x-1 text-rose-400 hover:text-rose-300">
+                                <i class="fas fa-magic"></i> <span>随机示例</span>
+                            </button>
+                        </div>
+                        <textarea id="prompt-input" class="prompt-box w-full bg-[#111] border border-white/10 focus:border-rose-500/60 rounded-2xl p-4 text-sm placeholder:text-gray-500" 
+                                  placeholder="描述你想要的场景，例如：一个穿着黑色蕾丝的亚洲美女躺在床上，柔和灯光，写实风格，高细节..."></textarea>
+                    </div>
+
+                    <div class="mb-5">
+                        <label class="text-sm font-semibold text-gray-300 mb-2 block">负面提示词 (Negative)</label>
+                        <input id="negative-input" type="text" value="低质量, 模糊, 变形, 文字, watermark, 丑陋" 
+                               class="w-full bg-[#111] border border-white/10 focus:border-rose-500/60 rounded-2xl px-4 py-3 text-sm">
+                    </div>
+
+                    <!-- Image Upload -->
+                    <div id="image-upload-section" class="hidden mb-5">
+                        <label class="text-sm font-semibold text-gray-300 mb-2 block">参考图片</label>
+                        <div id="upload-area" 
+                             class="border-2 border-dashed border-white/20 hover:border-rose-500/40 rounded-3xl p-8 text-center cursor-pointer transition-colors"
+                             onclick="document.getElementById('image-input').click()">
+                            <input type="file" id="image-input" accept="image/*" class="hidden" onchange="handleImageUpload(event)">
+                            <div id="upload-placeholder">
+                                <i class="fas fa-cloud-upload-alt text-4xl text-gray-500 mb-3"></i>
+                                <p class="text-sm">点击或拖拽上传参考图片</p>
+                                <p class="text-xs text-gray-500 mt-1">支持 JPG / PNG，最大 10MB</p>
+                            </div>
+                            <div id="upload-preview" class="hidden">
+                                <img id="preview-img" class="mx-auto max-h-48 rounded-2xl shadow-xl mb-3">
+                                <button onclick="removeUploadedImage(event)" class="text-xs px-4 py-1 bg-white/10 hover:bg-white/20 rounded-full">移除图片</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Advanced Settings -->
+                    <div class="mb-2">
+                        <div class="flex items-center justify-between mb-3">
+                            <label class="text-sm font-semibold text-gray-300">高级设置</label>
+                            <button onclick="toggleAdvanced()" class="text-xs text-gray-400 flex items-center gap-1">
+                                <span id="adv-toggle-text">展开</span> <i class="fas fa-chevron-down text-xs" id="adv-icon"></i>
+                            </button>
+                        </div>
+                        
+                        <div id="advanced-settings" class="hidden grid grid-cols-2 md:grid-cols-4 gap-3">
+                            <div>
+                                <label class="text-xs text-gray-400 block mb-1">宽高比</label>
+                                <select id="ratio-select" class="w-full bg-[#111] border border-white/10 rounded-xl px-3 py-2 text-sm">
+                                    <option value="1:1">1:1 正方形</option>
+                                    <option value="16:9">16:9 横向</option>
+                                    <option value="9:16">9:16 纵向</option>
+                                    <option value="4:3">4:3</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="text-xs text-gray-400 block mb-1">质量模式</label>
+                                <select id="quality-select" class="w-full bg-[#111] border border-white/10 rounded-xl px-3 py-2 text-sm">
+                                    <option value="fast">快速 (低成本)</option>
+                                    <option value="quality" selected>高质量</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="text-xs text-gray-400 block mb-1">风格</label>
+                                <select id="style-select" class="w-full bg-[#111] border border-white/10 rounded-xl px-3 py-2 text-sm">
+                                    <option value="realistic">写实风格</option>
+                                    <option value="asian">亚洲写实</option>
+                                    <option value="anime">动漫风格</option>
+                                    <option value="cinematic">电影感</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="text-xs text-gray-400 block mb-1">生成数量</label>
+                                <select id="batch-select" class="w-full bg-[#111] border border-white/10 rounded-xl px-3 py-2 text-sm">
+                                    <option value="1">1 张/段</option>
+                                    <option value="2">2 张/段</option>
+                                    <option value="4">4 张/段 (+50%点数)</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Sidebar -->
+                <div class="lg:col-span-5 glass rounded-3xl p-6 border border-white/10 flex flex-col">
+                    <div class="flex-1">
+                        <div class="flex justify-between items-center mb-4">
+                            <div>
+                                <div class="text-xs text-gray-400">预计消耗</div>
+                                <div class="flex items-baseline">
+                                    <span id="cost-display" class="text-5xl font-bold font-mono text-rose-400">2</span>
+                                    <span class="ml-2 text-lg text-gray-400">点数</span>
+                                </div>
+                            </div>
+                            <div class="text-right">
+                                <div class="text-xs text-gray-400">当前余额</div>
+                                <div class="flex items-center justify-end gap-x-1">
+                                    <i class="fas fa-coins text-amber-400"></i>
+                                    <span id="sidebar-balance" class="font-mono text-2xl font-semibold stat-number">128</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="bg-black/40 rounded-2xl p-4 text-xs space-y-2 mb-6">
+                            <div class="flex justify-between"><span class="text-gray-400">模型</span> <span class="font-mono text-emerald-400">Zen SDXL_NSFW</span></div>
+                            <div class="flex justify-between"><span class="text-gray-400">预计时间</span> <span>8-90 秒</span></div>
+                            <div class="flex justify-between"><span class="text-gray-400">分辨率</span> <span id="res-display">1024×1024</span></div>
+                        </div>
+                    </div>
+
+                    <button onclick="startGeneration()" 
+                            class="generate-btn w-full py-4 text-white font-bold text-lg rounded-3xl flex items-center justify-center gap-x-3 shadow-xl active:scale-[0.985]">
+                        <i class="fas fa-magic"></i>
+                        <span id="generate-btn-text">立即生成（真实调用后端）</span>
+                    </button>
+                    
+                    <div class="mt-3 text-center">
+                        <button onclick="showRechargeModal()" class="text-xs text-gray-400 hover:text-rose-400 flex items-center justify-center gap-x-1 mx-auto">
+                            <i class="fas fa-coins fa-sm"></i> <span>点数不足？立即充值</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Latest Result -->
+            <div id="latest-result" class="hidden mt-8">
+                <h3 class="font-semibold mb-3 flex items-center gap-x-2"><i class="fas fa-sparkles text-rose-400"></i> 最新生成结果</h3>
+                <div id="latest-result-content" class="glass rounded-3xl p-5 border border-white/10"></div>
+            </div>
+        </div>
+
+        <!-- HISTORY PAGE -->
+        <div id="page-history" class="section">
+            <div class="flex items-center justify-between mb-6">
+                <h1 class="text-4xl font-bold tracking-tighter">我的作品</h1>
+                <div class="flex gap-2">
+                    <input type="text" id="history-search" placeholder="搜索提示词..." 
+                           class="bg-[#111] border border-white/10 px-4 py-2 rounded-2xl text-sm w-64 focus:border-rose-500/50" onkeyup="filterHistory()">
+                    <button onclick="loadHistory()" class="px-4 py-2 text-sm bg-white/5 hover:bg-white/10 border border-white/10 rounded-2xl flex items-center gap-x-2">
+                        <i class="fas fa-sync-alt"></i> <span class="hidden md:inline">刷新</span>
+                    </button>
+                </div>
+            </div>
+            
+            <div id="history-grid" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 history-grid"></div>
+            
+            <div id="history-empty" class="hidden text-center py-16">
+                <i class="fas fa-images text-6xl text-gray-700 mb-4"></i>
+                <p class="text-gray-400">还没有生成记录<br>快去创作中心试试吧！</p>
+            </div>
+        </div>
+
+        <!-- PROFILE PAGE -->
+        <div id="page-profile" class="section max-w-3xl mx-auto">
+            <h1 class="text-4xl font-bold tracking-tighter mb-8">个人中心</h1>
+            
+            <div class="glass rounded-3xl p-8 border border-white/10 mb-6">
+                <div class="flex items-center gap-x-6">
+                    <div class="w-20 h-20 rounded-3xl overflow-hidden border-2 border-white/20 flex-shrink-0">
+                        <img src="https://i.pravatar.cc/80?img=28" alt="Avatar">
+                    </div>
+                    <div class="flex-1">
+                        <div class="flex items-center gap-x-3">
+                            <h2 id="profile-username" class="text-2xl font-bold">demo_user</h2>
+                            <span class="nsfw-badge text-xs px-3 py-0.5">VIP</span>
+                        </div>
+                        <p class="text-gray-400 text-sm">已连接后端 • 实时同步</p>
+                        
+                        <div class="mt-4 flex gap-2">
+                            <button onclick="showRechargeModal()" class="px-5 py-2 text-sm font-semibold bg-white text-black rounded-2xl flex items-center gap-x-2 hover:bg-gray-100">
+                                <i class="fas fa-wallet"></i> <span>充值点数</span>
+                            </button>
+                            <button onclick="logout()" class="px-5 py-2 text-sm font-semibold border border-white/20 hover:bg-white/5 rounded-2xl">退出登录</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-3 gap-4 mb-6">
+                <div class="glass rounded-3xl p-5 border border-white/10 text-center">
+                    <div class="text-4xl font-mono font-bold text-rose-400 stat-number" id="profile-total-gens">0</div>
+                    <div class="text-xs text-gray-400 mt-1">已生成作品</div>
+                </div>
+                <div class="glass rounded-3xl p-5 border border-white/10 text-center">
+                    <div class="text-4xl font-mono font-bold text-amber-400 stat-number" id="profile-total-credits">128</div>
+                    <div class="text-xs text-gray-400 mt-1">当前点数余额</div>
+                </div>
+                <div class="glass rounded-3xl p-5 border border-white/10 text-center">
+                    <div class="text-4xl font-mono font-bold text-emerald-400">¥189</div>
+                    <div class="text-xs text-gray-400 mt-1">累计充值</div>
+                </div>
+            </div>
+
+            <div class="glass rounded-3xl p-6 border border-white/10">
+                <h3 class="font-semibold mb-4 flex items-center"><i class="fas fa-receipt mr-2"></i> 最近交易记录</h3>
+                <div class="space-y-3 text-sm" id="transaction-list">
+                    <div class="text-xs text-gray-500 py-2">暂无交易记录</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recharge Modal -->
+    <div id="recharge-modal" onclick="if (event.target.id === 'recharge-modal') hideRechargeModal()" class="hidden fixed inset-0 bg-black/90 z-[90] flex items-center justify-center p-4">
+        <div onclick="event.stopImmediatePropagation()" class="max-w-lg w-full glass rounded-3xl border border-white/10 p-7">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="text-2xl font-bold">充值点数</h3>
+                <button onclick="hideRechargeModal()" class="text-2xl text-gray-400 hover:text-white">&times;</button>
+            </div>
+            
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+                <div onclick="selectPackage(this, 100, 29)" class="package-card cursor-pointer border border-white/20 rounded-2xl p-4 bg-black/30">
+                    <div class="flex justify-between">
+                        <div><div class="font-semibold">基础包</div><div class="text-3xl font-mono font-bold mt-1">100 <span class="text-xs align-super text-gray-400">点</span></div></div>
+                        <div class="text-right"><div class="text-xl font-semibold">¥29</div><div class="text-[10px] text-emerald-400">¥0.29/点</div></div>
+                    </div>
+                </div>
+                
+                <div onclick="selectPackage(this, 500, 129, true)" class="package-card cursor-pointer border-2 border-rose-500 rounded-2xl p-4 bg-black/30 relative">
+                    <div class="absolute -top-2 -right-2 bg-rose-600 text-[10px] px-3 py-0.5 rounded-full font-bold">最受欢迎</div>
+                    <div class="flex justify-between">
+                        <div><div class="font-semibold">进阶包</div><div class="text-3xl font-mono font-bold mt-1">500 <span class="text-xs align-super text-gray-400">点</span></div></div>
+                        <div class="text-right"><div class="text-xl font-semibold">¥129</div><div class="text-[10px] text-emerald-400">¥0.26/点</div></div>
+                    </div>
+                </div>
+                
+                <div onclick="selectPackage(this, 1200, 299)" class="package-card cursor-pointer border border-white/20 rounded-2xl p-4 bg-black/30">
+                    <div class="flex justify-between">
+                        <div><div class="font-semibold">豪华包</div><div class="text-3xl font-mono font-bold mt-1">1200 <span class="text-xs align-super text-gray-400">点</span></div></div>
+                        <div class="text-right"><div class="text-xl font-semibold">¥299</div><div class="text-[10px] text-emerald-400">¥0.25/点</div></div>
+                    </div>
+                </div>
+                
+                <div onclick="selectPackage(this, 3000, 699)" class="package-card cursor-pointer border border-white/20 rounded-2xl p-4 bg-black/30">
+                    <div class="flex justify-between">
+                        <div><div class="font-semibold">至尊包</div><div class="text-3xl font-mono font-bold mt-1">3000 <span class="text-xs align-super text-gray-400">点</span></div></div>
+                        <div class="text-right"><div class="text-xl font-semibold">¥699</div><div class="text-[10px] text-emerald-400">¥0.23/点</div></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mb-6 p-4 rounded-2xl border border-amber-500/30 bg-amber-950/20">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <div class="font-semibold flex items-center gap-x-2"><i class="fas fa-crown text-amber-400"></i> VIP 月卡</div>
+                        <div class="text-xs text-gray-400">每月自动赠送 800 点 + 优先队列</div>
+                    </div>
+                    <div class="text-right">
+                        <div class="font-bold">¥99<span class="text-xs font-normal">/月</span></div>
+                        <button onclick="buyVIP()" class="mt-1 text-xs px-4 py-1 bg-amber-500 hover:bg-amber-600 text-black font-bold rounded-full">订阅</button>
+                    </div>
+                </div>
+            </div>
+
+            <button onclick="performRecharge()" id="pay-btn"
+                    class="w-full py-4 bg-gradient-to-r from-rose-600 to-red-700 hover:from-rose-700 hover:to-red-800 font-bold rounded-3xl flex items-center justify-center gap-x-2 disabled:opacity-50">
+                <span id="pay-btn-text">确认支付并充值（Demo 模式立即到账）</span>
+            </button>
+            <p class="text-center text-[10px] mt-3 text-gray-500">Demo 模式 • 支付后立即加点数 • 真实部署请配置 Stripe</p>
+        </div>
+    </div>
+
+    <!-- Login Modal -->
+    <div id="login-modal" class="hidden fixed inset-0 bg-black/90 z-[95] flex items-center justify-center p-4">
+        <div class="max-w-md w-full glass rounded-3xl border border-white/10 p-8">
+            <h3 class="text-2xl font-bold mb-2 text-center">登录 AVClubs</h3>
+            <p class="text-center text-gray-400 text-sm mb-6">已连接后端服务</p>
+            
+            <div class="space-y-4">
+                <div>
+                    <label class="text-sm text-gray-300">用户名</label>
+                    <input id="login-username" type="text" value="demo_user" 
+                           class="w-full mt-1 bg-[#111] border border-white/10 focus:border-rose-500 rounded-2xl px-4 py-3">
+                </div>
+                <div>
+                    <label class="text-sm text-gray-300">密码</label>
+                    <input id="login-password" type="password" value="demo123" 
+                           class="w-full mt-1 bg-[#111] border border-white/10 focus:border-rose-500 rounded-2xl px-4 py-3">
+                </div>
+            </div>
+            
+            <button onclick="performLogin()" 
+                    class="mt-6 w-full py-3.5 bg-white text-black font-bold rounded-2xl hover:bg-gray-100">
+                登录 / 注册（Demo）
+            </button>
+            
+            <p class="text-center text-xs text-gray-500 mt-4">默认账号：demo_user / demo123<br>后端会自动创建</p>
+        </div>
+    </div>
+
+    <!-- Toast -->
+    <div id="toast" class="hidden fixed bottom-6 left-1/2 -translate-x-1/2 bg-black border border-white/20 text-sm px-6 py-3 rounded-3xl flex items-center gap-x-3 shadow-2xl z-[200]">
+        <i class="fas fa-check-circle text-emerald-400"></i>
+        <span id="toast-text"></span>
+    </div>
+
+    <script>
+        // ==================== 配置 ====================
+        const API_BASE = 'http://localhost:8000';   // 后端地址（可改成你的公网地址）
+        let authToken = localStorage.getItem('avclubs_token') || null;
+        let currentUser = null;
+        let currentMode = 0;
+        let uploadedImageBase64 = null;
+        let selectedPackageCredits = 0;
+        let selectedPackagePrice = 0;
+
+        // ==================== 初始化 ====================
+        function initTailwind() {
+            // Tailwind 已通过 CDN 加载
+        }
+
+        async function confirmAge(confirm) {
+            const gate = document.getElementById('age-gate');
+            if (!confirm) {
+                window.location.href = 'https://www.google.com';
+                return;
+            }
+            gate.style.transition = 'opacity 0.3s';
+            gate.style.opacity = '0';
+            setTimeout(() => gate.style.display = 'none', 300);
+
+            // 检查是否已登录
+            if (!authToken) {
+                document.getElementById('login-modal').classList.remove('hidden');
+                document.getElementById('login-modal').classList.add('flex');
+            } else {
+                await loadCurrentUser();
+                showPage('make');
+            }
+        }
+
+        async function performLogin() {
+            const username = document.getElementById('login-username').value.trim();
+            const password = document.getElementById('login-password').value;
+
+            try {
+                const res = await fetch(`${API_BASE}/auth/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: new URLSearchParams({ username, password })
+                });
+
+                if (!res.ok) {
+                    // 尝试注册
+                    const regRes = await fetch(`${API_BASE}/auth/register`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ username, password })
+                    });
+                    if (!regRes.ok) throw new Error('登录/注册失败');
+                    
+                    // 注册成功后再次登录
+                    const loginRes = await fetch(`${API_BASE}/auth/login`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                        body: new URLSearchParams({ username, password })
+                    });
+                    const data = await loginRes.json();
+                    authToken = data.access_token;
+                } else {
+                    const data = await res.json();
+                    authToken = data.access_token;
+                }
+
+                localStorage.setItem('avclubs_token', authToken);
+                document.getElementById('login-modal').classList.add('hidden');
+                document.getElementById('login-modal').classList.remove('flex');
+                
+                await loadCurrentUser();
+                showPage('make');
+                showToast('登录成功！已连接后端');
+            } catch (err) {
+                showToast('登录失败：' + err.message, true);
+            }
+        }
+
+        async function loadCurrentUser() {
+            if (!authToken) return;
+            
+            try {
+                const res = await fetch(`${API_BASE}/users/me`, {
+                    headers: { 'Authorization': `Bearer ${authToken}` }
+                });
+                
+                if (!res.ok) {
+                    // Token 失效
+                    localStorage.removeItem('avclubs_token');
+                    authToken = null;
+                    document.getElementById('login-modal').classList.remove('hidden');
+                    document.getElementById('login-modal').classList.add('flex');
+                    return;
+                }
+                
+                currentUser = await res.json();
+                updateUIFromUser();
+            } catch (e) {
+                console.error('加载用户信息失败', e);
+            }
+        }
+
+        function updateUIFromUser() {
+            if (!currentUser) return;
+            
+            document.getElementById('header-balance').innerText = currentUser.balance;
+            document.getElementById('sidebar-balance').innerText = currentUser.balance;
+            document.getElementById('header-username').innerText = currentUser.username;
+            document.getElementById('profile-username').innerText = currentUser.username;
+            document.getElementById('profile-total-credits').innerText = currentUser.balance;
+            
+            // 更新后端状态指示
+            const statusEl = document.getElementById('backend-status');
+            if (statusEl) statusEl.style.display = 'flex';
+        }
+
+        function showToast(msg, isError = false) {
+            const toast = document.getElementById('toast');
+            const text = document.getElementById('toast-text');
+            text.innerHTML = msg;
+            toast.style.background = isError ? '#3f1f1f' : '#111';
+            toast.style.borderColor = isError ? '#ef4444' : '#333';
+            toast.style.display = 'flex';
+            setTimeout(() => { toast.style.display = 'none'; }, 2800);
+        }
+
+        // ==================== 页面切换 ====================
+        function showPage(page) {
+            document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+            const target = document.getElementById('page-' + page);
+            if (target) target.classList.add('active');
+
+            document.querySelectorAll('[id^="nav-"]').forEach(nav => {
+                nav.classList.remove('nav-active', 'text-white');
+                nav.classList.add('text-gray-300');
+                if (nav.id === 'nav-' + page) {
+                    nav.classList.add('nav-active', 'text-white');
+                    nav.classList.remove('text-gray-300');
+                }
+            });
+
+            if (page === 'history') loadHistory();
+            if (page === 'profile') loadProfile();
+        }
+
+        // ==================== 生成相关 ====================
+        function switchMode(mode) {
+            currentMode = mode;
+            for (let i = 0; i < 4; i++) {
+                const tab = document.getElementById('mode-' + i);
+                if (!tab) continue;
+                if (i === mode) {
+                    tab.classList.add('active', 'bg-rose-600', 'border-rose-600');
+                    tab.classList.remove('bg-white/5', 'border-white/10');
+                } else {
+                    tab.classList.remove('active', 'bg-rose-600', 'border-rose-600');
+                    tab.classList.add('bg-white/5', 'border-white/10');
+                }
+            }
+            updateCost();
+            const imgSection = document.getElementById('image-upload-section');
+            if (mode === 2 || mode === 3) imgSection.classList.remove('hidden');
+            else imgSection.classList.add('hidden');
+        }
+
+        function updateCost() {
+            const costs = [2, 15, 3, 20];
+            let base = costs[currentMode];
+            const batch = parseInt(document.getElementById('batch-select')?.value || 1);
+            if (batch === 4) base = Math.round(base * 1.5);
+            document.getElementById('cost-display').innerText = base;
+        }
+
+        function toggleAdvanced() {
+            const adv = document.getElementById('advanced-settings');
+            const txt = document.getElementById('adv-toggle-text');
+            const icon = document.getElementById('adv-icon');
+            if (adv.classList.contains('hidden')) {
+                adv.classList.remove('hidden');
+                txt.innerText = '收起';
+                icon.classList.replace('fa-chevron-down', 'fa-chevron-up');
+            } else {
+                adv.classList.add('hidden');
+                txt.innerText = '展开';
+                icon.classList.replace('fa-chevron-up', 'fa-chevron-down');
+            }
+        }
+
+        function handleImageUpload(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = ev => {
+                uploadedImageBase64 = ev.target.result;
+                document.getElementById('upload-placeholder').classList.add('hidden');
+                document.getElementById('upload-preview').classList.remove('hidden');
+                document.getElementById('preview-img').src = uploadedImageBase64;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function removeUploadedImage(e) {
+            if (e) e.stopImmediatePropagation();
+            uploadedImageBase64 = null;
+            document.getElementById('upload-placeholder').classList.remove('hidden');
+            document.getElementById('upload-preview').classList.add('hidden');
+        }
+
+        function useExamplePrompt() {
+            const examples = [
+                "一个穿着黑色丝袜和吊带睡裙的亚洲美女，躺在豪华酒店床上，柔和暖光，写实摄影风格，高细节，8k",
+                "赛博朋克风格的性感女性，霓虹灯下的雨夜街道，湿发，皮衣，电影光影",
+                "两个亲密拥抱的年轻情侣，柔焦背景，浪漫氛围，自然光，写实"
+            ];
+            document.getElementById('prompt-input').value = examples[Math.floor(Math.random() * examples.length)];
+        }
+
+        async function startGeneration() {
+            const prompt = document.getElementById('prompt-input').value.trim();
+            if (!prompt) return showToast('请输入提示词', true);
+            if (!authToken) return showToast('请先登录', true);
+
+            const costs = [2, 15, 3, 20];
+            let cost = costs[currentMode];
+            const batch = parseInt(document.getElementById('batch-select').value);
+            if (batch === 4) cost = Math.round(cost * 1.5);
+
+            const btnText = document.getElementById('generate-btn-text');
+            const originalText = btnText.innerHTML;
+            btnText.innerHTML = `<i class="fas fa-spinner fa-spin mr-2"></i> 提交到后端...`;
+
+            try {
+                const payload = {
+                    mode: ['txt2img','txt2vid','img2img','img2vid'][currentMode],
+                    prompt: prompt,
+                    negative_prompt: document.getElementById('negative-input').value,
+                    ratio: document.getElementById('ratio-select').value,
+                    style: document.getElementById('style-select').value,
+                    quality: document.getElementById('quality-select').value,
+                    batch: batch,
+                    image_base64: uploadedImageBase64 || null
+                };
+
+                const res = await fetch(`${API_BASE}/generations/start`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${authToken}`
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                if (!res.ok) {
+                    const err = await res.json();
+                    throw new Error(err.detail || '生成失败');
+                }
+
+                const genData = await res.json();
+                showToast(`生成任务已提交！ID: ${genData.id}，正在后台处理...`);
+
+                // 轮询状态
+                pollGenerationStatus(genData.id, originalText, btnText);
+
+            } catch (err) {
+                showToast('生成失败: ' + err.message, true);
+                btnText.innerHTML = originalText;
+            }
+        }
+
+        async function pollGenerationStatus(genId, originalBtnText, btnElement) {
+            const latestContainer = document.getElementById('latest-result');
+            latestContainer.classList.remove('hidden');
+            latestContainer.innerHTML = `
+                <div class="glass rounded-3xl p-8 border border-white/10 text-center">
+                    <div class="w-16 h-16 mx-auto mb-4 border-4 border-rose-500/30 border-t-rose-500 rounded-full animate-spin"></div>
+                    <div class="text-sm">后端正在调用 Zen Creator...</div>
+                    <div class="mt-2 text-xs text-gray-400">任务 ID: ${genId}</div>
+                </div>
+            `;
+
+            for (let i = 0; i < 40; i++) {  // 最多轮询 ~3 分钟
+                await new Promise(r => setTimeout(r, 4500));
+                
+                try {
+                    const res = await fetch(`${API_BASE}/generations/${genId}/status`, {
+                        headers: { 'Authorization': `Bearer ${authToken}` }
+                    });
+                    const data = await res.json();
+
+                    if (data.status === 'succeeded' && data.result_urls) {
+                        showGenerationResultFromBackend(genId, data.result_urls);
+                        btnElement.innerHTML = originalBtnText;
+                        await loadCurrentUser(); // 刷新余额
+                        return;
+                    } else if (data.status === 'failed') {
+                        showToast('生成失败，请稍后重试', true);
+                        latestContainer.classList.add('hidden');
+                        btnElement.innerHTML = originalBtnText;
+                        return;
+                    }
+                } catch (e) {}
+            }
+            
+            showToast('生成超时，请在「我的作品」中查看进度', true);
+            btnElement.innerHTML = originalBtnText;
+            latestContainer.classList.add('hidden');
+        }
+
+        function showGenerationResultFromBackend(genId, resultUrls) {
+            const container = document.getElementById('latest-result');
+            container.innerHTML = `
+                <div class="flex justify-between mb-3">
+                    <h3 class="font-semibold flex items-center gap-x-2"><i class="fas fa-check-circle text-emerald-400"></i> 生成完成（后端返回）</h3>
+                    <button onclick="document.getElementById('latest-result').classList.add('hidden')" class="text-xs px-3 py-1 bg-white/5 rounded-full">关闭</button>
+                </div>
+                <div class="glass rounded-3xl overflow-hidden border border-white/10">
+                    <img src="${resultUrls[0]}" class="w-full max-h-[420px] object-cover" alt="AI Generated">
+                    <div class="p-5">
+                        <div class="flex gap-3">
+                            <button onclick="downloadFromUrl('${resultUrls[0]}')" class="flex-1 py-2.5 text-sm font-semibold bg-white/5 hover:bg-white/10 border border-white/10 rounded-2xl flex items-center justify-center gap-x-2">
+                                <i class="fas fa-download"></i> <span>下载</span>
+                            </button>
+                            <button onclick="loadHistory(); showPage('history')" class="flex-1 py-2.5 text-sm font-semibold bg-white/5 hover:bg-white/10 border border-white/10 rounded-2xl">
+                                查看全部作品
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            loadHistory(); // 刷新历史
+        }
+
+        function downloadFromUrl(url) {
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `avclubs_${Date.now()}.jpg`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+        }
+
+        // ==================== 历史 ====================
+        async function loadHistory() {
+            if (!authToken) return;
+            const grid = document.getElementById('history-grid');
+            const empty = document.getElementById('history-empty');
+            grid.innerHTML = '';
+            
+            try {
+                const res = await fetch(`${API_BASE}/history`, {
+                    headers: { 'Authorization': `Bearer ${authToken}` }
+                });
+                const history = await res.json();
+
+                if (history.length === 0) {
+                    empty.classList.remove('hidden');
+                    return;
+                }
+                empty.classList.add('hidden');
+
+                history.forEach(item => {
+                    const card = document.createElement('div');
+                    card.className = `result-card glass rounded-3xl overflow-hidden border border-white/10 cursor-pointer`;
+                    
+                    let media = item.status === 'succeeded' && item.result_urls && item.result_urls.length > 0 
+                        ? `<img src="${item.result_urls[0]}" class="w-full aspect-[4/3] object-cover">` 
+                        : `<div class="fake-image aspect-[16/9] flex items-center justify-center"><i class="fas fa-spinner fa-spin text-3xl"></i></div>`;
+
+                    card.innerHTML = `
+                        <div class="relative">
+                            ${media}
+                            <div class="absolute top-3 left-3"><span class="text-[10px] px-2.5 py-px bg-black/60 rounded-full">${item.mode}</span></div>
+                            <div class="absolute top-3 right-3 text-[10px] px-2 py-px bg-black/70 rounded-full">${item.cost}pt</div>
+                        </div>
+                        <div class="p-4">
+                            <div class="text-xs text-gray-400 mb-1">${new Date(item.created_at).toLocaleDateString()}</div>
+                            <div class="text-sm line-clamp-2">${item.prompt}</div>
+                            <div class="mt-3 text-xs text-emerald-400">${item.status}</div>
+                        </div>
+                    `;
+                    card.onclick = () => viewHistoryItem(item);
+                    grid.appendChild(card);
+                });
+            } catch (e) {
+                showToast('加载历史失败', true);
+            }
+        }
+
+        function filterHistory() {
+            // 简单前端过滤，实际可扩展
+            loadHistory();
+        }
+
+        function viewHistoryItem(item) {
+            const modal = document.createElement('div');
+            modal.className = 'fixed inset-0 bg-black/95 z-[110] flex items-center justify-center p-4';
+            let mediaHTML = '';
+            if (item.status === 'succeeded' && item.result_urls && item.result_urls.length > 0) {
+                mediaHTML = `<img src="${item.result_urls[0]}" class="rounded-2xl w-full max-h-[520px] object-contain mx-auto">`;
+            } else {
+                mediaHTML = `<div class="fake-image rounded-2xl h-80 flex items-center justify-center text-center"><div>生成中或失败<br><span class="text-xs">${item.status}</span></div></div>`;
+            }
+
+            modal.innerHTML = `
+                <div class="max-w-3xl w-full glass rounded-3xl overflow-hidden border border-white/10">
+                    <div class="p-5 flex justify-between border-b border-white/10">
+                        <div><span class="nsfw-badge mr-2">NSFW</span> <span class="font-semibold">${item.mode}</span></div>
+                        <button onclick="this.closest('.fixed').remove()" class="text-3xl text-gray-400 hover:text-white">&times;</button>
+                    </div>
+                    <div class="p-6">
+                        ${mediaHTML}
+                        <div class="mt-6 text-sm bg-black/40 p-4 rounded-2xl">${item.prompt}</div>
+                        <div class="flex gap-3 mt-6">
+                            ${item.result_urls && item.result_urls.length > 0 ? 
+                                `<button onclick="downloadFromUrl('${item.result_urls[0]}'); this.closest('.fixed').remove()" class="flex-1 py-3 bg-white text-black font-semibold rounded-2xl flex items-center justify-center gap-x-2">
+                                    <i class="fas fa-download"></i> 下载
+                                </button>` : ''}
+                            <button onclick="this.closest('.fixed').remove()" class="flex-1 py-3 bg-white/5 border border-white/10 rounded-2xl">关闭</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+        }
+
+        // ==================== 充值 ====================
+        function showRechargeModal() {
+            document.getElementById('recharge-modal').style.display = 'flex';
+            document.getElementById('pay-btn').disabled = true;
+            document.getElementById('pay-btn-text').innerText = '请选择充值包';
+        }
+
+        function hideRechargeModal() {
+            document.getElementById('recharge-modal').style.display = 'none';
+        }
+
+        function selectPackage(el, credits, price) {
+            document.querySelectorAll('.package-card').forEach(c => c.classList.remove('selected', 'border-rose-500'));
+            el.classList.add('selected', 'border-rose-500');
+            selectedPackageCredits = credits;
+            selectedPackagePrice = price;
+            document.getElementById('pay-btn').disabled = false;
+            document.getElementById('pay-btn-text').innerText = `支付 ¥${price} 并获得 ${credits} 点数`;
+        }
+
+        async function performRecharge() {
+            if (!selectedPackageCredits || !authToken) return;
+
+            const btn = document.getElementById('pay-btn');
+            btn.disabled = true;
+            btn.innerHTML = `<i class="fas fa-spinner fa-spin mr-2"></i> 处理中...`;
+
+            try {
+                const res = await fetch(`${API_BASE}/payments/create-checkout`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${authToken}`
+                    },
+                    body: JSON.stringify({ package: String(selectedPackageCredits) })
+                });
+                const data = await res.json();
+
+                if (data.demo) {
+                    showToast(data.message);
+                    await loadCurrentUser();
+                    hideRechargeModal();
+                } else if (data.checkout_url) {
+                    window.open(data.checkout_url, '_blank');
+                    hideRechargeModal();
+                }
+            } catch (e) {
+                showToast('充值失败: ' + e.message, true);
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '确认支付并充值（Demo 模式立即到账）';
+            }
+        }
+
+        async function buyVIP() {
+            if (!authToken) return;
+            try {
+                const res = await fetch(`${API_BASE}/payments/subscribe-vip`, {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${authToken}` }
+                });
+                const data = await res.json();
+                showToast(data.message || 'VIP 订阅成功');
+                await loadCurrentUser();
+                hideRechargeModal();
+            } catch (e) {
+                showToast('VIP 订阅失败', true);
+            }
+        }
+
+        // ==================== 其他 ====================
+        async function loadProfile() {
+            await loadCurrentUser();
+            // 可扩展加载交易记录
+            document.getElementById('profile-total-gens').innerText = '—'; // 后端暂无统计，可扩展
+        }
+
+        function logout() {
+            localStorage.removeItem('avclubs_token');
+            authToken = null;
+            currentUser = null;
+            location.reload();
+        }
+
+        function toggleMobileNav() {
+            // 简化版移动菜单
+            const nav = document.createElement('div');
+            nav.className = 'fixed inset-0 bg-black/90 z-[120] md:hidden flex flex-col p-6';
+            nav.innerHTML = `
+                <div class="flex justify-between mb-8">
+                    <span class="font-bold text-2xl">AVClubs</span>
+                    <button class="text-4xl" onclick="this.closest('.fixed').remove()">&times;</button>
+                </div>
+                <div onclick="showPage('make');this.closest('.fixed').remove()" class="py-4 text-lg cursor-pointer">创作中心</div>
+                <div onclick="showPage('history');this.closest('.fixed').remove()" class="py-4 text-lg cursor-pointer">我的作品</div>
+                <div onclick="showPage('profile');this.closest('.fixed').remove()" class="py-4 text-lg cursor-pointer">个人中心</div>
+                <button onclick="showRechargeModal();this.closest('.fixed').remove()" class="mt-auto py-4 bg-white text-black font-bold rounded-3xl">充值点数</button>
+            `;
+            document.body.appendChild(nav);
+        }
+
+        function setupListeners() {
+            // 批量选择变化时更新消耗
+            const batch = document.getElementById('batch-select');
+            if (batch) batch.onchange = updateCost;
+
+            // 键盘快捷键
+            document.addEventListener('keydown', e => {
+                if (e.key === '/' && document.activeElement.tagName === 'BODY') {
+                    e.preventDefault();
+                    document.getElementById('prompt-input').focus();
+                }
+                if ((e.ctrlKey || e.metaKey) && e.key === 'Enter' && document.getElementById('page-make').classList.contains('active')) {
+                    e.preventDefault();
+                    startGeneration();
+                }
+            });
+        }
+
+        async function initializeApp() {
+            initTailwind();
+            setupListeners();
+
+            // 默认显示后端状态
+            document.getElementById('backend-status').style.display = 'flex';
+
+            // 如果已有 token，尝试加载用户
+            if (authToken) {
+                await loadCurrentUser();
+            }
+        }
+
+        window.onload = initializeApp;
+    </script>
+</body>
+</html>
