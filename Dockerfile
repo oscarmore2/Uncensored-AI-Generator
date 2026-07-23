@@ -1,20 +1,19 @@
-# Build context = web/ (Railway Root Directory = web)
+# Build context = repository root (Railway Root Directory empty / ".")
 FROM node:20-alpine AS base
 RUN apk add --no-cache libc6-compat openssl
 WORKDIR /app
 
 FROM base AS deps
 # package.json postinstall runs `prisma generate` — schema must exist before npm ci
-COPY package.json package-lock.json ./
-COPY prisma ./prisma
+COPY web/package.json web/package-lock.json ./
+COPY web/prisma ./prisma
 RUN npm ci
 
 FROM base AS builder
 COPY --from=deps /app/node_modules ./node_modules
 COPY --from=deps /app/prisma ./prisma
-COPY . .
+COPY web/ .
 ENV NEXT_TELEMETRY_DISABLED=1
-# Validated at import during `next build`; placeholders are build-only
 ENV AUTH_SECRET="build-time-placeholder-secret-min-32-chars"
 ENV DATABASE_URL="postgresql://build:build@localhost:5432/build"
 ENV DEMO_MODE="true"

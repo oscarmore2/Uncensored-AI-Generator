@@ -8,5 +8,3 @@
 backend
 *.html
 PROJECT_DOCUMENTATION.md
-web/.next
-web/node_modules

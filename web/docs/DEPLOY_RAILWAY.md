@@ -49,9 +49,14 @@ openssl rand -hex 32   # AUTH_SECRET，至少 32 字符
 ## 1. 创建 Railway 项目
 
 1. **New Project** → **Deploy from GitHub repo** → 选择本仓库。
-2. Web 服务设置：
-   - **Root Directory** = `web`
-   - 可选 **Watch Paths** = `web/**`
+2. Web 服务设置（**二选一**，推荐 A）：
+   - **A. 设置 Root Directory（推荐，构建更快）**
+     - **Settings → Root Directory** = `web`
+     - 使用 `web/railway.toml` 中的 build/start/release 命令
+   - **B. 不改 Root Directory（仓库根目录部署）**
+     - 保持根目录为 `/`
+     - 仓库已包含根目录 `railway.toml` + `web/Dockerfile`，Railway 会用 Docker 构建
+     - 若仍报 `Railpack could not determine how to build`，见下方「常见错误」
 3. 同一 Project 内 **+ New** → **Database** → **PostgreSQL**。
 4. Web 服务 **Variables** 中 **Reference** Postgres 的 `DATABASE_URL`（建议带 `?sslmode=require`）。
 
@@ -171,6 +176,32 @@ curl -sS "$APP_URL/api/public/works" | head
 5. 生成域名 → 更新 `APP_URL`
 6. 登录 `/admin`，配置 Stripe / Cryptomus / Zen / OSS
 7. 配置 Webhook → 完成一笔测试支付
+
+## 常见错误
+
+### `Railpack could not determine how to build the app`
+
+日志里若出现根目录只有 `backend/`、`web/` 等文件夹，说明 Railway **在仓库根目录**扫描，而 `package.json` 在 `web/` 内。
+
+**解决办法（推荐）：** Settings → **Root Directory** = `web` → Save → Redeploy。
+
+### `"/web": not found`（Docker 构建失败）
+
+原因：**Root Directory = `web`** 时，构建上下文里已经没有 `web/` 子目录，但旧 Dockerfile 还在执行 `COPY web/...`。
+
+**解决办法：**
+
+1. 确认 **Root Directory = `web`**
+2. `git pull` / push 最新代码（`web/Dockerfile` 已改为直接 `COPY package.json`，不再 `COPY web/...`）
+3. Redeploy
+
+若坚持 **Root Directory 留空**，请用仓库根目录的 `Dockerfile`（会 `COPY web/...`），不要混用两套路径。
+
+### 构建成功但 502 / 应用起不来
+
+- 检查 `AUTH_SECRET` 是否已配置（≥ 32 字符）
+- 检查 `DATABASE_URL` 是否 Reference 到 Postgres
+- 查看 Deploy Logs 中 `prisma db push` 是否报错
 
 ## 相关文档
 

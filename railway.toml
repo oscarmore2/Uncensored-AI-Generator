@@ -1,8 +1,8 @@
-# Monorepo: Next.js app lives in web/
-# Railway reads this from repo root when Root Directory is NOT set.
+# Prefer: set Railway Root Directory = "web" and deploy from web/.
+# This root config is a fallback when Root Directory is empty.
 [build]
 builder = "DOCKERFILE"
-dockerfilePath = "web/Dockerfile"
+dockerfilePath = "Dockerfile"
 watchPatterns = ["web/**"]
 
 [deploy]
