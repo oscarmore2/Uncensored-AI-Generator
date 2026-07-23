@@ -13,14 +13,15 @@ FROM base AS builder
 COPY --from=deps /app/node_modules ./node_modules
 COPY --from=deps /app/prisma ./prisma
 COPY . .
-# Ensure public/ exists even if empty (Docker COPY fails on missing dirs)
 RUN mkdir -p public
 ENV NEXT_TELEMETRY_DISABLED=1
-# Build-only placeholders (inline so they are not baked as image ENV secrets)
-RUN AUTH_SECRET="build-time-placeholder-secret-min-32-chars" \
-    DATABASE_URL="postgresql://build:build@localhost:5432/build" \
+# Placeholders for `next build` page-data collection (env.ts validates at import).
+# Must wrap both commands in one shell so vars apply to npm run build too.
+# Runtime uses Railway Variables — these are NOT the real production secrets.
+RUN AUTH_SECRET="build-time-placeholder-secret-min-32-chars-xx" \
+    DATABASE_URL="postgresql://build:build@127.0.0.1:5432/build" \
     DEMO_MODE="true" \
-    npx prisma generate && npm run build
+    sh -c "npx prisma generate && npm run build"
 
 FROM base AS runner
 ENV NODE_ENV=production

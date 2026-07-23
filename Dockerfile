@@ -14,10 +14,11 @@ COPY --from=deps /app/prisma ./prisma
 COPY web/ .
 RUN mkdir -p public
 ENV NEXT_TELEMETRY_DISABLED=1
-RUN AUTH_SECRET="build-time-placeholder-secret-min-32-chars" \
-    DATABASE_URL="postgresql://build:build@localhost:5432/build" \
+# Placeholders for next build; wrap in sh -c so both commands get the env.
+RUN AUTH_SECRET="build-time-placeholder-secret-min-32-chars-xx" \
+    DATABASE_URL="postgresql://build:build@127.0.0.1:5432/build" \
     DEMO_MODE="true" \
-    npx prisma generate && npm run build
+    sh -c "npx prisma generate && npm run build"
 
 FROM base AS runner
 ENV NODE_ENV=production
