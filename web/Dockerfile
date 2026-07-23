@@ -13,12 +13,14 @@ FROM base AS builder
 COPY --from=deps /app/node_modules ./node_modules
 COPY --from=deps /app/prisma ./prisma
 COPY . .
+# Ensure public/ exists even if empty (Docker COPY fails on missing dirs)
+RUN mkdir -p public
 ENV NEXT_TELEMETRY_DISABLED=1
-# Validated at import during `next build`; placeholders are build-only
-ENV AUTH_SECRET="build-time-placeholder-secret-min-32-chars"
-ENV DATABASE_URL="postgresql://build:build@localhost:5432/build"
-ENV DEMO_MODE="true"
-RUN npx prisma generate && npm run build
+# Build-only placeholders (inline so they are not baked as image ENV secrets)
+RUN AUTH_SECRET="build-time-placeholder-secret-min-32-chars" \
+    DATABASE_URL="postgresql://build:build@localhost:5432/build" \
+    DEMO_MODE="true" \
+    npx prisma generate && npm run build
 
 FROM base AS runner
 ENV NODE_ENV=production

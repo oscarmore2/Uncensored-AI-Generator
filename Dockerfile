@@ -4,7 +4,6 @@ RUN apk add --no-cache libc6-compat openssl
 WORKDIR /app
 
 FROM base AS deps
-# package.json postinstall runs `prisma generate` — schema must exist before npm ci
 COPY web/package.json web/package-lock.json ./
 COPY web/prisma ./prisma
 RUN npm ci
@@ -13,11 +12,12 @@ FROM base AS builder
 COPY --from=deps /app/node_modules ./node_modules
 COPY --from=deps /app/prisma ./prisma
 COPY web/ .
+RUN mkdir -p public
 ENV NEXT_TELEMETRY_DISABLED=1
-ENV AUTH_SECRET="build-time-placeholder-secret-min-32-chars"
-ENV DATABASE_URL="postgresql://build:build@localhost:5432/build"
-ENV DEMO_MODE="true"
-RUN npx prisma generate && npm run build
+RUN AUTH_SECRET="build-time-placeholder-secret-min-32-chars" \
+    DATABASE_URL="postgresql://build:build@localhost:5432/build" \
+    DEMO_MODE="true" \
+    npx prisma generate && npm run build
 
 FROM base AS runner
 ENV NODE_ENV=production
