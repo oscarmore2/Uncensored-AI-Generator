@@ -5,6 +5,10 @@ export const metadata: Metadata = {
   title: "AVClubs • AI 成人内容生成器",
   description: "AI 成人内容生成平台（Next.js 全栈版）",
   robots: { index: false, follow: false },
+  // Cryptomus 域名验证（管理后台「在网站上使用元标记」）
+  other: {
+    cryptomus: "bb91b7a9",
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
