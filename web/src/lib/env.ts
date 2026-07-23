@@ -50,9 +50,21 @@ const envSchema = z.object({
     .string()
     .default("false")
     .transform((v) => v.toLowerCase() === "true"),
+  // 魔法指令：Hugging Face Inference Providers（Dolphin-Mistral-24B-Venice）
+  // Token: https://huggingface.co/settings/tokens （需 Inference Providers 权限）
+  HF_TOKEN: z.string().default(""),
+  HF_INFERENCE_BASE_URL: z.string().url().default("https://router.huggingface.co/v1"),
+  // 默认走 Featherless；也可改为 dphn/Dolphin-Mistral-24B-Venice-Edition（由 HF 路由选 provider）
+  HF_MAGIC_MODEL: z
+    .string()
+    .default("dphn/Dolphin-Mistral-24B-Venice-Edition:featherless-ai"),
 });
 
 function loadEnv() {
+  // 兼容常见 HF token 环境变量名
+  if (!process.env.HF_TOKEN && process.env.HUGGINGFACE_API_KEY) {
+    process.env.HF_TOKEN = process.env.HUGGINGFACE_API_KEY;
+  }
   const parsed = envSchema.safeParse(process.env);
   if (!parsed.success) {
     const issues = parsed.error.issues.map((i) => `  - ${i.path.join(".")}: ${i.message}`).join("\n");

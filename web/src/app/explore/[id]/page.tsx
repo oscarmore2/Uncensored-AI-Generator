@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
 import { getSession } from "@/lib/session";
 import { GuestHeader } from "@/components/GuestHeader";
-import { WorkMedia } from "@/components/WorkMedia";
+import { AdaptiveMedia } from "@/components/WorkMedia";
 
 export const dynamic = "force-dynamic";
 
@@ -12,6 +12,7 @@ const MODE_LABELS: Record<string, string> = {
   txt2vid: "文生视频",
   img2img: "图生图",
   img2vid: "图生视频",
+  undress: "一键脱衣",
 };
 
 export default async function WorkDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -53,7 +54,7 @@ export default async function WorkDetailPage({ params }: { params: Promise<{ id:
         <div className="mt-6 grid grid-cols-1 lg:grid-cols-12 gap-8">
           <div className="lg:col-span-7">
             <div className="rounded-3xl overflow-hidden border border-white/10 bg-[#111]">
-              <WorkMedia mode={work.mode} src={work.mediaUrl} poster={work.thumbUrl} className="w-full object-contain max-h-[75vh]" />
+              <AdaptiveMedia mode={work.mode} src={work.mediaUrl} poster={work.thumbUrl} />
             </div>
           </div>
 

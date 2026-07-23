@@ -9,17 +9,36 @@ export const credentialsSchema = z.object({
   password: z.string().min(8, "密码至少 8 个字符").max(128),
 });
 
-export const generationSchema = z.object({
-  mode: z.enum(["txt2img", "txt2vid", "img2img", "img2vid"]),
-  prompt: z.string().min(1).max(4000),
-  negative_prompt: z.string().max(2000).optional().default(""),
-  ratio: z.string().max(10).optional().default("1:1"),
-  style: z.string().max(40).optional().default("realistic"),
-  quality: z.string().max(20).optional().default("quality"),
-  batch: z.union([z.literal(1), z.literal(2), z.literal(4)]).optional().default(1),
-  // base64 参考图（约 10MB 上限）；与原后端一致，暂不真正上传到 Zen
-  image_base64: z.string().max(14_000_000).nullable().optional(),
-});
+export const generationSchema = z
+  .object({
+    mode: z.enum(["txt2img", "txt2vid", "img2img", "img2vid", "undress"]),
+    prompt: z.string().max(4000).optional().default(""),
+    negative_prompt: z.string().max(2000).optional().default(""),
+    ratio: z.string().max(10).optional().default("1:1"),
+    style: z.string().max(40).optional().default("realistic"),
+    quality: z.string().max(20).optional().default("quality"),
+    duration: z.union([z.string().max(10), z.number()]).optional(),
+    resolution: z.string().max(20).optional(),
+    zen_model: z.string().max(80).optional(),
+    batch: z.union([z.literal(1), z.literal(2), z.literal(4)]).optional().default(1),
+    undress_variant: z.enum(["female", "male", "couple"]).optional().default("female"),
+    // base64 参考图（约 10MB 上限）
+    image_base64: z.string().max(14_000_000).nullable().optional(),
+  })
+  .superRefine((v, ctx) => {
+    if (v.mode === "undress") {
+      if (!v.image_base64) {
+        ctx.addIssue({ code: "custom", message: "脱衣功能需要上传一张人物图片", path: ["image_base64"] });
+      }
+      return;
+    }
+    if (!v.prompt?.trim()) {
+      ctx.addIssue({ code: "custom", message: "请输入提示词", path: ["prompt"] });
+    }
+    if ((v.mode === "img2img" || v.mode === "img2vid") && !v.image_base64) {
+      ctx.addIssue({ code: "custom", message: "该模式需要上传参考图片", path: ["image_base64"] });
+    }
+  });
 
 export const rechargeSchema = z.object({
   package: z.string().regex(/^\d+$/),
@@ -32,7 +51,7 @@ export const bulkIdsSchema = z.object({
 export const publicWorkImportSchema = z.object({
   media_url: z.string().url().max(2000).optional(),
   prompt: z.string().min(1).max(4000),
-  mode: z.enum(["txt2img", "txt2vid", "img2img", "img2vid"]),
+  mode: z.enum(["txt2img", "txt2vid", "img2img", "img2vid", "undress"]),
   negative_prompt: z.string().max(2000).optional(),
   params: z.record(z.string(), z.unknown()).optional(),
   source_zen_job_id: z.string().max(120).optional(),

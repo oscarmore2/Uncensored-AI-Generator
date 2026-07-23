@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { api, type ApiGeneration } from "@/lib/client";
 import { useApp } from "@/components/AppContext";
+import { AdaptiveMedia } from "@/components/WorkMedia";
 
 export default function HistoryPage() {
   const { toast } = useApp();
@@ -117,14 +118,9 @@ export default function HistoryPage() {
                 &times;
               </button>
             </div>
-            <div className="p-6">
+            <div className="p-2 sm:p-4">
               {selected.status === "succeeded" && selected.result_urls?.length ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={selected.result_urls[0]}
-                  className="rounded-2xl w-full max-h-[520px] object-contain mx-auto"
-                  alt={selected.mode}
-                />
+                <AdaptiveMedia mode={selected.mode} urls={selected.result_urls} />
               ) : (
                 <div className="fake-image rounded-2xl h-80 flex items-center justify-center text-center">
                   <div>
@@ -135,11 +131,11 @@ export default function HistoryPage() {
                 </div>
               )}
               <div className="mt-6 text-sm bg-black/40 p-4 rounded-2xl">{selected.prompt}</div>
-              <div className="flex gap-3 mt-6">
+              <div className="flex gap-3 mt-6 px-4 pb-4">
                 {selected.result_urls?.length ? (
                   <a
                     href={selected.result_urls[0]}
-                    download={`avclubs_${selected.id}.jpg`}
+                    download={`avclubs_${selected.id}${selected.mode.endsWith("vid") ? ".mp4" : ".jpg"}`}
                     target="_blank"
                     rel="noopener"
                     className="flex-1 py-3 bg-white text-black font-semibold rounded-2xl flex items-center justify-center gap-x-2"

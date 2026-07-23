@@ -6,6 +6,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { createInvoice, cryptomusConfigured } from "@/lib/cryptomus";
 import { rechargeSchema } from "@/lib/validators";
 import { rateLimit } from "@/lib/rate-limit";
+import { getCreditPackageByCredits } from "@/lib/pricing";
 
 export async function POST(req: Request) {
   const user = await getCurrentUser();
@@ -21,12 +22,16 @@ export async function POST(req: Request) {
 
   const body = await req.json().catch(() => null);
   const parsed = rechargeSchema.safeParse(body);
-  if (!parsed.success || !(parsed.data.package in env.CREDIT_PACKAGES)) {
+  if (!parsed.success) {
     return NextResponse.json({ error: "无效的充值套餐" }, { status: 400 });
   }
 
-  const priceCents = env.CREDIT_PACKAGES[parsed.data.package];
   const credits = Number(parsed.data.package);
+  const pkg = await getCreditPackageByCredits(credits);
+  if (!pkg) {
+    return NextResponse.json({ error: "无效的充值套餐" }, { status: 400 });
+  }
+  const priceCents = pkg.priceCents;
   const orderId = `cr_${user.id}_${Date.now()}_${crypto.randomBytes(4).toString("hex")}`;
   const amountUsd = (priceCents / 100).toFixed(2);
 

@@ -2,7 +2,8 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
 import { generationSchema } from "@/lib/validators";
-import { generationCost, processGeneration } from "@/lib/zen";
+import { processGeneration } from "@/lib/zen";
+import { resolveGenerationQuote } from "@/lib/pricing";
 import { generationOut } from "@/lib/serialize";
 import { rateLimit } from "@/lib/rate-limit";
 
@@ -21,9 +22,20 @@ export async function POST(req: Request) {
   }
 
   const gen = parsed.data;
-  const cost = generationCost(gen.mode, gen.batch);
+  const quote = await resolveGenerationQuote({
+    mode: gen.mode,
+    zenModel: gen.zen_model,
+    variantKey: gen.undress_variant,
+    batch: gen.batch,
+    user,
+  });
+  const cost = quote.cost;
+  const prompt =
+    gen.mode === "undress"
+      ? gen.prompt.trim() ||
+        `一键脱衣（${gen.undress_variant === "male" ? "男" : gen.undress_variant === "couple" ? "情侣" : "女"}）`
+      : gen.prompt.trim();
 
-  // 原子扣费：余额不足时不更新任何行
   const charged = await db.user.updateMany({
     where: { id: user.id, balance: { gte: cost } },
     data: { balance: { decrement: cost } },
@@ -36,9 +48,20 @@ export async function POST(req: Request) {
     data: {
       userId: user.id,
       mode: gen.mode,
-      prompt: gen.prompt,
+      prompt,
       negativePrompt: gen.negative_prompt,
-      params: JSON.stringify({ ratio: gen.ratio, style: gen.style, quality: gen.quality, batch: gen.batch }),
+      params: JSON.stringify({
+        ratio: gen.ratio,
+        style: gen.style,
+        quality: gen.quality,
+        duration: gen.duration,
+        resolution: gen.resolution,
+        batch: gen.mode === "undress" ? 1 : gen.batch,
+        undress_variant: gen.undress_variant,
+        zen_model: quote.product.zenModel,
+        product_id: quote.product.id,
+        image_base64: gen.image_base64 ?? null,
+      }),
       cost,
       status: "pending",
     },

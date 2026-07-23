@@ -11,6 +11,7 @@ const patchSchema = z
     disabled: z.boolean().optional(),
     is_vip: z.boolean().optional(),
     vip_expires_at: z.string().datetime().nullable().optional(),
+    vip_tier_id: z.number().int().positive().nullable().optional(),
   })
   .refine((v) => Object.keys(v).length > 0, "至少提供一个字段");
 
@@ -32,6 +33,8 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
       balance: true,
       isVip: true,
       vipExpiresAt: true,
+      vipTierId: true,
+      vipTier: { select: { id: true, code: true, name: true, discountBps: true } },
       disabledAt: true,
       createdAt: true,
       _count: { select: { generations: true } },
@@ -93,6 +96,14 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
       balance: user.balance,
       is_vip: user.isVip,
       vip_expires_at: user.vipExpiresAt,
+      vip_tier: user.vipTier
+        ? {
+            id: user.vipTier.id,
+            code: user.vipTier.code,
+            name: user.vipTier.name,
+            discount_bps: user.vipTier.discountBps,
+          }
+        : null,
       disabled_at: user.disabledAt,
       created_at: user.createdAt,
       generation_count: user._count.generations,
@@ -164,17 +175,35 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
     });
   }
 
-  const vipData: { isVip?: boolean; vipExpiresAt?: Date | null } = {};
+  const vipData: {
+    isVip?: boolean;
+    vipExpiresAt?: Date | null;
+    vipTierId?: number | null;
+  } = {};
   if (data.is_vip !== undefined) {
     vipData.isVip = data.is_vip;
-    if (!data.is_vip) vipData.vipExpiresAt = null;
+    if (!data.is_vip) {
+      vipData.vipExpiresAt = null;
+      vipData.vipTierId = null;
+    }
   }
   if (data.vip_expires_at !== undefined) {
     vipData.vipExpiresAt = data.vip_expires_at ? new Date(data.vip_expires_at) : null;
     if (data.vip_expires_at) vipData.isVip = true;
   }
+  if (data.vip_tier_id !== undefined) {
+    vipData.vipTierId = data.vip_tier_id;
+    if (data.vip_tier_id) vipData.isVip = true;
+  }
   if (data.is_vip === true && data.vip_expires_at === undefined && !target.vipExpiresAt) {
     vipData.vipExpiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+  }
+  if (data.is_vip === true && data.vip_tier_id === undefined && !target.vipTierId) {
+    const defaultTier = await db.vipTier.findFirst({
+      where: { isActive: true },
+      orderBy: [{ rank: "asc" }, { id: "asc" }],
+    });
+    if (defaultTier) vipData.vipTierId = defaultTier.id;
   }
 
   const grantingVip = data.is_vip === true && !target.isVip;
@@ -222,6 +251,7 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
       balance: updated.balance,
       is_vip: updated.isVip,
       vip_expires_at: updated.vipExpiresAt,
+      vip_tier_id: updated.vipTierId,
       disabled_at: updated.disabledAt,
     },
   });

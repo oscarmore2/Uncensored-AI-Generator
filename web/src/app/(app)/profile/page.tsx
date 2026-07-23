@@ -36,7 +36,11 @@ export default function ProfilePage() {
           <div className="flex-1">
             <div className="flex items-center gap-x-3">
               <h2 className="text-2xl font-bold">{user?.username ?? "—"}</h2>
-              {user?.is_vip && <span className="nsfw-badge text-xs px-3 py-0.5">VIP</span>}
+              {user?.is_vip && (
+                <span className="nsfw-badge text-xs px-3 py-0.5">
+                  {user.vip_tier?.name ?? "VIP"}
+                </span>
+              )}
             </div>
             <p className="text-gray-400 text-sm">Cookie 会话 • 同源 API</p>
 
@@ -69,7 +73,7 @@ export default function ProfilePage() {
         </div>
         <div className="glass rounded-3xl p-5 text-center">
           <div className="text-4xl font-mono font-bold text-emerald-400">
-            {user?.is_vip ? "VIP" : "普通"}
+            {user?.is_vip ? user.vip_tier?.name ?? "VIP" : "普通"}
           </div>
           <div className="text-xs text-gray-400 mt-1">账户等级</div>
         </div>
@@ -78,10 +82,14 @@ export default function ProfilePage() {
       {user?.is_vip && user.vip_expires_at && (
         <div className="glass rounded-3xl p-6">
           <h3 className="font-semibold mb-2 flex items-center">
-            <i className="fas fa-crown text-amber-400 mr-2" /> VIP 有效期
+            <i className="fas fa-crown text-amber-400 mr-2" />{" "}
+            {user.vip_tier?.name ?? "VIP"} 有效期
           </h3>
           <p className="text-sm text-gray-400">
             到期时间：{new Date(user.vip_expires_at).toLocaleDateString()}
+            {user.vip_tier && user.vip_tier.discount_percent > 0
+              ? ` · 生成折扣 ${user.vip_tier.discount_percent}%`
+              : ""}
           </p>
         </div>
       )}

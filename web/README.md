@@ -18,6 +18,7 @@ cp .env.example .env
 # 必填：AUTH_SECRET（openssl rand -hex 32 生成，>= 32 字符）
 # DATABASE_URL 默认指向本地 postgresql://localhost:5432/avclubs
 # 选填：ZEN_API_KEY / STRIPE_* （Demo 模式下可留空）
+# 选填：HF_TOKEN（魔法指令走 Dolphin-Mistral-24B-Venice；未配置则本地扩写）
 
 npx prisma db push   # 初始化数据库表
 npm run dev          # http://localhost:3000
@@ -80,7 +81,16 @@ Demo 模式（`DEMO_MODE=true`）下：
 | POST | `/api/auth/login` | 登录并建立会话 |
 | POST | `/api/auth/logout` | 清除会话 |
 | GET | `/api/me` | 当前用户信息 |
-| POST | `/api/generations` | 提交生成任务（扣点） |
+| POST | `/api/prompts/magic` | 【登录】魔法指令：需已配置 HF（管理端或 env） |
+| GET | `/api/catalog` | 【登录】价目目录：生成产品/参数映射/充值包/VIP |
+| GET/POST | `/api/admin/pricing/products` | 【admin】生成产品（mode+模型定价） |
+| GET/POST | `/api/admin/pricing/param-mappings` | 【admin】模式参数→Zen 映射 |
+| GET/POST | `/api/admin/pricing/credit-packages` | 【admin】充值套餐 |
+| GET/POST | `/api/admin/pricing/vip-tiers` | 【admin】VIP 等级与折扣 |
+| GET/POST | `/api/admin/pricing/vip-plans` | 【admin】VIP 可售套餐 |
+| GET/POST | `/api/admin/hf-accounts` | 【admin】HF Token 列表 / 创建 |
+| PATCH/DELETE | `/api/admin/hf-accounts/[id]` | 【admin】激活/更新/删除 |
+| POST | `/api/admin/hf-accounts/[id]/test` | 【admin】连通性测试 |
 | GET | `/api/generations` | 生成历史（最近 50 条） |
 | GET | `/api/generations/{id}/status` | 任务状态 |
 | POST | `/api/payments/create-checkout` | 充值（Demo 直接到账 / Stripe Checkout） |

@@ -6,22 +6,49 @@ import { telegramConfigured } from "@/lib/telegram";
 import { cryptomusConfigured } from "@/lib/cryptomus";
 import { stripeConfigured } from "@/lib/stripe";
 import { ossConfigured } from "@/lib/oss";
+import { hfConfigured } from "@/lib/hf";
+import { ensurePricingSeeded } from "@/lib/pricing-seed";
 
 /** 只读配置快照（脱敏，不返回 secret 明文） */
 export async function GET() {
   const admin = await requireRole("admin");
   if (!admin) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
-  const [zenActive, stripeActive, cryptomusActive, ossActive, zenCount, stripeCount, cryptomusCount, ossCount] =
-    await Promise.all([
+  await ensurePricingSeeded();
+
+  const [
+    zenActive,
+    stripeActive,
+    cryptomusActive,
+    ossActive,
+    hfActive,
+    zenCount,
+    stripeCount,
+    cryptomusCount,
+    ossCount,
+    hfCount,
+    productCount,
+    packageCount,
+    tierCount,
+    planCount,
+  ] = await Promise.all([
     db.zenAccount.findFirst({ where: { isActive: true }, select: { id: true, label: true } }),
     db.stripeAccount.findFirst({ where: { isActive: true }, select: { id: true, label: true } }),
     db.cryptomusMerchant.findFirst({ where: { isActive: true }, select: { id: true, label: true } }),
-    db.ossAccount.findFirst({ where: { isActive: true }, select: { id: true, label: true, bucket: true } }),
+    db.ossAccount.findFirst({
+      where: { isActive: true },
+      select: { id: true, label: true, bucket: true },
+    }),
+    db.hfAccount.findFirst({ where: { isActive: true }, select: { id: true, label: true } }),
     db.zenAccount.count(),
     db.stripeAccount.count(),
     db.cryptomusMerchant.count(),
     db.ossAccount.count(),
+    db.hfAccount.count(),
+    db.generationProduct.count({ where: { isActive: true } }),
+    db.creditPackage.count({ where: { isActive: true } }),
+    db.vipTier.count({ where: { isActive: true } }),
+    db.vipPlan.count({ where: { isActive: true } }),
   ]);
 
   return NextResponse.json({
@@ -46,7 +73,9 @@ export async function GET() {
     cryptomus: {
       env_configured: await cryptomusConfigured(),
       db_merchants: cryptomusCount,
-      active_merchant: cryptomusActive ? { id: cryptomusActive.id, label: cryptomusActive.label } : null,
+      active_merchant: cryptomusActive
+        ? { id: cryptomusActive.id, label: cryptomusActive.label }
+        : null,
     },
     oss: {
       env_configured: await ossConfigured(),
@@ -55,6 +84,21 @@ export async function GET() {
         ? { id: ossActive.id, label: ossActive.label, bucket: ossActive.bucket }
         : null,
       mirror_zen_results: env.OSS_MIRROR_ZEN_RESULTS,
+    },
+    hf: {
+      configured: await hfConfigured(),
+      env_token_configured: Boolean(env.HF_TOKEN),
+      inference_base_url: env.HF_INFERENCE_BASE_URL,
+      magic_model: env.HF_MAGIC_MODEL,
+      db_accounts: hfCount,
+      active_account: hfActive ? { id: hfActive.id, label: hfActive.label } : null,
+    },
+    pricing: {
+      db_enabled: true,
+      active_products: productCount,
+      active_credit_packages: packageCount,
+      active_vip_tiers: tierCount,
+      active_vip_plans: planCount,
     },
     telegram_configured: telegramConfigured(),
     webhooks: {

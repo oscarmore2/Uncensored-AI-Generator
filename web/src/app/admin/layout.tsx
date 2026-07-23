@@ -11,6 +11,8 @@ const NAV = [
   { href: "/admin/cryptomus", label: "Cryptomus", icon: "fa-key" },
   { href: "/admin/stripe", label: "Stripe", icon: "fa-credit-card" },
   { href: "/admin/zen", label: "Zen 账户", icon: "fa-wand-magic-sparkles" },
+  { href: "/admin/hf", label: "Hugging Face", icon: "fa-brain" },
+  { href: "/admin/pricing", label: "价格体系", icon: "fa-tags" },
   { href: "/admin/oss", label: "对象存储", icon: "fa-cloud" },
   { href: "/admin/audit", label: "审计日志", icon: "fa-clipboard-list" },
   { href: "/admin/webhooks", label: "Webhook", icon: "fa-bolt" },

@@ -11,6 +11,7 @@ const MODE_LABELS: Record<string, string> = {
   txt2vid: "文生视频",
   img2img: "图生图",
   img2vid: "图生视频",
+  undress: "一键脱衣",
 };
 
 export default async function ExplorePage({

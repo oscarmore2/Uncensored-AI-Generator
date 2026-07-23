@@ -1,13 +1,17 @@
 import { NextResponse } from "next/server";
+import { z } from "zod";
 import { db } from "@/lib/db";
 import { env } from "@/lib/env";
 import { getCurrentUser } from "@/lib/auth";
 import { getStripe, stripeConfigured } from "@/lib/stripe";
 import { rateLimit } from "@/lib/rate-limit";
+import { getDefaultVipPlan, getVipPlanById } from "@/lib/pricing";
 
-const VIP_BONUS_CREDITS = 800;
+const bodySchema = z.object({
+  plan_id: z.number().int().positive().optional(),
+});
 
-export async function POST() {
+export async function POST(req: Request) {
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
@@ -15,18 +19,47 @@ export async function POST() {
     return NextResponse.json({ error: "请求过于频繁，请稍后再试" }, { status: 429 });
   }
 
+  const body = await req.json().catch(() => ({}));
+  const parsed = bodySchema.safeParse(body ?? {});
+  if (!parsed.success) {
+    return NextResponse.json({ error: "参数无效" }, { status: 400 });
+  }
+
+  const plan = parsed.data.plan_id
+    ? await getVipPlanById(parsed.data.plan_id)
+    : await getDefaultVipPlan();
+  if (!plan) {
+    return NextResponse.json({ error: "暂无可用的 VIP 套餐" }, { status: 400 });
+  }
+
   if (env.DEMO_MODE) {
-    const expires = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+    const expires = new Date(Date.now() + plan.durationDays * 24 * 60 * 60 * 1000);
     const [updated] = await db.$transaction([
       db.user.update({
         where: { id: user.id },
-        data: { isVip: true, vipExpiresAt: expires, balance: { increment: VIP_BONUS_CREDITS } },
+        data: {
+          isVip: true,
+          vipExpiresAt: expires,
+          vipTierId: plan.tierId,
+          balance: { increment: plan.bonusCredits },
+        },
       }),
       db.transaction.create({
-        data: { userId: user.id, type: "vip", amount: VIP_BONUS_CREDITS, priceCents: env.VIP_PRICE, method: "demo" },
+        data: {
+          userId: user.id,
+          type: "vip",
+          amount: plan.bonusCredits,
+          priceCents: plan.priceCents,
+          method: "demo",
+        },
       }),
     ]);
-    return NextResponse.json({ message: "VIP activated (demo)", new_balance: updated.balance });
+    return NextResponse.json({
+      message: "VIP activated (demo)",
+      new_balance: updated.balance,
+      plan_id: plan.id,
+      tier: plan.tier.code,
+    });
   }
 
   if (!(await stripeConfigured())) {
@@ -42,8 +75,8 @@ export async function POST() {
         {
           price_data: {
             currency: "usd",
-            product_data: { name: "AVClubs VIP Monthly" },
-            unit_amount: env.VIP_PRICE,
+            product_data: { name: `AVClubs ${plan.label}` },
+            unit_amount: plan.priceCents,
             recurring: { interval: "month" },
           },
           quantity: 1,
@@ -54,12 +87,18 @@ export async function POST() {
       metadata: {
         user_id: String(user.id),
         type: "vip",
+        vip_plan_id: String(plan.id),
+        vip_tier_id: String(plan.tierId),
+        bonus_credits: String(plan.bonusCredits),
+        duration_days: String(plan.durationDays),
         ...(accountRefId ? { stripe_account_ref: String(accountRefId) } : {}),
       },
       subscription_data: {
         metadata: {
           user_id: String(user.id),
           type: "vip",
+          vip_plan_id: String(plan.id),
+          vip_tier_id: String(plan.tierId),
         },
       },
     });

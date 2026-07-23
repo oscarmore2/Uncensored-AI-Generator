@@ -7,7 +7,14 @@ const SESSION_COOKIE = "avclubs_session";
 const secret = new TextEncoder().encode(process.env.AUTH_SECRET ?? "");
 
 const PROTECTED_PAGES = ["/make", "/history", "/profile"];
-const PROTECTED_API_PREFIXES = ["/api/me", "/api/generations", "/api/payments"];
+const PROTECTED_API_PREFIXES = [
+  "/api/me",
+  "/api/generations",
+  "/api/payments",
+  "/api/prompts",
+  "/api/features",
+  "/api/catalog",
+];
 const MOD_PAGE_PREFIX = "/mod";
 const MOD_API_PREFIX = "/api/mod";
 const ADMIN_PAGE_PREFIX = "/admin";

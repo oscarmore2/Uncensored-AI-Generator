@@ -172,6 +172,7 @@ export default function ModPublicPage() {
                 <option value="txt2vid">txt2vid</option>
                 <option value="img2img">img2img</option>
                 <option value="img2vid">img2vid</option>
+                <option value="undress">undress</option>
               </select>
             </div>
             <div>

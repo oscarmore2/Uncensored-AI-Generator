@@ -8,7 +8,12 @@ export type AdminAuditAction =
   | "user_role"
   | "user_disable"
   | "mod_grant"
-  | "mod_toggle";
+  | "mod_toggle"
+  | "pricing_product"
+  | "pricing_param_mapping"
+  | "pricing_credit_package"
+  | "pricing_vip_tier"
+  | "pricing_vip_plan";
 
 export async function logAdminAction(
   adminId: number,

@@ -1,13 +1,28 @@
-import type { Generation, PublicWork, User } from "@prisma/client";
+import type { Generation, PublicWork, User, VipTier } from "@prisma/client";
+import { isVipActive } from "./pricing";
 
-export function userOut(user: User) {
+export function userOut(
+  user: User & {
+    vipTier?: Pick<VipTier, "id" | "code" | "name" | "discountBps"> | null;
+  }
+) {
+  const vipActive = isVipActive(user);
   return {
     id: user.id,
     username: user.username,
     role: user.role,
     balance: user.balance,
-    is_vip: user.isVip,
+    is_vip: vipActive,
     vip_expires_at: user.vipExpiresAt,
+    vip_tier: user.vipTier
+      ? {
+          id: user.vipTier.id,
+          code: user.vipTier.code,
+          name: user.vipTier.name,
+          discount_bps: user.vipTier.discountBps,
+          discount_percent: user.vipTier.discountBps / 100,
+        }
+      : null,
     created_at: user.createdAt,
   };
 }

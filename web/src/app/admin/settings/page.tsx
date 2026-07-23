@@ -27,6 +27,21 @@ interface Settings {
     db_merchants: number;
     active_merchant: { id: number; label: string } | null;
   };
+  hf: {
+    configured: boolean;
+    env_token_configured: boolean;
+    inference_base_url: string;
+    magic_model: string;
+    db_accounts: number;
+    active_account: { id: number; label: string } | null;
+  };
+  pricing: {
+    db_enabled: boolean;
+    active_products: number;
+    active_credit_packages: number;
+    active_vip_tiers: number;
+    active_vip_plans: number;
+  };
   telegram_configured: boolean;
   webhooks: { stripe: string; cryptomus: string; zen: string };
 }
@@ -86,6 +101,21 @@ export default function AdminSettingsPage() {
         : settings.cryptomus.env_configured
           ? "env 兜底"
           : "未配置",
+    },
+    {
+      label: "Hugging Face / 魔法指令",
+      value: settings.hf.active_account
+        ? `${settings.hf.active_account.label} (#${settings.hf.active_account.id})`
+        : settings.hf.env_token_configured
+          ? "env 兜底"
+          : "未配置（创作页隐藏）",
+      warn: !settings.hf.configured,
+    },
+    { label: "HF 账户数", value: String(settings.hf.db_accounts) },
+    { label: "HF 模型", value: settings.hf.magic_model },
+    {
+      label: "价格体系",
+      value: `产品 ${settings.pricing.active_products} · 充值包 ${settings.pricing.active_credit_packages} · VIP等级 ${settings.pricing.active_vip_tiers} · VIP套餐 ${settings.pricing.active_vip_plans}`,
     },
   ];
 

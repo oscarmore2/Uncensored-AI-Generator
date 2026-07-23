@@ -15,6 +15,7 @@ model User {
   balance        Int       @default(20)
   isVip          Boolean   @default(false)
   vipExpiresAt   DateTime?
+  vipTierId      Int?
   disabledAt     DateTime? // 封禁时间；非空表示禁止登录且会话失效
   createdAt      DateTime  @default(now())
 
@@ -22,6 +23,7 @@ model User {
   transactions   Transaction[]
   cryptoPayments CryptoPayment[]
   featuredWorks  PublicWork[]
+  vipTier        VipTier?  @relation(fields: [vipTierId], references: [id], onDelete: SetNull)
 }
 
 /** Cryptomus 商户配置：Merchant ID 与 Payment API Key 一一对应；同一时间最多一个 isActive=true */
@@ -156,6 +158,104 @@ model OssAccount {
   isActive           Boolean  @default(false)
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
+}
+
+/** Hugging Face Token：魔法指令（Dolphin）；同一时间最多一个 isActive=true */
+model HfAccount {
+  id          Int      @id @default(autoincrement())
+  label       String
+  apiTokenEnc String // hf_… AES-256-GCM
+  baseUrl     String? // 空则用 env.HF_INFERENCE_BASE_URL
+  magicModel  String? // 空则用 env.HF_MAGIC_MODEL
+  isActive    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+/** 生成产品 SKU：mode + Zen 模型 + 变体 → 扣点 */
+model GenerationProduct {
+  id                   Int      @id @default(autoincrement())
+  mode                 String // txt2img | txt2vid | img2img | img2vid | undress
+  zenTool              String
+  zenModel             String
+  variantKey           String   @default("") // undress: female|male|couple；其它为空串
+  label                String
+  creditCost           Int
+  batchFourMultiplier  Float    @default(1.5)
+  isActive             Boolean  @default(true)
+  isDefault            Boolean  @default(false)
+  sortOrder            Int      @default(0)
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  @@unique([mode, zenModel, variantKey])
+  @@index([mode, isActive, sortOrder])
+}
+
+/** 模式 UI 参数 → Zen input 字段映射 */
+model ModeParamMapping {
+  id        Int      @id @default(autoincrement())
+  mode      String
+  uiKey     String // ratio | quality | style | duration | resolution …
+  zenPath   String // 相对 Zen input 的字段名
+  valueMap  String? // JSON object，空则原样传递
+  options   String? // JSON array [{value,label}]
+  enabled   Boolean  @default(true)
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([mode, uiKey])
+  @@index([mode, enabled, sortOrder])
+}
+
+/** 充值套餐：点数 ↔ 美分 */
+model CreditPackage {
+  id         Int      @id @default(autoincrement())
+  credits    Int
+  priceCents Int
+  label      String
+  badge      String?
+  isActive   Boolean  @default(true)
+  sortOrder  Int      @default(0)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([credits])
+  @@index([isActive, sortOrder])
+}
+
+/** VIP 等级：折扣率 discountBps（1000 = 10% off） */
+model VipTier {
+  id           Int       @id @default(autoincrement())
+  code         String    @unique
+  name         String
+  rank         Int       @default(0)
+  discountBps  Int       @default(0)
+  isActive     Boolean   @default(true)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  plans VipPlan[]
+  users User[]
+}
+
+/** VIP 可售套餐：绑定等级 + 月费 + 赠点 */
+model VipPlan {
+  id            Int      @id @default(autoincrement())
+  tierId        Int
+  label         String
+  priceCents    Int
+  bonusCredits  Int      @default(0)
+  durationDays  Int      @default(30)
+  isActive      Boolean  @default(true)
+  sortOrder     Int      @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  tier VipTier @relation(fields: [tierId], references: [id], onDelete: Restrict)
+
+  @@index([isActive, sortOrder])
 }
 
 model Transaction {

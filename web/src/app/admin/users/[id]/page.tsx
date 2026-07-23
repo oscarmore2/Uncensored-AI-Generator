@@ -13,6 +13,7 @@ interface UserDetail {
     balance: number;
     is_vip: boolean;
     vip_expires_at: string | null;
+    vip_tier: { id: number; code: string; name: string; discount_bps: number } | null;
     disabled_at: string | null;
     created_at: string;
     generation_count: number;
@@ -117,7 +118,9 @@ export default function AdminUserDetailPage() {
         <div className="glass rounded-3xl p-5">
           <div className="text-lg font-bold">
             {u.is_vip ? (
-              <span className="text-purple-300">VIP</span>
+              <span className="text-purple-300">
+                {u.vip_tier ? `${u.vip_tier.name}` : "VIP"}
+              </span>
             ) : (
               <span className="text-gray-500">普通</span>
             )}
@@ -167,7 +170,33 @@ export default function AdminUserDetailPage() {
                 if (days === null) return;
                 const d = Number(days) || 30;
                 const expires = new Date(Date.now() + d * 24 * 60 * 60 * 1000).toISOString();
-                void patch({ is_vip: true, vip_expires_at: expires }, `已授予 VIP ${d} 天`);
+                void (async () => {
+                  try {
+                    const { tiers } = await api<{
+                      tiers: { id: number; name: string; code: string }[];
+                    }>("/api/admin/pricing/vip-tiers");
+                    const active = tiers.filter((t) => true);
+                    const pick =
+                      active.length <= 1
+                        ? active[0]?.id
+                        : Number(
+                            window.prompt(
+                              `选择 VIP 等级 ID：\n${active.map((t) => `${t.id}=${t.name}(${t.code})`).join("\n")}`,
+                              String(active[0]?.id ?? "")
+                            )
+                          );
+                    void patch(
+                      {
+                        is_vip: true,
+                        vip_expires_at: expires,
+                        ...(Number.isInteger(pick) && pick > 0 ? { vip_tier_id: pick } : {}),
+                      },
+                      `已授予 VIP ${d} 天`
+                    );
+                  } catch {
+                    void patch({ is_vip: true, vip_expires_at: expires }, `已授予 VIP ${d} 天`);
+                  }
+                })();
               }
             }}
             className="text-sm px-4 py-2 bg-purple-600/20 hover:bg-purple-600/40 border border-purple-500/30 text-purple-300 rounded-xl disabled:opacity-50"

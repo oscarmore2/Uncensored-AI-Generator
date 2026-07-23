@@ -4,17 +4,17 @@ import { db } from "./db";
 import { sendTelegram } from "./telegram";
 import { decryptSecret } from "./secret-crypto";
 import { mirrorRemoteUrls } from "./oss";
+import {
+  buildZenInputFromMappings,
+  resolveGenerationProduct,
+} from "./pricing";
+import type { GenerationProduct } from "@prisma/client";
 
-const COST_MAP: Record<string, number> = {
-  txt2img: 2,
-  txt2vid: 15,
-  img2img: 3,
-  img2vid: 20,
-};
-
-export function generationCost(mode: string, batch: number): number {
-  const base = COST_MAP[mode] ?? 2;
-  return Math.floor(base * (batch === 4 ? 1.5 : 1));
+/** @deprecated 请用 resolveGenerationQuote；保留给旧调用临时兼容 */
+export async function generationCost(mode: string, batch: number): Promise<number> {
+  const { resolveGenerationQuote } = await import("./pricing");
+  const quote = await resolveGenerationQuote({ mode, batch });
+  return quote.cost;
 }
 
 export interface ZenCredentials {
@@ -129,53 +129,108 @@ interface ZenJob {
   error?: string | null;
 }
 
-function zenToolAndInput(
+async function zenToolAndInput(
   mode: string,
   prompt: string,
-  params: { ratio?: string; negative_prompt?: string; quality?: string },
-  imageAssetId: string | null
-): { tool: string; input: Record<string, unknown> } {
-  const ratio = params.ratio ?? "1:1";
+  params: Record<string, unknown>,
+  imageAssetId: string | null,
+  product: GenerationProduct
+): Promise<{ tool: string; input: Record<string, unknown> }> {
+  const mapped = await buildZenInputFromMappings(mode, params, product);
+  const negative = typeof params.negative_prompt === "string" ? params.negative_prompt : "";
+
   switch (mode) {
     case "txt2img":
       return {
-        tool: "by_prompt",
+        tool: product.zenTool,
         input: {
           positive_prompt: prompt,
-          negative_prompt: params.negative_prompt ?? "",
-          model: env.DEMO_MODE ? "GENERAL_NSFW" : "SDXL_NSFW",
-          ratio,
-          mode: params.quality ?? "quality",
+          negative_prompt: negative,
+          ...mapped,
+          model: product.zenModel,
         },
       };
     case "img2img":
       return {
-        tool: "image_editor",
+        tool: product.zenTool,
         input: {
           image_assets: imageAssetId ? [imageAssetId] : [],
           prompt,
-          model: "SDXL_NSFW",
-          ratio,
+          ...mapped,
+          model: product.zenModel,
         },
       };
     case "txt2vid":
       return {
-        tool: "text_to_video",
+        tool: product.zenTool,
         input: {
           prompt,
-          model: env.DEMO_MODE ? "seedance_2_0" : "wan@2.7-nsfw",
           duration: 5,
           resolution: "1280x720",
+          ...mapped,
+          model: product.zenModel,
         },
       };
     case "img2vid":
       return {
-        tool: "videogen",
-        input: { ref_asset: imageAssetId, prompt, model: "wan@2.7-nsfw", duration: 4 },
+        tool: product.zenTool,
+        input: {
+          ref_asset: imageAssetId,
+          prompt,
+          duration: 4,
+          ...mapped,
+          model: product.zenModel,
+        },
       };
+    case "undress": {
+      if (!imageAssetId) throw new Error("脱衣功能需要上传图片");
+      return {
+        tool: product.zenTool,
+        input: { image_asset: imageAssetId },
+      };
+    }
     default:
-      return { tool: "by_prompt", input: { positive_prompt: prompt } };
+      return {
+        tool: product.zenTool || "by_prompt",
+        input: { positive_prompt: prompt, ...mapped, model: product.zenModel },
+      };
   }
+}
+
+/** 将 data URL / base64 上传到 Zen，返回 asset_id */
+async function uploadZenAsset(apiKey: string, imageBase64: string): Promise<string> {
+  const match = imageBase64.match(/^data:([^;]+);base64,(.+)$/s);
+  const mediaType = match?.[1] ?? "image/jpeg";
+  const raw = match?.[2] ?? imageBase64.replace(/^data:[^;]+;base64,/, "");
+  const buffer = Buffer.from(raw, "base64");
+  if (buffer.length < 32) throw new Error("图片数据无效");
+  if (buffer.length > 50 * 1024 * 1024) throw new Error("图片超过 Zen 50MB 限制");
+
+  const form = new FormData();
+  form.append("media_type", mediaType);
+  form.append("file", new Blob([new Uint8Array(buffer)], { type: mediaType }), `upload.${mediaType.split("/")[1] ?? "jpg"}`);
+
+  const resp = await fetch(`${env.ZEN_BASE_URL}/assets`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      Accept: "application/json",
+      "User-Agent": "AVClubs/1.0 (+https://avclubs; zen-api-client)",
+      ...(env.ZEN_PROXY_SECRET ? { "X-Zen-Proxy-Secret": env.ZEN_PROXY_SECRET } : {}),
+    },
+    body: form,
+  });
+
+  const body = await resp.text().catch(() => "");
+  if (!resp.ok) {
+    if (isCloudflareChallenge(resp.status, body)) {
+      throw new Error("Zen 资源上传被 Cloudflare 拦截，请配置 Worker 代理");
+    }
+    throw new Error(`Zen 上传图片失败: ${resp.status} ${body.slice(0, 200)}`);
+  }
+  const data = JSON.parse(body) as { asset_id?: string };
+  if (!data.asset_id) throw new Error("Zen 上传未返回 asset_id");
+  return data.asset_id;
 }
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -214,12 +269,29 @@ export async function processGeneration(genId: number): Promise<void> {
       return;
     }
 
-    const params = JSON.parse(gen.params) as { ratio?: string; quality?: string };
-    const { tool, input } = zenToolAndInput(
+    const params = JSON.parse(gen.params) as Record<string, unknown>;
+
+    let imageAssetId: string | null = null;
+    const needsAsset = ["img2img", "img2vid", "undress"].includes(gen.mode);
+    if (needsAsset) {
+      if (!params.image_base64 || typeof params.image_base64 !== "string") {
+        throw new Error("该模式需要上传参考图片");
+      }
+      imageAssetId = await uploadZenAsset(creds.apiKey, params.image_base64);
+    }
+
+    const product = await resolveGenerationProduct({
+      mode: gen.mode,
+      zenModel: typeof params.zen_model === "string" ? params.zen_model : null,
+      variantKey: typeof params.undress_variant === "string" ? params.undress_variant : null,
+    });
+
+    const { tool, input } = await zenToolAndInput(
       gen.mode,
       gen.prompt,
       { ...params, negative_prompt: gen.negativePrompt ?? "" },
-      null
+      imageAssetId,
+      product
     );
 
     // 绑定账户 + 创建 Zen task，建立本地 Generation.id ↔ zenJobId 映射
@@ -287,6 +359,18 @@ export async function processGeneration(genId: number): Promise<void> {
           progress: 100,
           resultUrls: JSON.stringify(finalUrls),
           zenCreditsCost,
+          // 清除大体积 base64，避免长期占库
+          params: JSON.stringify({
+            ratio: params.ratio,
+            quality: params.quality,
+            style: params.style,
+            duration: params.duration,
+            resolution: params.resolution,
+            undress_variant: params.undress_variant,
+            zen_model: product.zenModel,
+            product_id: product.id,
+            batch: typeof params.batch === "number" ? params.batch : 1,
+          }),
         },
       });
       // 成功后异步刷新账户余额（不阻塞）
