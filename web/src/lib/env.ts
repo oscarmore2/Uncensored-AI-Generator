@@ -12,6 +12,8 @@ const envSchema = z.object({
   APP_URL: z.string().url().default("http://localhost:3000"),
   ZEN_API_KEY: z.string().default(""),
   ZEN_BASE_URL: z.string().url().default("https://api.zencreator.pro/api/public/v1"),
+  // 可选：经 Cloudflare Worker 代理访问 Zen 时，与 Worker 的 PROXY_SECRET 一致
+  ZEN_PROXY_SECRET: z.string().default(""),
   STRIPE_SECRET_KEY: z.string().default(""),
   STRIPE_WEBHOOK_SECRET: z.string().default(""),
   CRYPTOMUS_MERCHANT_ID: z.string().default(""),

@@ -54,15 +54,49 @@ async function zenFetchWithKey(
     ...init,
     headers: {
       Authorization: `Bearer ${apiKey}`,
+      Accept: "application/json",
       "Content-Type": "application/json",
+      "User-Agent": "AVClubs/1.0 (+https://avclubs; zen-api-client)",
+      ...(env.ZEN_PROXY_SECRET ? { "X-Zen-Proxy-Secret": env.ZEN_PROXY_SECRET } : {}),
       ...init?.headers,
     },
   });
   if (!resp.ok) {
     const body = await resp.text().catch(() => "");
+    if (isCloudflareChallenge(resp.status, body)) {
+      throw new Error(
+        `Zen API 被 Cloudflare 拦截（403 挑战页）。常见于 Railway/云主机机房 IP。` +
+          `请把 ZEN_BASE_URL 改为 Cloudflare Worker 代理地址（见 scripts/zen-proxy-worker.js），` +
+          `或联系 Zen 支持放行你的出口 IP。当前 Base: ${env.ZEN_BASE_URL}`
+      );
+    }
     throw new Error(`Zen API ${path} failed: ${resp.status} ${body.slice(0, 200)}`);
   }
+  const contentType = resp.headers.get("content-type") ?? "";
+  if (!contentType.includes("application/json")) {
+    const body = await resp.text().catch(() => "");
+    if (isCloudflareChallenge(resp.status, body)) {
+      throw new Error(
+        `Zen API 返回了 Cloudflare 挑战页而非 JSON。请配置 Worker 代理（ZEN_BASE_URL）。`
+      );
+    }
+    throw new Error(`Zen API ${path} 返回非 JSON: ${body.slice(0, 120)}`);
+  }
   return resp.json();
+}
+
+/** Cloudflare Bot Fight / Managed Challenge HTML */
+function isCloudflareChallenge(status: number, body: string): boolean {
+  if (status !== 403 && status !== 503) {
+    // 有时 CF 仍返回 200 HTML 挑战页
+    return /Just a moment|cf-browser-verification|__cf_chl_|challenge-platform/i.test(body);
+  }
+  return /Just a moment|cf-browser-verification|__cf_chl_|challenge-platform|<!DOCTYPE html/i.test(body);
+}
+
+export function isZenCloudflareBlockedError(err: unknown): boolean {
+  const msg = err instanceof Error ? err.message : String(err);
+  return /Cloudflare|Worker 代理|挑战页/i.test(msg);
 }
 
 /** 拉取 Zen 账户真实余额并写回 DB（仅 DB 账户） */

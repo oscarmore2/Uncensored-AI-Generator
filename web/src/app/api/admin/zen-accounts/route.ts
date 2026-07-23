@@ -4,7 +4,7 @@ import { db } from "@/lib/db";
 import { requireRole } from "@/lib/auth";
 import { encryptSecret, decryptSecret, maskSecret } from "@/lib/secret-crypto";
 import { env } from "@/lib/env";
-import { fetchZenBalanceWithKey, syncZenAccountBalance } from "@/lib/zen";
+import { fetchZenBalanceWithKey, syncZenAccountBalance, isZenCloudflareBlockedError } from "@/lib/zen";
 
 function accountOut(
   a: {
@@ -98,14 +98,18 @@ export async function POST(req: Request) {
   }
 
   let balance: number | null = null;
+  let balanceWarning: string | null = null;
   if (data.sync_balance) {
     try {
       balance = await fetchZenBalanceWithKey(data.api_key);
     } catch (err) {
-      return NextResponse.json(
-        { error: `无法验证 API Key / 拉取余额: ${err instanceof Error ? err.message : err}` },
-        { status: 400 }
-      );
+      const msg = err instanceof Error ? err.message : String(err);
+      // Cloudflare 拦截时仍允许保存 Key（否则永远加不了账户）；生成同样需要配 Worker 代理
+      if (isZenCloudflareBlockedError(err)) {
+        balanceWarning = msg;
+      } else {
+        return NextResponse.json({ error: `无法验证 API Key / 拉取余额: ${msg}` }, { status: 400 });
+      }
     }
   }
 
@@ -124,7 +128,14 @@ export async function POST(req: Request) {
     });
   });
 
-  return NextResponse.json({ ok: true, account: accountOut(account) }, { status: 201 });
+  return NextResponse.json(
+    {
+      ok: true,
+      account: accountOut(account),
+      ...(balanceWarning ? { warning: balanceWarning } : {}),
+    },
+    { status: 201 }
+  );
 }
 
 /** 批量刷新所有账户余额（管理端按钮） */

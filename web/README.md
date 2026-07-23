@@ -217,6 +217,18 @@ Zen 公开 API 提供 `GET /balance`（真实余额）与生成状态 `progress`
 - 前端轮询 `GET /api/generations/{id}/status` 展示进度条（实时状态）
 - 预留 `POST /api/zen/webhook`：若日后 Zen 支持或你自建中转，可按 `zen_job_id` 推送更新（可选头 `X-Zen-Webhook-Secret`）
 
+### Railway / 机房 IP 被 Cloudflare 拦截
+
+若管理端添加 Zen 账户时出现 `403 Just a moment...`，说明 **Zen 域名前的 Cloudflare Bot Challenge 拦了云主机出口 IP**（与 API Key 无关）。生成/余额同步都会失败。
+
+推荐做法（你已有 Cloudflare）：
+
+1. 部署 [`scripts/zen-proxy-worker.js`](scripts/zen-proxy-worker.js) 为 Cloudflare Worker
+2. Railway 设置：
+   - `ZEN_BASE_URL=https://<你的-worker域名>/api/public/v1`
+   - （可选）`ZEN_PROXY_SECRET` 与 Worker 变量 `PROXY_SECRET` 相同
+3. 重新部署后再在 `/admin/zen` 同步余额
+
 ## Telegram 通知（选填）
 
 1. 用 [@BotFather](https://t.me/BotFather) 创建 Bot，拿到 `TELEGRAM_BOT_TOKEN`

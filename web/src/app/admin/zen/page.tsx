@@ -66,7 +66,11 @@ export default function AdminZenAccountsPage() {
       setMsg(okMsg);
       await load();
     } catch (e) {
-      setMsg(e instanceof ApiError ? e.message : "操作失败");
+      if (e instanceof Error && e.message === "__warning_already_set__") {
+        await load();
+      } else {
+        setMsg(e instanceof ApiError ? e.message : "操作失败");
+      }
     } finally {
       setBusy(false);
     }
@@ -75,7 +79,7 @@ export default function AdminZenAccountsPage() {
   async function submitCreate(e: React.FormEvent) {
     e.preventDefault();
     await action(async () => {
-      await api("/api/admin/zen-accounts", {
+      const resp = await api<{ ok: boolean; warning?: string }>("/api/admin/zen-accounts", {
         method: "POST",
         body: JSON.stringify({
           label: form.label.trim(),
@@ -86,6 +90,12 @@ export default function AdminZenAccountsPage() {
       });
       setForm(EMPTY);
       setFormOpen(false);
+      if (resp.warning) {
+        setMsg(
+          `账户已保存，但余额同步失败（常见于 Railway 被 Cloudflare 拦截）。请配置 ZEN_BASE_URL 为 Worker 代理后再点「同步余额」。详情：${resp.warning}`
+        );
+        throw new Error("__warning_already_set__");
+      }
     }, "Zen 账户已添加并同步余额");
   }
 
@@ -106,6 +116,11 @@ export default function AdminZenAccountsPage() {
           <h1 className="text-3xl font-bold tracking-tighter mb-1">Zen Creator 账户</h1>
           <p className="text-gray-400 text-sm">
             多 API Key 管理 · 真实余额同步 · 本地任务与 Zen taskId 一一对应
+          </p>
+          <p className="text-amber-400/90 text-xs mt-2 max-w-xl">
+            若出现 Cloudflare「Just a moment」403：不是 Key 无效，是机房 IP 被拦。请部署{" "}
+            <code className="text-gray-300">scripts/zen-proxy-worker.js</code> 并把 Railway 的{" "}
+            <code className="text-gray-300">ZEN_BASE_URL</code> 指向 Worker。
           </p>
         </div>
         <div className="flex gap-2">

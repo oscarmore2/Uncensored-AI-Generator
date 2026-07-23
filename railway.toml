@@ -6,5 +6,6 @@ dockerfilePath = "Dockerfile"
 watchPatterns = ["web/**"]
 
 [deploy]
+releaseCommand = "npx prisma db push"
 restartPolicyType = "ON_FAILURE"
 restartPolicyMaxRetries = 10

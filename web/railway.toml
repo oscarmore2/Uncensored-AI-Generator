@@ -5,6 +5,8 @@ dockerfilePath = "Dockerfile"
 watchPatterns = ["**"]
 
 [deploy]
-startCommand = "sh -c 'npx prisma db push && npm start'"
+# Sync schema before traffic switches (also runs again via npm start)
+releaseCommand = "npx prisma db push"
+startCommand = "npm start"
 restartPolicyType = "ON_FAILURE"
 restartPolicyMaxRetries = 10
