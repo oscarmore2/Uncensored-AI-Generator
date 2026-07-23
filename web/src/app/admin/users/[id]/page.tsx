@@ -13,7 +13,14 @@ interface UserDetail {
     balance: number;
     is_vip: boolean;
     vip_expires_at: string | null;
-    vip_tier: { id: number; code: string; name: string; discount_bps: number } | null;
+    plaything_access: boolean;
+    vip_tier: {
+      id: number;
+      code: string;
+      name: string;
+      discount_bps: number;
+      plaything_access?: boolean;
+    } | null;
     disabled_at: string | null;
     created_at: string;
     generation_count: number;
@@ -217,6 +224,22 @@ export default function AdminUserDetailPage() {
             }`}
           >
             {u.disabled_at ? "解封" : "封禁"}
+          </button>
+          <button
+            disabled={busy}
+            onClick={() =>
+              void patch(
+                { plaything_access: !u.plaything_access },
+                u.plaything_access ? "已关闭玩物专区" : "已开通玩物专区"
+              )
+            }
+            className={`text-sm px-4 py-2 border rounded-xl disabled:opacity-50 ${
+              u.plaything_access
+                ? "bg-amber-600/20 border-amber-500/30 text-amber-300"
+                : "bg-white/5 border-white/10 text-gray-300"
+            }`}
+          >
+            {u.plaything_access ? "关闭玩物" : "开通玩物"}
           </button>
           <Link
             href={`/admin/transactions?user_id=${u.id}`}

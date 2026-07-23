@@ -5,7 +5,10 @@ import { db } from "./db";
 import { getSession } from "./session";
 
 export type AuthUser = User & {
-  vipTier: Pick<VipTier, "id" | "code" | "name" | "discountBps" | "isActive"> | null;
+  vipTier: Pick<
+    VipTier,
+    "id" | "code" | "name" | "discountBps" | "isActive" | "playthingAccess"
+  > | null;
 };
 
 export async function hashPassword(password: string): Promise<string> {
@@ -25,7 +28,16 @@ export async function getCurrentUser(): Promise<AuthUser | null> {
   const user = await db.user.findUnique({
     where: { id },
     include: {
-      vipTier: { select: { id: true, code: true, name: true, discountBps: true, isActive: true } },
+      vipTier: {
+        select: {
+          id: true,
+          code: true,
+          name: true,
+          discountBps: true,
+          isActive: true,
+          playthingAccess: true,
+        },
+      },
     },
   });
   if (!user || user.disabledAt) return null;

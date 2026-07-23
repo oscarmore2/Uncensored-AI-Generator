@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useApp } from "./AppContext";
 import { api } from "@/lib/client";
 
@@ -17,11 +17,32 @@ export function Header() {
   const router = useRouter();
   const { user, setRechargeOpen, toast } = useApp();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [plaything, setPlaything] = useState(false);
+
+  useEffect(() => {
+    if (!user) {
+      setPlaything(false);
+      return;
+    }
+    let cancelled = false;
+    api<{ plaything?: boolean }>("/api/features")
+      .then((f) => {
+        if (!cancelled) setPlaything(Boolean(f.plaything));
+      })
+      .catch(() => {
+        if (!cancelled) setPlaything(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [user]);
 
   const isMod = user?.role === "moderator" || user?.role === "admin";
   const isAdmin = user?.role === "admin";
   const navItems = [
-    ...NAV,
+    ...NAV.slice(0, 1),
+    ...(plaything ? [{ href: "/plaything", label: "玩物专区" }] : []),
+    ...NAV.slice(1),
     ...(isMod ? [{ href: "/mod", label: "审核台" }] : []),
     ...(isAdmin ? [{ href: "/admin", label: "管理端" }] : []),
   ];

@@ -11,6 +11,7 @@ const patchSchema = z
     rank: z.number().int().min(0).max(1000).optional(),
     discount_percent: z.number().min(0).max(100).optional(),
     discount_bps: z.number().int().min(0).max(10000).optional(),
+    plaything_access: z.boolean().optional(),
     is_active: z.boolean().optional(),
   })
   .refine((v) => Object.keys(v).length > 0, "至少提供一个字段");
@@ -42,6 +43,7 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
       ...(d.name !== undefined ? { name: d.name } : {}),
       ...(d.rank !== undefined ? { rank: d.rank } : {}),
       ...(discountBps !== undefined ? { discountBps } : {}),
+      ...(d.plaything_access !== undefined ? { playthingAccess: d.plaything_access } : {}),
       ...(d.is_active !== undefined ? { isActive: d.is_active } : {}),
     },
   });

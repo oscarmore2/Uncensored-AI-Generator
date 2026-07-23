@@ -12,6 +12,8 @@ const NAV = [
   { href: "/admin/stripe", label: "Stripe", icon: "fa-credit-card" },
   { href: "/admin/zen", label: "Zen 账户", icon: "fa-wand-magic-sparkles" },
   { href: "/admin/hf", label: "Hugging Face", icon: "fa-brain" },
+  { href: "/admin/wavespeed", label: "WaveSpeed", icon: "fa-puzzle-piece" },
+  { href: "/admin/wavespeed/models", label: "玩物模型", icon: "fa-store" },
   { href: "/admin/pricing", label: "价格体系", icon: "fa-tags" },
   { href: "/admin/oss", label: "对象存储", icon: "fa-cloud" },
   { href: "/admin/audit", label: "审计日志", icon: "fa-clipboard-list" },

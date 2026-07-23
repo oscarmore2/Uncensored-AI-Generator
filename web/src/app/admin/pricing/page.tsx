@@ -49,6 +49,7 @@ interface VipTier {
   rank: number;
   discount_bps: number;
   discount_percent: number;
+  plaything_access: boolean;
   is_active: boolean;
 }
 
@@ -661,6 +662,11 @@ export default function AdminPricingPage() {
               <div className="flex-1">
                 <div className="font-medium">
                   {t.name} ({t.code}) · 折扣 {t.discount_percent}% · rank {t.rank}
+                  {t.plaything_access && (
+                    <span className="ml-2 text-[10px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300">
+                      玩物专区
+                    </span>
+                  )}
                   {!t.is_active && <span className="text-gray-500 text-xs ml-2">停用</span>}
                 </div>
               </div>
@@ -681,6 +687,22 @@ export default function AdminPricingPage() {
                 }}
               >
                 改折扣
+              </button>
+              <button
+                disabled={busy}
+                className="px-3 py-1.5 text-xs border border-white/10 rounded-xl"
+                onClick={() =>
+                  action(
+                    () =>
+                      api(`/api/admin/pricing/vip-tiers/${t.id}`, {
+                        method: "PATCH",
+                        body: JSON.stringify({ plaything_access: !t.plaything_access }),
+                      }),
+                    t.plaything_access ? "已关闭玩物门禁" : "已开启玩物门禁"
+                  )
+                }
+              >
+                {t.plaything_access ? "关玩物" : "开玩物"}
               </button>
               <button
                 disabled={busy}

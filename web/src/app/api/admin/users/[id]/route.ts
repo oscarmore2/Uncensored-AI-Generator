@@ -12,6 +12,7 @@ const patchSchema = z
     is_vip: z.boolean().optional(),
     vip_expires_at: z.string().datetime().nullable().optional(),
     vip_tier_id: z.number().int().positive().nullable().optional(),
+    plaything_access: z.boolean().optional(),
   })
   .refine((v) => Object.keys(v).length > 0, "至少提供一个字段");
 
@@ -34,7 +35,8 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
       isVip: true,
       vipExpiresAt: true,
       vipTierId: true,
-      vipTier: { select: { id: true, code: true, name: true, discountBps: true } },
+      playthingAccess: true,
+      vipTier: { select: { id: true, code: true, name: true, discountBps: true, playthingAccess: true } },
       disabledAt: true,
       createdAt: true,
       _count: { select: { generations: true } },
@@ -96,12 +98,14 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
       balance: user.balance,
       is_vip: user.isVip,
       vip_expires_at: user.vipExpiresAt,
+      plaything_access: user.playthingAccess,
       vip_tier: user.vipTier
         ? {
             id: user.vipTier.id,
             code: user.vipTier.code,
             name: user.vipTier.name,
             discount_bps: user.vipTier.discountBps,
+            plaything_access: user.vipTier.playthingAccess,
           }
         : null,
       disabled_at: user.disabledAt,
@@ -233,11 +237,18 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
     });
   }
 
+  if (data.plaything_access !== undefined && data.plaything_access !== target.playthingAccess) {
+    await logAdminAction(admin.id, "user_plaything", { type: "user", id: userId }, {
+      plaything_access: data.plaything_access,
+    });
+  }
+
   const updated = await db.user.update({
     where: { id: userId },
     data: {
       ...(data.role ? { role: data.role } : {}),
       ...(data.disabled !== undefined ? { disabledAt: data.disabled ? new Date() : null } : {}),
+      ...(data.plaything_access !== undefined ? { playthingAccess: data.plaything_access } : {}),
       ...vipData,
     },
   });
@@ -252,6 +263,7 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
       is_vip: updated.isVip,
       vip_expires_at: updated.vipExpiresAt,
       vip_tier_id: updated.vipTierId,
+      plaything_access: updated.playthingAccess,
       disabled_at: updated.disabledAt,
     },
   });

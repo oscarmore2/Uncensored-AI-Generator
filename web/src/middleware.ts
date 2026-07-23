@@ -6,7 +6,7 @@ const SESSION_COOKIE = "avclubs_session";
 // middleware 运行在 Edge Runtime，不能引用 server-only 模块，密钥直接从环境读取
 const secret = new TextEncoder().encode(process.env.AUTH_SECRET ?? "");
 
-const PROTECTED_PAGES = ["/make", "/history", "/profile"];
+const PROTECTED_PAGES = ["/make", "/history", "/profile", "/plaything"];
 const PROTECTED_API_PREFIXES = [
   "/api/me",
   "/api/generations",
@@ -14,6 +14,7 @@ const PROTECTED_API_PREFIXES = [
   "/api/prompts",
   "/api/features",
   "/api/catalog",
+  "/api/plaything",
 ];
 const MOD_PAGE_PREFIX = "/mod";
 const MOD_API_PREFIX = "/api/mod";
@@ -102,9 +103,11 @@ export const config = {
     "/make/:path*",
     "/history/:path*",
     "/profile/:path*",
+    "/plaything/:path*",
     "/make",
     "/history",
     "/profile",
+    "/plaything",
     "/mod",
     "/mod/:path*",
     "/admin",

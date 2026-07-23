@@ -7,13 +7,16 @@ export type AdminAuditAction =
   | "user_balance"
   | "user_role"
   | "user_disable"
+  | "user_plaything"
   | "mod_grant"
   | "mod_toggle"
   | "pricing_product"
   | "pricing_param_mapping"
   | "pricing_credit_package"
   | "pricing_vip_tier"
-  | "pricing_vip_plan";
+  | "pricing_vip_plan"
+  | "wavespeed_sync"
+  | "wavespeed_product";
 
 export async function logAdminAction(
   adminId: number,

@@ -8,22 +8,24 @@ datasource db {
 }
 
 model User {
-  id             Int       @id @default(autoincrement())
-  username       String    @unique
-  hashedPassword String
-  role           String    @default("user") // user | moderator | admin
-  balance        Int       @default(20)
-  isVip          Boolean   @default(false)
-  vipExpiresAt   DateTime?
-  vipTierId      Int?
-  disabledAt     DateTime? // 封禁时间；非空表示禁止登录且会话失效
-  createdAt      DateTime  @default(now())
+  id               Int       @id @default(autoincrement())
+  username         String    @unique
+  hashedPassword   String
+  role             String    @default("user") // user | moderator | admin
+  balance          Int       @default(20)
+  isVip            Boolean   @default(false)
+  vipExpiresAt     DateTime?
+  vipTierId        Int?
+  playthingAccess  Boolean   @default(false) // 玩物专区单独授权
+  disabledAt       DateTime? // 封禁时间；非空表示禁止登录且会话失效
+  createdAt        DateTime  @default(now())
 
-  generations    Generation[]
-  transactions   Transaction[]
-  cryptoPayments CryptoPayment[]
-  featuredWorks  PublicWork[]
-  vipTier        VipTier?  @relation(fields: [vipTierId], references: [id], onDelete: SetNull)
+  generations           Generation[]
+  transactions          Transaction[]
+  cryptoPayments        CryptoPayment[]
+  featuredWorks         PublicWork[]
+  vipTier               VipTier?               @relation(fields: [vipTierId], references: [id], onDelete: SetNull)
+  waveSpeedGenerations  WaveSpeedGeneration[]
 }
 
 /** Cryptomus 商户配置：Merchant ID 与 Payment API Key 一一对应；同一时间最多一个 isActive=true */
@@ -227,14 +229,15 @@ model CreditPackage {
 
 /** VIP 等级：折扣率 discountBps（1000 = 10% off） */
 model VipTier {
-  id           Int       @id @default(autoincrement())
-  code         String    @unique
-  name         String
-  rank         Int       @default(0)
-  discountBps  Int       @default(0)
-  isActive     Boolean   @default(true)
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
+  id               Int       @id @default(autoincrement())
+  code             String    @unique
+  name             String
+  rank             Int       @default(0)
+  discountBps      Int       @default(0)
+  playthingAccess  Boolean   @default(false) // 该等级 VIP 可进玩物专区
+  isActive         Boolean   @default(true)
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
 
   plans VipPlan[]
   users User[]
@@ -300,4 +303,83 @@ model WebhookEventLog {
   createdAt  DateTime @default(now())
 
   @@index([provider, createdAt])
+}
+
+/** WaveSpeed API Key：同一时间最多一个 isActive=true */
+model WaveSpeedAccount {
+  id        Int      @id @default(autoincrement())
+  label     String
+  apiKeyEnc String
+  isActive  Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  generations WaveSpeedGeneration[]
+}
+
+/** WaveSpeed 全库模型缓存（同步自 GET /models） */
+model WaveSpeedCatalogModel {
+  id              Int       @id @default(autoincrement())
+  modelId         String    @unique
+  name            String
+  type            String    @default("")
+  description     String    @default("")
+  basePriceUsd    Float     @default(0)
+  lastUnitPriceUsd Float?
+  thumbnailUrl    String?
+  apiSchema       String? // JSON
+  syncedAt        DateTime  @default(now())
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  product WaveSpeedProduct?
+
+  @@index([type])
+  @@index([name])
+}
+
+/** 玩物专区上架 SKU（本站定价，不吃 VIP 折扣） */
+model WaveSpeedProduct {
+  id                   Int      @id @default(autoincrement())
+  modelId              String   @unique
+  catalogModelId       Int?     @unique
+  label                String
+  creditCost           Int
+  isActive             Boolean  @default(true)
+  isRecommended        Boolean  @default(false)
+  sortOrder            Int      @default(100)
+  paramSchemaOverride  String?
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  catalogModel WaveSpeedCatalogModel? @relation(fields: [catalogModelId], references: [id], onDelete: SetNull)
+  generations  WaveSpeedGeneration[]
+
+  @@index([isActive, isRecommended, sortOrder])
+}
+
+/** 玩物专区生成任务 */
+model WaveSpeedGeneration {
+  id           Int       @id @default(autoincrement())
+  userId       Int
+  productId    Int
+  prompt       String    @default("")
+  params       String    @default("{}")
+  externalId   String?
+  wsAccountId  Int?
+  status       String    @default("pending") // pending|processing|succeeded|failed
+  progress     Int       @default(0)
+  error        String?
+  resultUrls   String?
+  cost         Int
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  user      User              @relation(fields: [userId], references: [id])
+  product   WaveSpeedProduct  @relation(fields: [productId], references: [id])
+  wsAccount WaveSpeedAccount? @relation(fields: [wsAccountId], references: [id], onDelete: SetNull)
+
+  @@index([userId, createdAt])
+  @@index([externalId])
+  @@index([status, createdAt])
 }

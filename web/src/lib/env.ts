@@ -58,6 +58,8 @@ const envSchema = z.object({
   HF_MAGIC_MODEL: z
     .string()
     .default("dphn/Dolphin-Mistral-24B-Venice-Edition:featherless-ai"),
+  WAVESPEED_API_KEY: z.string().default(""),
+  WAVESPEED_BASE_URL: z.string().url().default("https://api.wavespeed.ai/api/v3"),
 });
 
 function loadEnv() {
