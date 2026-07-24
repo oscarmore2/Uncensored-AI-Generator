@@ -8,13 +8,14 @@ import { rateLimit, clientIp } from "@/lib/rate-limit";
 import { userOut } from "@/lib/serialize";
 import { sendTelegram } from "@/lib/telegram";
 import { assertSameOrigin } from "@/lib/csrf";
-import { verifyTurnstileToken } from "@/lib/turnstile";
+import { extractTurnstileToken, verifyTurnstileToken } from "@/lib/turnstile";
 
 const RESERVED = new Set(["demo_user", "mod_user", "admin_user", "admin", "root", "system"]);
 
 const registerBodySchema = credentialsSchema.and(
   z.object({
     turnstile_token: z.string().min(1).max(2048).optional(),
+    "cf-turnstile-response": z.string().min(1).max(2048).optional(),
   })
 );
 
@@ -35,9 +36,9 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: parsed.error.issues[0].message }, { status: 400 });
   }
 
-  const captcha = await verifyTurnstileToken(parsed.data.turnstile_token, ip);
+  const captcha = await verifyTurnstileToken(extractTurnstileToken(parsed.data), ip);
   if (!captcha.ok) {
-    return NextResponse.json({ error: captcha.error }, { status: 400 });
+    return NextResponse.json({ error: captcha.error }, { status: captcha.status });
   }
 
   const { username, password } = parsed.data;

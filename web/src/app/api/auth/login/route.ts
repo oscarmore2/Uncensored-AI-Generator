@@ -6,13 +6,14 @@ import { rateLimit, clientIp } from "@/lib/rate-limit";
 import { userOut } from "@/lib/serialize";
 import { ensureSeedUsers } from "@/lib/demo";
 import { assertSameOrigin } from "@/lib/csrf";
-import { verifyTurnstileToken } from "@/lib/turnstile";
+import { extractTurnstileToken, verifyTurnstileToken } from "@/lib/turnstile";
 import { z } from "zod";
 
 const loginSchema = z.object({
   username: z.string().min(1).max(64),
   password: z.string().min(1).max(128),
   turnstile_token: z.string().min(1).max(2048).optional(),
+  "cf-turnstile-response": z.string().min(1).max(2048).optional(),
 });
 
 export async function POST(req: Request) {
@@ -32,9 +33,9 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "请输入用户名和密码" }, { status: 400 });
   }
 
-  const captcha = await verifyTurnstileToken(parsed.data.turnstile_token, ip);
+  const captcha = await verifyTurnstileToken(extractTurnstileToken(parsed.data), ip);
   if (!captcha.ok) {
-    return NextResponse.json({ error: captcha.error }, { status: 400 });
+    return NextResponse.json({ error: captcha.error }, { status: captcha.status });
   }
 
   const { username, password } = parsed.data;

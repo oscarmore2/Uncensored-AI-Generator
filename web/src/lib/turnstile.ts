@@ -1,43 +1,47 @@
 import "server-only";
-import { env } from "./env";
 
 const VERIFY_URL = "https://challenges.cloudflare.com/turnstile/v0/siteverify";
 
-export function turnstileEnabled(): boolean {
-  return Boolean(env.TURNSTILE_SITE_KEY && env.TURNSTILE_SECRET_KEY);
+/** Public site key for the existing Cloudflare widget (safe to embed in frontend). */
+export const TURNSTILE_SITEKEY = "0x4AAAAAAD8kZKnkc2ervQg4";
+
+export function turnstileSecret(): string {
+  return (process.env.TURNSTILE_SECRET ?? "").trim();
 }
 
-export function turnstileSiteKey(): string | null {
-  return env.TURNSTILE_SITE_KEY || null;
+export function turnstileEnabled(): boolean {
+  return Boolean(turnstileSecret());
 }
 
 /**
- * 校验 Cloudflare Turnstile token。
- * 未配置密钥时：开发环境放行；生产环境拒绝（避免误以为有防护）。
+ * Canonical Turnstile siteverify.
+ * Uses TURNSTILE_SECRET from the environment — never hard-code the secret.
  */
 export async function verifyTurnstileToken(
   token: string | undefined | null,
   remoteIp?: string | null
-): Promise<{ ok: true } | { ok: false; error: string }> {
-  if (!turnstileEnabled()) {
+): Promise<{ ok: true } | { ok: false; status: number; error: string }> {
+  const secret = turnstileSecret();
+  if (!secret) {
+    // Secret not configured yet — refuse in production so bots cannot bypass.
     if (process.env.NODE_ENV === "production" && process.env.NEXT_PHASE !== "phase-production-build") {
-      // 生产未配置 = 不强制（便于逐步上线）；若要强制可设 TURNSTILE_REQUIRED=true
-      if (env.TURNSTILE_REQUIRED) {
-        return { ok: false, error: "人机验证未配置" };
-      }
+      return { ok: false, status: 503, error: "Turnstile is not configured" };
     }
     return { ok: true };
   }
 
   if (!token || typeof token !== "string" || token.length < 10 || token.length > 2048) {
-    return { ok: false, error: "请完成人机验证" };
+    return { ok: false, status: 403, error: "forbidden" };
   }
 
   try {
-    const body = new URLSearchParams();
-    body.set("secret", env.TURNSTILE_SECRET_KEY);
-    body.set("response", token);
-    if (remoteIp) body.set("remoteip", remoteIp);
+    const body = new URLSearchParams({
+      secret,
+      response: token,
+    });
+    if (remoteIp && remoteIp !== "unknown") {
+      body.set("remoteip", remoteIp);
+    }
 
     const resp = await fetch(VERIFY_URL, {
       method: "POST",
@@ -45,33 +49,25 @@ export async function verifyTurnstileToken(
       body,
       signal: AbortSignal.timeout(10_000),
     });
-    const data = (await resp.json()) as {
-      success?: boolean;
-      "error-codes"?: string[];
-      hostname?: string;
-    };
+    const result = (await resp.json()) as { success?: boolean; "error-codes"?: string[] };
 
-    if (!data.success) {
-      console.warn("[turnstile] verify failed:", data["error-codes"]);
-      return { ok: false, error: "人机验证失败，请刷新后重试" };
+    if (result.success !== true) {
+      console.warn("[turnstile] siteverify failed:", result["error-codes"]);
+      return { ok: false, status: 403, error: "forbidden" };
     }
-
-    // hostname 仅记录，不硬拦（Railway 临时域 / 自定义域可能并存）
-    if (data.hostname) {
-      try {
-        const expected = new URL(env.APP_URL).hostname.toLowerCase();
-        const tokenHost = data.hostname.toLowerCase();
-        if (tokenHost !== expected) {
-          console.warn(`[turnstile] hostname mismatch: token=${tokenHost} app=${expected}`);
-        }
-      } catch {
-        /* ignore */
-      }
-    }
-
     return { ok: true };
   } catch (err) {
-    console.error("[turnstile] verify error:", err);
-    return { ok: false, error: "人机验证服务暂时不可用" };
+    console.error("[turnstile] siteverify error:", err);
+    return { ok: false, status: 403, error: "forbidden" };
   }
+}
+
+/** Prefer Spin field name; accept our JSON alias. */
+export function extractTurnstileToken(body: Record<string, unknown> | null): string | undefined {
+  if (!body) return undefined;
+  const a = body["cf-turnstile-response"];
+  const b = body["turnstile_token"];
+  if (typeof a === "string") return a;
+  if (typeof b === "string") return b;
+  return undefined;
 }

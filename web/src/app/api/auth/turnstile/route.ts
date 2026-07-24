@@ -1,11 +1,10 @@
 import { NextResponse } from "next/server";
-import { turnstileEnabled, turnstileSiteKey } from "@/lib/turnstile";
+import { TURNSTILE_SITEKEY, turnstileEnabled } from "@/lib/turnstile";
 
-/** 公开：登录页获取 Turnstile site key（不含 secret） */
+/** Public: site key for the login widget (secret never exposed). */
 export async function GET() {
-  const enabled = turnstileEnabled();
   return NextResponse.json({
-    enabled,
-    site_key: enabled ? turnstileSiteKey() : null,
+    enabled: turnstileEnabled(),
+    site_key: TURNSTILE_SITEKEY,
   });
 }

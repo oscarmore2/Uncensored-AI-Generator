@@ -9,6 +9,7 @@ declare global {
         el: HTMLElement,
         opts: {
           sitekey: string;
+          action?: string;
           theme?: "light" | "dark" | "auto";
           size?: "normal" | "flexible" | "compact";
           callback?: (token: string) => void;
@@ -25,18 +26,18 @@ declare global {
 }
 
 const SCRIPT_ID = "cf-turnstile-script";
-const SCRIPT_SRC = "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit&onload=onTurnstileLoad";
+const SCRIPT_SRC =
+  "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit&onload=onTurnstileLoad";
 
 type Props = {
   siteKey: string;
   onToken: (token: string | null) => void;
-  /** 切换登录/注册时重置 */
   resetKey?: string;
 };
 
 /**
- * Cloudflare Turnstile 组件：进入页面即渲染（触发 Bot Challenge），
- * 通过后拿到 token，提交登录/注册时一并带上。
+ * Cloudflare Turnstile — page load challenges; token is verified server-side on submit.
+ * data-action="turnstile-spin-v2" is required for Spin analytics attribution.
  */
 export function TurnstileWidget({ siteKey, onToken, resetKey }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -59,6 +60,7 @@ export function TurnstileWidget({ siteKey, onToken, resetKey }: Props) {
 
     widgetIdRef.current = window.turnstile.render(containerRef.current, {
       sitekey: siteKey,
+      action: "turnstile-spin-v2",
       theme: "dark",
       size: "flexible",
       callback: (token) => onTokenRef.current(token),
@@ -111,8 +113,13 @@ export function TurnstileWidget({ siteKey, onToken, resetKey }: Props) {
 
   return (
     <div className="space-y-1">
-      <div ref={containerRef} className="cf-turnstile min-h-[65px]" />
-      <p className="text-[10px] text-gray-500">由 Cloudflare 提供人机验证保护</p>
+      <div
+        ref={containerRef}
+        className="cf-turnstile min-h-[65px]"
+        data-sitekey={siteKey}
+        data-action="turnstile-spin-v2"
+      />
+      <p className="text-[10px] text-gray-500">Protected by Cloudflare Turnstile</p>
     </div>
   );
 }

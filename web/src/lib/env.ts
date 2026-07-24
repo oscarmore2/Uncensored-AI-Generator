@@ -60,14 +60,8 @@ const envSchema = z.object({
     .default("dphn/Dolphin-Mistral-24B-Venice-Edition:featherless-ai"),
   WAVESPEED_API_KEY: z.string().default(""),
   WAVESPEED_BASE_URL: z.string().url().default("https://api.wavespeed.ai/api/v3"),
-  // Cloudflare Turnstile（登录/注册人机验证）
-  TURNSTILE_SITE_KEY: z.string().default(""),
-  TURNSTILE_SECRET_KEY: z.string().default(""),
-  // true 时：生产环境未配置 Turnstile 则拒绝登录/注册
-  TURNSTILE_REQUIRED: z
-    .string()
-    .default("false")
-    .transform((v) => v.toLowerCase() === "true"),
+  // Cloudflare Turnstile — secret only (site key is public and embedded in code)
+  TURNSTILE_SECRET: z.string().default(""),
 });
 
 function loadEnv() {
