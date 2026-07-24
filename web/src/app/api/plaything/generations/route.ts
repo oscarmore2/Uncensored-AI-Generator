@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
 import { hasPlaythingAccess } from "@/lib/plaything-access";
 import { processWaveSpeedGeneration, resolvePlaythingQuote } from "@/lib/wavespeed";
+import { playthingGenerationOut, playthingProductInclude } from "@/lib/plaything-serialize";
 import { rateLimit } from "@/lib/rate-limit";
 
 const createSchema = z.object({
@@ -12,33 +13,6 @@ const createSchema = z.object({
   params: z.record(z.string(), z.unknown()).optional().default({}),
   image_base64: z.string().max(12_000_000).nullable().optional(),
 });
-
-function generationOut(g: {
-  id: number;
-  productId: number;
-  prompt: string;
-  status: string;
-  progress: number;
-  resultUrls: string | null;
-  cost: number;
-  error: string | null;
-  createdAt: Date;
-  product?: { label: string; modelId: string } | null;
-}) {
-  return {
-    id: g.id,
-    product_id: g.productId,
-    product_label: g.product?.label ?? null,
-    model_id: g.product?.modelId ?? null,
-    prompt: g.prompt,
-    status: g.status,
-    progress: g.progress,
-    result_urls: g.resultUrls ? (JSON.parse(g.resultUrls) as string[]) : null,
-    cost: g.cost,
-    error: g.error,
-    created_at: g.createdAt,
-  };
-}
 
 export async function POST(req: Request) {
   const user = await getCurrentUser();
@@ -59,6 +33,7 @@ export async function POST(req: Request) {
 
   const product = await db.waveSpeedProduct.findFirst({
     where: { id: parsed.data.product_id, isActive: true },
+    include: { catalogModel: { select: { type: true } } },
   });
   if (!product) {
     return NextResponse.json({ error: "模型未上架或不存在" }, { status: 404 });
@@ -97,12 +72,12 @@ export async function POST(req: Request) {
       cost,
       status: "pending",
     },
-    include: { product: { select: { label: true, modelId: true } } },
+    include: { product: { select: playthingProductInclude } },
   });
 
   void processWaveSpeedGeneration(record.id);
 
-  return NextResponse.json(generationOut(record), { status: 201 });
+  return NextResponse.json(playthingGenerationOut(record), { status: 201 });
 }
 
 export async function GET() {
@@ -114,9 +89,9 @@ export async function GET() {
 
   const gens = await db.waveSpeedGeneration.findMany({
     where: { userId: user.id },
-    include: { product: { select: { label: true, modelId: true } } },
+    include: { product: { select: playthingProductInclude } },
     orderBy: { createdAt: "desc" },
     take: 40,
   });
-  return NextResponse.json(gens.map(generationOut));
+  return NextResponse.json(gens.map(playthingGenerationOut));
 }

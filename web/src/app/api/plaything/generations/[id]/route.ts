@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
 import { hasPlaythingAccess } from "@/lib/plaything-access";
+import { playthingGenerationOut, playthingProductInclude } from "@/lib/plaything-serialize";
 
 export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> }) {
   const user = await getCurrentUser();
@@ -15,21 +16,9 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
 
   const g = await db.waveSpeedGeneration.findFirst({
     where: { id, userId: user.id },
-    include: { product: { select: { label: true, modelId: true } } },
+    include: { product: { select: playthingProductInclude } },
   });
   if (!g) return NextResponse.json({ error: "任务不存在" }, { status: 404 });
 
-  return NextResponse.json({
-    id: g.id,
-    product_id: g.productId,
-    product_label: g.product.label,
-    model_id: g.product.modelId,
-    prompt: g.prompt,
-    status: g.status,
-    progress: g.progress,
-    result_urls: g.resultUrls ? (JSON.parse(g.resultUrls) as string[]) : null,
-    cost: g.cost,
-    error: g.error,
-    created_at: g.createdAt,
-  });
+  return NextResponse.json(playthingGenerationOut(g));
 }

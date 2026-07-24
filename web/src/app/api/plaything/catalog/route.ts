@@ -2,6 +2,11 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
 import { hasPlaythingAccess } from "@/lib/plaything-access";
+import {
+  PLAYTHING_CATEGORIES,
+  resolvePlaythingCategory,
+  type PlaythingCategoryId,
+} from "@/lib/plaything-categories";
 
 export async function GET() {
   const user = await getCurrentUser();
@@ -25,20 +30,44 @@ export async function GET() {
     orderBy: [{ isRecommended: "desc" }, { sortOrder: "asc" }, { id: "asc" }],
   });
 
-  return NextResponse.json({
-    note: "玩物专区点数不享受 VIP 折扣",
-    products: products.map((p) => ({
+  const mapped = products.map((p) => {
+    const type = p.catalogModel?.type ?? "";
+    const { category, media_kind } = resolvePlaythingCategory(type, p.modelId);
+    return {
       id: p.id,
       model_id: p.modelId,
       label: p.label,
       credit_cost: p.creditCost,
       is_recommended: p.isRecommended,
       sort_order: p.sortOrder,
-      type: p.catalogModel?.type ?? "",
+      type,
       description: p.catalogModel?.description ?? "",
       thumbnail_url: p.catalogModel?.thumbnailUrl ?? null,
+      category,
+      media_kind,
       param_schema: parseSchema(p.paramSchemaOverride || p.catalogModel?.apiSchema),
-    })),
+    };
+  });
+
+  const countByCat = new Map<PlaythingCategoryId, number>();
+  for (const p of mapped) {
+    countByCat.set(p.category, (countByCat.get(p.category) ?? 0) + 1);
+  }
+
+  const categories = PLAYTHING_CATEGORIES.filter((c) => (countByCat.get(c.id) ?? 0) > 0).map(
+    (c) => ({
+      id: c.id,
+      label: c.label,
+      icon: c.icon,
+      media_kind: c.mediaKind,
+      count: countByCat.get(c.id) ?? 0,
+    })
+  );
+
+  return NextResponse.json({
+    note: "玩物专区点数不享受 VIP 折扣",
+    categories,
+    products: mapped,
   });
 }
 
