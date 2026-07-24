@@ -1,12 +1,9 @@
 "use client";
 
-import { Suspense, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { api, ApiError } from "@/lib/client";
 import { TurnstileWidget } from "@/components/TurnstileWidget";
-
-/** Public site key for the existing Cloudflare Turnstile widget */
-const TURNSTILE_SITEKEY = "0x4AAAAAAD8kZKnkc2ervQg4";
 
 /** 防 open redirect：只允许站内相对路径 */
 function safeNextPath(raw: string | null): string {
@@ -29,6 +26,22 @@ function LoginForm() {
   const [busy, setBusy] = useState(false);
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
   const [turnstileReset, setTurnstileReset] = useState(0);
+  const [siteKey, setSiteKey] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/auth/turnstile")
+      .then((r) => r.json())
+      .then((data: { site_key?: string }) => {
+        if (!cancelled && data.site_key) setSiteKey(data.site_key);
+      })
+      .catch(() => {
+        /* widget stays hidden until key loads */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -115,17 +128,21 @@ function LoginForm() {
             {mode === "register" && <p className="text-[10px] text-gray-500 mt-1">至少 8 个字符</p>}
           </div>
 
-          <TurnstileWidget
-            siteKey={TURNSTILE_SITEKEY}
-            onToken={setTurnstileToken}
-            resetKey={`${mode}-${turnstileReset}`}
-          />
+          {siteKey ? (
+            <TurnstileWidget
+              siteKey={siteKey}
+              onToken={setTurnstileToken}
+              resetKey={`${mode}-${turnstileReset}`}
+            />
+          ) : (
+            <p className="text-[10px] text-gray-500">加载人机验证…</p>
+          )}
 
           {error && <p className="text-sm text-red-400">{error}</p>}
 
           <button
             type="submit"
-            disabled={busy || !turnstileToken}
+            disabled={busy || !turnstileToken || !siteKey}
             className="w-full py-3.5 bg-white text-black font-bold rounded-2xl hover:bg-gray-100 disabled:opacity-50"
           >
             {busy ? "处理中..." : mode === "login" ? "登录" : "注册并登录"}

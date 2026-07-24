@@ -2,8 +2,17 @@ import "server-only";
 
 const VERIFY_URL = "https://challenges.cloudflare.com/turnstile/v0/siteverify";
 
-/** Public site key for the existing Cloudflare widget (safe to embed in frontend). */
-export const TURNSTILE_SITEKEY = "0x4AAAAAAD8kZKnkc2ervQg4";
+/**
+ * Public site key (safe to embed). Prefer Railway `TURNSTILE_SITE_KEY` so it
+ * stays in sync with the widget; never hard-code a mismatched key.
+ */
+export function turnstileSiteKey(): string {
+  return (
+    process.env.TURNSTILE_SITE_KEY?.trim() ||
+    process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY?.trim() ||
+    "0x4AAAAAAD8ko6Wpne6AI8m0"
+  );
+}
 
 export function turnstileSecret(): string {
   return (process.env.TURNSTILE_SECRET ?? "").trim();
