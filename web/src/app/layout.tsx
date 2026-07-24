@@ -11,7 +11,7 @@ export const metadata: Metadata = {
   robots: { index: true, follow: true },
   // Cryptomus 域名验证（管理后台「在网站上使用元标记」）
   other: {
-    cryptomus: "bb91b7a9",
+    cryptomus: "1b319f11",
   },
 };
 
