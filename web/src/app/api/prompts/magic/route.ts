@@ -40,9 +40,7 @@ export async function POST(req: Request) {
       target: result.target ?? null,
     });
   } catch (err) {
-    return NextResponse.json(
-      { error: err instanceof Error ? err.message : "魔法指令失败" },
-      { status: 400 }
-    );
+    console.error("[magic-prompt]", err);
+    return NextResponse.json({ error: "魔法指令失败，请稍后重试" }, { status: 400 });
   }
 }

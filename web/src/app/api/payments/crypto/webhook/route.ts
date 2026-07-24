@@ -9,6 +9,11 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Not configured" }, { status: 503 });
   }
 
+  const { rateLimit, clientIp } = await import("@/lib/rate-limit");
+  if (!rateLimit(`cryptomus-webhook:${clientIp(req)}`, 120, 60_000)) {
+    return NextResponse.json({ error: "Too many requests" }, { status: 429 });
+  }
+
   const rawBody = await req.text();
   const { valid, payload } = await verifyWebhookSignature(rawBody);
   if (!valid || !payload) {
@@ -19,6 +24,14 @@ export async function POST(req: Request) {
   const fwd = req.headers.get("x-forwarded-for")?.split(",")[0].trim();
   if (fwd && !CRYPTOMUS_IPS.has(fwd)) {
     console.warn(`[cryptomus] webhook from unexpected IP: ${fwd} (signature was valid)`);
+    await logWebhookEvent({
+      provider: "cryptomus",
+      eventType: typeof payload.status === "string" ? payload.status : undefined,
+      externalId: typeof payload.order_id === "string" ? payload.order_id : undefined,
+      status: "ignored",
+      detail: { reason: "unexpected_ip", ip: fwd },
+    });
+    // 签名已通过则仍入账（官方可能经 CDN）；异常 IP 记审计便于排查
   }
 
   const orderId = typeof payload.order_id === "string" ? payload.order_id : null;

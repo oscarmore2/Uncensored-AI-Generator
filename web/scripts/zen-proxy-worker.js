@@ -10,8 +10,9 @@
  *      或 workers.dev：
  *        ZEN_BASE_URL=https://<worker-name>.<subdomain>.workers.dev/api/public/v1
  *
- * 可选安全：Workers → Settings → Variables 设置 PROXY_SECRET；
+ * 可选安全：Workers → Settings → Variables **必须**设置 PROXY_SECRET；
  * Railway 同步设置 ZEN_PROXY_SECRET（同值）。Worker 校验头 X-Zen-Proxy-Secret。
+ * 未设置 PROXY_SECRET 时 Worker 拒绝代理（防开放代理滥用）。
  */
 export default {
   async fetch(request, env) {
@@ -33,11 +34,23 @@ export default {
     }
 
     const expected = env && env.PROXY_SECRET;
-    if (expected) {
-      const got = request.headers.get("X-Zen-Proxy-Secret");
-      if (got !== expected) {
-        return Response.json({ error: "Unauthorized proxy" }, { status: 401 });
-      }
+    if (!expected) {
+      return Response.json(
+        { error: "PROXY_SECRET is required; refusing to run as open proxy" },
+        { status: 503 }
+      );
+    }
+    const got = request.headers.get("X-Zen-Proxy-Secret") || "";
+    // Worker 无 Node crypto；长度先比，再逐字节（简易常量时间）
+    if (got.length !== expected.length) {
+      return Response.json({ error: "Unauthorized proxy" }, { status: 401 });
+    }
+    let mismatch = 0;
+    for (let i = 0; i < expected.length; i++) {
+      mismatch |= got.charCodeAt(i) ^ expected.charCodeAt(i);
+    }
+    if (mismatch !== 0) {
+      return Response.json({ error: "Unauthorized proxy" }, { status: 401 });
     }
 
     if (!url.pathname.startsWith("/api/public/")) {

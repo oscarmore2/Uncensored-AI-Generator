@@ -60,6 +60,14 @@ const envSchema = z.object({
     .default("dphn/Dolphin-Mistral-24B-Venice-Edition:featherless-ai"),
   WAVESPEED_API_KEY: z.string().default(""),
   WAVESPEED_BASE_URL: z.string().url().default("https://api.wavespeed.ai/api/v3"),
+  // Cloudflare Turnstile（登录/注册人机验证）
+  TURNSTILE_SITE_KEY: z.string().default(""),
+  TURNSTILE_SECRET_KEY: z.string().default(""),
+  // true 时：生产环境未配置 Turnstile 则拒绝登录/注册
+  TURNSTILE_REQUIRED: z
+    .string()
+    .default("false")
+    .transform((v) => v.toLowerCase() === "true"),
 });
 
 function loadEnv() {
@@ -73,7 +81,14 @@ function loadEnv() {
     throw new Error(`Invalid environment configuration:\n${issues}`);
   }
   if (process.env.NODE_ENV === "production" && parsed.data.DEMO_MODE) {
-    console.warn("[env] WARNING: DEMO_MODE=true in production. Payments and generations are simulated.");
+    // next build 阶段允许占位 DEMO_MODE；真正运行时禁止
+    const isBuild = process.env.NEXT_PHASE === "phase-production-build";
+    if (!isBuild) {
+      throw new Error(
+        "DEMO_MODE must be false in production. Set DEMO_MODE=false in Railway Variables."
+      );
+    }
+    console.warn("[env] DEMO_MODE=true during production build (allowed for page collection only).");
   }
   return parsed.data;
 }

@@ -28,6 +28,7 @@ const PUBLIC_API = [
   "/api/auth/login",
   "/api/auth/register",
   "/api/auth/logout",
+  "/api/auth/turnstile",
 ];
 
 interface SessionInfo {
@@ -54,6 +55,13 @@ function redirectToLogin(req: NextRequest, pathname: string) {
 }
 
 export async function middleware(req: NextRequest) {
+  // Edge 侧必须有 AUTH_SECRET，否则会话校验无意义
+  if (!process.env.AUTH_SECRET || process.env.AUTH_SECRET.length < 32) {
+    if (req.nextUrl.pathname.startsWith("/api/")) {
+      return NextResponse.json({ error: "Server misconfigured" }, { status: 503 });
+    }
+  }
+
   const { pathname } = req.nextUrl;
 
   if (PUBLIC_API.some((p) => pathname === p) || pathname.startsWith("/api/public/")) {

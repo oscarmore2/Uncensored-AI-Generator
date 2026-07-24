@@ -147,15 +147,45 @@ export async function uploadBuffer(
   return publicUrlForKey(cfg, key);
 }
 
-/** 从远程 URL 下载并上传到 OSS */
+/** 从远程 URL 下载并上传到 OSS（带 SSRF 防护） */
 export async function uploadFromUrl(remoteUrl: string, relativePath: string, config?: OssConfig): Promise<string> {
-  const resp = await fetch(remoteUrl);
-  if (!resp.ok) {
-    throw new Error(`Failed to fetch ${remoteUrl}: HTTP ${resp.status}`);
+  const { assertSafeRemoteMediaUrl } = await import("./safe-url");
+  const cfg = config ?? (await getActiveOssConfig());
+  const extra = cfg?.publicBaseUrl
+    ? (() => {
+        try {
+          return [new URL(cfg.publicBaseUrl).hostname];
+        } catch {
+          return [] as string[];
+        }
+      })()
+    : [];
+  await assertSafeRemoteMediaUrl(remoteUrl, { extraHostSuffixes: extra });
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 30_000);
+  try {
+    const resp = await fetch(remoteUrl, {
+      signal: controller.signal,
+      redirect: "follow",
+      headers: { Accept: "image/*,video/*,*/*" },
+    });
+    if (!resp.ok) {
+      throw new Error(`Failed to fetch remote media: HTTP ${resp.status}`);
+    }
+    const contentType = resp.headers.get("content-type") ?? "application/octet-stream";
+    const len = Number(resp.headers.get("content-length") ?? 0);
+    if (len > 40 * 1024 * 1024) {
+      throw new Error("Remote media too large");
+    }
+    const buffer = Buffer.from(await resp.arrayBuffer());
+    if (buffer.length > 40 * 1024 * 1024) {
+      throw new Error("Remote media too large");
+    }
+    return uploadBuffer(buffer, relativePath, contentType, config);
+  } finally {
+    clearTimeout(timer);
   }
-  const contentType = resp.headers.get("content-type") ?? "application/octet-stream";
-  const buffer = Buffer.from(await resp.arrayBuffer());
-  return uploadBuffer(buffer, relativePath, contentType, config);
 }
 
 /**

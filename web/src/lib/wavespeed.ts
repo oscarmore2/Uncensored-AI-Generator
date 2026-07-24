@@ -410,16 +410,19 @@ export async function processWaveSpeedGeneration(genId: number): Promise<void> {
 }
 
 async function failAndRefundWaveSpeed(genId: number, reason?: string) {
+  const claimed = await db.waveSpeedGeneration.updateMany({
+    where: { id: genId, status: { not: "failed" } },
+    data: {
+      status: "failed",
+      error: reason?.slice(0, 500),
+    },
+  });
+  if (claimed.count === 0) return;
+
   const gen = await db.waveSpeedGeneration.findUnique({ where: { id: genId } });
-  if (!gen || gen.status === "failed") return;
+  if (!gen) return;
+
   await db.$transaction([
-    db.waveSpeedGeneration.update({
-      where: { id: genId },
-      data: {
-        status: "failed",
-        error: reason?.slice(0, 500) ?? gen.error,
-      },
-    }),
     db.user.update({ where: { id: gen.userId }, data: { balance: { increment: gen.cost } } }),
     db.transaction.create({
       data: { userId: gen.userId, type: "refund", amount: gen.cost, method: "plaything" },

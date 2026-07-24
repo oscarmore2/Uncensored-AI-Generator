@@ -449,17 +449,20 @@ export async function applyZenJobUpdate(params: {
 }
 
 async function failAndRefund(genId: number, reason?: string) {
+  // 原子抢占：仅从未失败状态转为 failed，防止 webhook/轮询并发双倍退款
+  const claimed = await db.generation.updateMany({
+    where: { id: genId, status: { not: "failed" } },
+    data: {
+      status: "failed",
+      zenError: reason?.slice(0, 500),
+    },
+  });
+  if (claimed.count === 0) return;
+
   const gen = await db.generation.findUnique({ where: { id: genId } });
-  if (!gen || gen.status === "failed") return;
+  if (!gen) return;
+
   await db.$transaction([
-    db.generation.update({
-      where: { id: genId },
-      data: {
-        status: "failed",
-        progress: gen.progress,
-        zenError: reason?.slice(0, 500) ?? gen.zenError,
-      },
-    }),
     db.user.update({ where: { id: gen.userId }, data: { balance: { increment: gen.cost } } }),
     db.transaction.create({ data: { userId: gen.userId, type: "refund", amount: gen.cost } }),
   ]);

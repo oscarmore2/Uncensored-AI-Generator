@@ -62,6 +62,11 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Not configured" }, { status: 503 });
   }
 
+  const { rateLimit, clientIp } = await import("@/lib/rate-limit");
+  if (!rateLimit(`stripe-webhook:${clientIp(req)}`, 120, 60_000)) {
+    return NextResponse.json({ error: "Too many requests" }, { status: 429 });
+  }
+
   const payload = await req.text();
   const signature = req.headers.get("stripe-signature");
   if (!signature) {
@@ -126,10 +131,44 @@ export async function POST(req: Request) {
           Number.isInteger(metaRef) && metaRef > 0 ? metaRef : accountRefId;
 
         if (Number.isInteger(userId) && Number.isInteger(credits) && credits > 0) {
-          const paymentId = typeof session.payment_intent === "string" ? session.payment_intent : null;
-          const existing = paymentId
-            ? await db.transaction.findFirst({ where: { stripePaymentId: paymentId } })
-            : null;
+          // 幂等键：优先 payment_intent，否则用 session.id（避免 null 导致重复入账）
+          const paymentIntentId =
+            typeof session.payment_intent === "string"
+              ? session.payment_intent
+              : session.payment_intent && typeof session.payment_intent === "object" && "id" in session.payment_intent
+                ? String((session.payment_intent as { id: string }).id)
+                : null;
+          const idempotencyKey = paymentIntentId || `cs_${session.id}`;
+
+          // 金额校验：metadata.credits 对应套餐价须与实付一致（允许 1 美分误差）
+          const { env } = await import("@/lib/env");
+          const expectedCents = env.CREDIT_PACKAGES[String(credits)];
+          if (expectedCents && session.amount_total != null) {
+            if (Math.abs(session.amount_total - expectedCents) > 1) {
+              await logWebhookEvent({
+                provider: "stripe",
+                eventType: event.type,
+                externalId: session.id,
+                status: "error",
+                detail: {
+                  reason: "amount_mismatch",
+                  expected: expectedCents,
+                  actual: session.amount_total,
+                  credits,
+                },
+              });
+              sendTelegram(
+                `⚠️ Stripe 金额不符，已拒绝入账\nsession: ${session.id}\n期望 $${(expectedCents / 100).toFixed(2)} / 实付 $${((session.amount_total ?? 0) / 100).toFixed(2)}`
+              );
+              return NextResponse.json({ status: "amount_mismatch" }, { status: 400 });
+            }
+          }
+
+          const existing = await db.transaction.findFirst({
+            where: {
+              OR: [{ stripePaymentId: idempotencyKey }, { stripePaymentId: session.id }],
+            },
+          });
           if (!existing) {
             await db.$transaction([
               db.user.update({ where: { id: userId }, data: { balance: { increment: credits } } }),
@@ -139,7 +178,7 @@ export async function POST(req: Request) {
                   type: "recharge",
                   amount: credits,
                   priceCents: session.amount_total,
-                  stripePaymentId: paymentId,
+                  stripePaymentId: idempotencyKey,
                   method: "stripe",
                   stripeAccountRefId,
                 },
@@ -154,7 +193,7 @@ export async function POST(req: Request) {
             eventType: event.type,
             externalId: session.id,
             status: "ok",
-            detail: { user_id: userId, credits },
+            detail: { user_id: userId, credits, idempotency_key: idempotencyKey },
           });
         } else {
           await logWebhookEvent({

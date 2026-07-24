@@ -1,7 +1,7 @@
 import "server-only";
 import { db } from "./db";
 import { env } from "./env";
-import { hashPassword } from "./auth";
+import { hashPassword, verifyPassword } from "./auth";
 
 /** Demo 模式下自动创建演示账号（demo_user / demo123），生产模式不生效 */
 export async function ensureDemoUser(): Promise<void> {
@@ -50,16 +50,23 @@ export async function ensureAdminUser(): Promise<void> {
   }
 }
 
-/** 通过环境变量创建/提升 admin 账号（生产可用） */
+/** 通过环境变量创建 admin 账号（生产可用）。已存在同名用户时绝不静默提权。 */
 export async function ensureSeedAdmin(): Promise<void> {
-  const username = process.env.SEED_ADMIN_USERNAME;
+  const username = process.env.SEED_ADMIN_USERNAME?.trim();
   const password = process.env.SEED_ADMIN_PASSWORD;
   if (!username || !password || password.length < 8) return;
 
   const existing = await db.user.findUnique({ where: { username } });
   if (existing) {
+    // 安全：已有账号只在密码匹配且尚未是 admin 时才提升，防止抢注提权
+    const ok = await verifyPassword(password, existing.hashedPassword);
+    if (!ok) {
+      console.warn(`[seed-admin] user "${username}" exists but password mismatch; skip (no privilege escalation)`);
+      return;
+    }
     if (existing.role !== "admin") {
-      await db.user.update({ where: { id: existing.id }, data: { role: "admin" } });
+      await db.user.update({ where: { id: existing.id }, data: { role: "admin", disabledAt: null } });
+      console.warn(`[seed-admin] elevated existing user "${username}" to admin after password verification`);
     }
     return;
   }
