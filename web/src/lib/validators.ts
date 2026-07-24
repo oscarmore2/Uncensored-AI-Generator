@@ -28,7 +28,7 @@ export const generationSchema = z
   .superRefine((v, ctx) => {
     if (v.mode === "undress") {
       if (!v.image_base64) {
-        ctx.addIssue({ code: "custom", message: "脱衣功能需要上传一张人物图片", path: ["image_base64"] });
+        ctx.addIssue({ code: "custom", message: "旧版编辑模式需要上传一张人物图片", path: ["image_base64"] });
       }
       return;
     }

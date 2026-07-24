@@ -9,6 +9,7 @@ import { userOut } from "@/lib/serialize";
 import { sendTelegram } from "@/lib/telegram";
 import { assertSameOrigin } from "@/lib/csrf";
 import { extractTurnstileToken, verifyTurnstileToken } from "@/lib/turnstile";
+import { LEGAL_VERSION } from "@/lib/legal";
 
 const RESERVED = new Set(["demo_user", "mod_user", "admin_user", "admin", "root", "system"]);
 
@@ -16,6 +17,7 @@ const registerBodySchema = credentialsSchema.and(
   z.object({
     turnstile_token: z.string().min(1).max(2048).optional(),
     "cf-turnstile-response": z.string().min(1).max(2048).optional(),
+    accepted_terms: z.literal(true, { errorMap: () => ({ message: "请先同意用户条款与内容使用条款" }) }),
   })
 );
 
@@ -53,7 +55,12 @@ export async function POST(req: Request) {
   }
 
   const user = await db.user.create({
-    data: { username, hashedPassword: await hashPassword(password) },
+    data: {
+      username,
+      hashedPassword: await hashPassword(password),
+      acceptedTermsAt: new Date(),
+      termsVersion: LEGAL_VERSION,
+    },
   });
   sendTelegram(`🆕 新用户注册: ${user.username} (ID ${user.id})`);
 

@@ -54,7 +54,7 @@ export async function POST(req: Request) {
         {
           price_data: {
             currency: "usd",
-            product_data: { name: `AVClubs ${credits} Credits` },
+            product_data: { name: `玩玩可物 ${credits} 点数` },
             unit_amount: priceCents,
           },
           quantity: 1,

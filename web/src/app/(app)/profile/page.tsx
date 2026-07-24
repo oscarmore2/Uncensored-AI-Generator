@@ -37,7 +37,7 @@ export default function ProfilePage() {
             <div className="flex items-center gap-x-3">
               <h2 className="text-2xl font-bold">{user?.username ?? "—"}</h2>
               {user?.is_vip && (
-                <span className="nsfw-badge text-xs px-3 py-0.5">
+                <span className="media-badge text-xs px-3 py-0.5">
                   {user.vip_tier?.name ?? "VIP"}
                 </span>
               )}

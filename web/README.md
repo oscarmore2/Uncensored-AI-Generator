@@ -1,4 +1,4 @@
-# AVClubs Web（Next.js 安全全栈版）
+# 玩玩可物 Web（Next.js AI 媒体创作平台）
 
 Next.js 15 App Router 全栈应用，替代原「静态 HTML + 跨域 FastAPI」架构。
 

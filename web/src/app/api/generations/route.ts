@@ -3,9 +3,10 @@ import { db } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
 import { generationSchema } from "@/lib/validators";
 import { processGeneration } from "@/lib/zen";
-import { resolveGenerationQuote } from "@/lib/pricing";
+import { isVipActive, resolveGenerationQuote } from "@/lib/pricing";
 import { generationOut } from "@/lib/serialize";
 import { rateLimit } from "@/lib/rate-limit";
+import { reviewPromptWithHarness } from "@/lib/content-safety";
 
 export async function POST(req: Request) {
   const user = await getCurrentUser();
@@ -22,6 +23,33 @@ export async function POST(req: Request) {
   }
 
   const gen = parsed.data;
+  if (gen.mode === "undress") {
+    return NextResponse.json({ error: "该旧版编辑模式已停止开放" }, { status: 410 });
+  }
+  if (!isVipActive(user)) {
+    try {
+      const safety = await reviewPromptWithHarness({
+        mode: gen.mode,
+        prompt: gen.prompt,
+      });
+      if (!safety.allowed) {
+        return NextResponse.json(
+          {
+            error: `内容审查未通过：${safety.reason}`,
+            code: "CONTENT_POLICY_REJECTED",
+            categories: safety.categories,
+          },
+          { status: 422 }
+        );
+      }
+    } catch (error) {
+      return NextResponse.json(
+        { error: error instanceof Error ? error.message : "内容审查服务暂不可用" },
+        { status: 503 }
+      );
+    }
+  }
+
   const quote = await resolveGenerationQuote({
     mode: gen.mode,
     zenModel: gen.zen_model,
@@ -30,11 +58,7 @@ export async function POST(req: Request) {
     user,
   });
   const cost = quote.cost;
-  const prompt =
-    gen.mode === "undress"
-      ? gen.prompt.trim() ||
-        `一键脱衣（${gen.undress_variant === "male" ? "男" : gen.undress_variant === "couple" ? "情侣" : "女"}）`
-      : gen.prompt.trim();
+  const prompt = gen.prompt.trim();
 
   const charged = await db.user.updateMany({
     where: { id: user.id, balance: { gte: cost } },
@@ -56,7 +80,7 @@ export async function POST(req: Request) {
         quality: gen.quality,
         duration: gen.duration,
         resolution: gen.resolution,
-        batch: gen.mode === "undress" ? 1 : gen.batch,
+        batch: gen.batch,
         undress_variant: gen.undress_variant,
         zen_model: quote.product.zenModel,
         product_id: quote.product.id,

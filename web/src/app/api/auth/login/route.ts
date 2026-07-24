@@ -8,12 +8,14 @@ import { ensureSeedUsers } from "@/lib/demo";
 import { assertSameOrigin } from "@/lib/csrf";
 import { extractTurnstileToken, verifyTurnstileToken } from "@/lib/turnstile";
 import { z } from "zod";
+import { LEGAL_VERSION } from "@/lib/legal";
 
 const loginSchema = z.object({
   username: z.string().min(1).max(64),
   password: z.string().min(1).max(128),
   turnstile_token: z.string().min(1).max(2048).optional(),
   "cf-turnstile-response": z.string().min(1).max(2048).optional(),
+  accepted_terms: z.literal(true).optional(),
 });
 
 export async function POST(req: Request) {
@@ -48,6 +50,13 @@ export async function POST(req: Request) {
   }
   if (user.disabledAt) {
     return NextResponse.json({ error: "账号已被封禁，如有疑问请联系客服" }, { status: 403 });
+  }
+
+  if (parsed.data.accepted_terms && user.termsVersion !== LEGAL_VERSION) {
+    await db.user.update({
+      where: { id: user.id },
+      data: { acceptedTermsAt: new Date(), termsVersion: LEGAL_VERSION },
+    });
   }
 
   await createSessionCookie(user.id, user.username, user.role);

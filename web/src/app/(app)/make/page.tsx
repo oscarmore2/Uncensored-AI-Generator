@@ -15,9 +15,9 @@ import { useApp } from "@/components/AppContext";
 import { AdaptiveMedia } from "@/components/WorkMedia";
 
 const EXAMPLE_PROMPTS = [
-  "一个穿着黑色丝袜和吊带睡裙的亚洲美女，躺在豪华酒店床上，柔和暖光，写实摄影风格，高细节，8k",
-  "赛博朋克风格的性感女性，霓虹灯下的雨夜街道，湿发，皮衣，电影光影",
-  "两个亲密拥抱的年轻情侣，柔焦背景，浪漫氛围，自然光，写实",
+  "一座漂浮在云海上的未来城市，清晨金色光线，电影级广角构图，高细节",
+  "赛博朋克风格的街头摄影师，霓虹雨夜，透明雨衣，动态光影",
+  "一只戴着飞行员护目镜的橘猫驾驶复古飞机，童话插画风，明亮色彩",
 ];
 
 type Phase = "idle" | "submitting" | "polling";
@@ -244,7 +244,10 @@ function MakePageInner() {
       <div className="flex items-end justify-between mb-6">
         <div>
           <h1 className="text-4xl font-bold tracking-tighter">创作中心</h1>
-          <p className="text-gray-400 mt-1">同源 API • Cookie 会话</p>
+          <p className="text-gray-400 mt-1">
+            AI 图片与视频生成
+            {!user?.is_vip ? " • 提示词将在提交前进行内容安全审查" : ""}
+          </p>
         </div>
       </div>
 
@@ -276,8 +279,7 @@ function MakePageInner() {
           {isUndress ? (
             <>
               <div className="mb-5 rounded-2xl bg-rose-500/10 border border-rose-500/20 px-4 py-3 text-sm text-rose-100/90">
-                上传一张人物照片即可一键脱衣。收费 <span className="font-mono font-semibold">{cost}</span>{" "}
-                点（略高于普通生图）。结果保留原构图与人物特征。
+                该旧版编辑模式已停止开放。请使用“图片生图”完成安全的人物与风格编辑。
               </div>
               <div className="mb-5">
                 <label className="text-sm font-semibold text-gray-300 mb-2 block">对象类型</label>
@@ -350,7 +352,7 @@ function MakePageInner() {
                   value={prompt}
                   onChange={(e) => setPrompt(e.target.value)}
                   className="prompt-box w-full bg-[#111] border border-white/10 focus:border-rose-500/60 rounded-2xl p-4 text-sm placeholder:text-gray-500 outline-none min-h-[120px]"
-                  placeholder="描述你想要的场景，例如：一个穿着黑色蕾丝的亚洲美女躺在床上，柔和灯光，写实风格，高细节..."
+                  placeholder="描述你想要的场景，例如：一座漂浮在云海上的未来城市，清晨金色光线，电影级构图..."
                 />
               </div>
 
@@ -548,7 +550,7 @@ function MakePageInner() {
             {phase === "idle" ? (
               <>
                 <i className={`fas ${isUndress ? "fa-shirt" : "fa-magic"}`} />{" "}
-                <span>{isUndress ? "开始脱衣" : "立即生成"}</span>
+                <span>{isUndress ? "旧版模式已停用" : "立即生成"}</span>
               </>
             ) : (
               <>
@@ -600,7 +602,7 @@ function MakePageInner() {
             <div className="p-5 flex gap-3">
               <a
                 href={result.urls[0]}
-                download={`avclubs_${Date.now()}${result.mode.endsWith("vid") ? ".mp4" : ".jpg"}`}
+                download={`wanwankewu_${Date.now()}${result.mode.endsWith("vid") ? ".mp4" : ".jpg"}`}
                 target="_blank"
                 rel="noopener"
                 className="flex-1 py-2.5 text-sm font-semibold bg-white/5 hover:bg-white/10 border border-white/10 rounded-2xl flex items-center justify-center gap-x-2"

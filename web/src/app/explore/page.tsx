@@ -11,7 +11,7 @@ const MODE_LABELS: Record<string, string> = {
   txt2vid: "文生视频",
   img2img: "图生图",
   img2vid: "图生视频",
-  undress: "一键脱衣",
+  undress: "图像编辑",
 };
 
 export default async function ExplorePage({
@@ -87,7 +87,7 @@ export default async function ExplorePage({
                   src={w.thumbUrl ?? w.mediaUrl}
                   className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                 />
-                <span className="absolute top-3 left-3 nsfw-badge">{MODE_LABELS[w.mode] ?? w.mode}</span>
+                <span className="absolute top-3 left-3 media-badge">{MODE_LABELS[w.mode] ?? w.mode}</span>
                 <div className="absolute inset-x-0 bottom-0 p-4 bg-gradient-to-t from-black/90 to-transparent">
                   <p className="text-xs text-gray-300 line-clamp-2">{w.title ?? w.prompt}</p>
                 </div>

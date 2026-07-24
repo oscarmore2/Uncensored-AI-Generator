@@ -3,6 +3,8 @@ import { z } from "zod";
 import { getCurrentUser } from "@/lib/auth";
 import { rateLimit } from "@/lib/rate-limit";
 import { enhancePrompt } from "@/lib/magic-prompt";
+import { reviewPromptWithHarness } from "@/lib/content-safety";
+import { isVipActive } from "@/lib/pricing";
 
 const bodySchema = z.object({
   prompt: z.string().min(1).max(2000),
@@ -31,7 +33,31 @@ export async function POST(req: Request) {
   }
 
   try {
+    if (!isVipActive(user)) {
+      const inputSafety = await reviewPromptWithHarness({
+        mode: parsed.data.mode,
+        prompt: parsed.data.prompt,
+      });
+      if (!inputSafety.allowed) {
+        return NextResponse.json(
+          { error: `内容审查未通过：${inputSafety.reason}`, code: "CONTENT_POLICY_REJECTED" },
+          { status: 422 }
+        );
+      }
+    }
     const result = await enhancePrompt(parsed.data);
+    if (!isVipActive(user)) {
+      const safety = await reviewPromptWithHarness({
+        mode: parsed.data.mode,
+        prompt: result.prompt,
+      });
+      if (!safety.allowed) {
+        return NextResponse.json(
+          { error: `内容审查未通过：${safety.reason}`, code: "CONTENT_POLICY_REJECTED" },
+          { status: 422 }
+        );
+      }
+    }
     return NextResponse.json({
       ok: true,
       prompt: result.prompt,

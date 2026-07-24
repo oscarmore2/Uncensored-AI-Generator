@@ -11,6 +11,7 @@ interface ProductInfo {
   is_active: boolean;
   is_recommended: boolean;
   sort_order: number;
+  param_policy?: unknown;
 }
 
 interface CatalogModel {
@@ -172,7 +173,7 @@ export default function AdminWaveSpeedModelsPage() {
               setAdult(e.target.checked);
             }}
           />
-          成人向关键词
+          敏感模型关键词
         </label>
       </div>
 
@@ -303,6 +304,42 @@ export default function AdminWaveSpeedModelsPage() {
                         }}
                       >
                         排序
+                      </button>
+                      <button
+                        disabled={busy}
+                        className="px-2 py-1 text-[11px] border border-white/10 rounded-lg"
+                        onClick={() => {
+                          const current = p.param_policy
+                            ? JSON.stringify(p.param_policy, null, 2)
+                            : JSON.stringify(
+                                {
+                                  duration: {
+                                    tiers: [5, 10],
+                                    labels: ["5 秒", "10 秒"],
+                                    default: 5,
+                                  },
+                                },
+                                null,
+                                2
+                              );
+                          const raw = window.prompt("参数策略 JSON（档位/媒体约束）", current);
+                          if (raw === null) return;
+                          try {
+                            const parsed = JSON.parse(raw);
+                            void action(
+                              () =>
+                                api(patchUrl(m.model_id), {
+                                  method: "PATCH",
+                                  body: JSON.stringify({ param_policy: parsed }),
+                                }),
+                              "策略已更新"
+                            );
+                          } catch {
+                            setMsg("JSON 无效");
+                          }
+                        }}
+                      >
+                        策略
                       </button>
                     </>
                   )}

@@ -179,13 +179,17 @@ export async function estimatePricing(
   inputs: Record<string, unknown>
 ): Promise<number | null> {
   const creds = await getActiveWaveSpeedCredentials();
-  if (!creds) throw new Error("未配置 WaveSpeed API Key");
+  if (!creds) return null;
   try {
-    const data = await wavespeedFetch<{ unit_price?: number; price?: number }>(
-      creds.apiKey,
-      "/model/pricing",
-      { method: "POST", body: JSON.stringify({ model_id: modelId, inputs }) }
-    );
+    const data = await wavespeedFetch<{
+      unit_price?: number;
+      price?: number;
+      model_id?: string;
+      currency?: string;
+    }>(creds.apiKey, "/model/pricing", {
+      method: "POST",
+      body: JSON.stringify({ model_id: modelId, inputs }),
+    });
     const price =
       typeof data?.unit_price === "number"
         ? data.unit_price
@@ -310,6 +314,73 @@ function extractSchemaDefaults(schemaJson: string | null | undefined): Record<st
 /** 本站报价：仅用 creditCost，永不应用 VIP 折扣 */
 export function resolvePlaythingQuote(creditCost: number): { cost: number; discountBps: 0 } {
   return { cost: Math.max(1, Math.floor(creditCost)), discountBps: 0 };
+}
+
+export type PlaythingDynamicQuote = {
+  cost: number;
+  discountBps: 0;
+  unit_price_usd: number | null;
+  base_price_usd: number;
+  credit_cost_base: number;
+  source: "wavespeed" | "fallback";
+};
+
+/**
+ * 动态报价：cost = round(creditCost * unitPrice / basePriceUsd)
+ * pricing 失败回退固定 creditCost；永不 VIP 折扣
+ */
+export async function resolvePlaythingQuoteDynamic(opts: {
+  productId: number;
+  inputs: Record<string, unknown>;
+}): Promise<PlaythingDynamicQuote> {
+  const product = await db.waveSpeedProduct.findFirst({
+    where: { id: opts.productId, isActive: true },
+    include: { catalogModel: { select: { basePriceUsd: true, modelId: true } } },
+  });
+  if (!product) throw new Error("模型未上架或不存在");
+
+  const credit_cost_base = product.creditCost;
+  const base_price_usd = product.catalogModel?.basePriceUsd || 0;
+  const modelId = product.modelId;
+
+  const unit = await estimatePricing(modelId, opts.inputs).catch(() => null);
+  if (unit != null && unit > 0 && base_price_usd > 0) {
+    const cost = Math.max(1, Math.round((credit_cost_base * unit) / base_price_usd));
+    return {
+      cost,
+      discountBps: 0,
+      unit_price_usd: unit,
+      base_price_usd,
+      credit_cost_base,
+      source: "wavespeed",
+    };
+  }
+
+  return {
+    cost: Math.max(1, Math.floor(credit_cost_base)),
+    discountBps: 0,
+    unit_price_usd: unit,
+    base_price_usd,
+    credit_cost_base,
+    source: "fallback",
+  };
+}
+
+/** 估价用：把空媒体字段填占位 URL，避免 pricing API 因缺图失败 */
+export function inputsForPricing(inputs: Record<string, unknown>): Record<string, unknown> {
+  const out: Record<string, unknown> = { ...inputs };
+  const placeholderImg = "https://picsum.photos/512/512";
+  for (const [k, v] of Object.entries(out)) {
+    if (v == null || v === "") {
+      if (/image|mask|reference/i.test(k)) out[k] = placeholderImg;
+      continue;
+    }
+    if (Array.isArray(v) && v.length === 0 && /image|reference/i.test(k)) {
+      out[k] = [placeholderImg];
+    }
+  }
+  if (!("prompt" in out) || !out.prompt) out.prompt = "pricing estimate";
+  return out;
 }
 
 export async function processWaveSpeedGeneration(genId: number): Promise<void> {

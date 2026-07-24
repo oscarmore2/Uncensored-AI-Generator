@@ -1,5 +1,5 @@
 """
-AVClubs Backend - FastAPI
+玩玩可物 Backend - FastAPI
 完整后端服务：用户系统 + 点数钱包 + Zen Creator 代理 + Stripe 支付 + 生成历史
 
 运行方式：
@@ -273,7 +273,7 @@ async def lifespan(app: FastAPI):
     db.close()
     yield
 
-app = FastAPI(title="AVClubs Backend", version="1.0", lifespan=lifespan)
+app = FastAPI(title="玩玩可物 Backend", version="1.0", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -287,7 +287,7 @@ app.add_middleware(
 
 @app.get("/")
 async def root():
-    return {"message": "AVClubs Backend is running", "zen_connected": bool(ZEN_API_KEY)}
+    return {"message": "玩玩可物 Backend is running", "zen_connected": bool(ZEN_API_KEY)}
 
 # --- Auth ---
 @app.post("/auth/register", response_model=UserOut)
@@ -448,7 +448,7 @@ async def create_checkout(recharge: RechargeRequest, current_user: User = Depend
         line_items=[{
             "price_data": {
                 "currency": "usd",
-                "product_data": {"name": f"AVClubs {credits} Credits"},
+                "product_data": {"name": f"玩玩可物 {credits} 点数"},
                 "unit_amount": price_cents,
             },
             "quantity": 1,

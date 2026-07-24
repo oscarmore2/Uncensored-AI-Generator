@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { requireRole } from "@/lib/auth";
+import { BrandMark } from "@/components/BrandLogo";
 
 const NAV = [
   { href: "/mod", label: "队列概览", icon: "fa-gauge" },
@@ -18,11 +19,9 @@ export default async function ModLayout({ children }: { children: React.ReactNod
     <div className="min-h-screen flex">
       <aside className="w-56 shrink-0 border-r border-white/10 bg-[#0d0d0d] flex flex-col">
         <Link href="/" className="flex items-center gap-x-2 px-5 h-16 border-b border-white/10">
-          <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-rose-600 to-pink-700 flex items-center justify-center">
-            <span className="font-black text-white text-lg tracking-tighter">AV</span>
-          </div>
+          <BrandMark className="h-8 w-8 rounded-xl" />
           <div>
-            <div className="font-bold leading-none">AVClubs</div>
+            <div className="font-bold leading-none">玩玩可物</div>
             <div className="text-[10px] text-amber-400 font-mono">MOD CONSOLE</div>
           </div>
         </Link>

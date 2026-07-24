@@ -111,7 +111,6 @@ export default function HistoryPage() {
           <div className="max-w-3xl w-full glass rounded-3xl overflow-hidden modal-pop">
             <div className="p-5 flex justify-between border-b border-white/10">
               <div>
-                <span className="nsfw-badge mr-2">NSFW</span>
                 <span className="font-semibold">{selected.mode}</span>
               </div>
               <button onClick={() => setSelected(null)} className="text-3xl text-gray-400 hover:text-white">
@@ -135,7 +134,7 @@ export default function HistoryPage() {
                 {selected.result_urls?.length ? (
                   <a
                     href={selected.result_urls[0]}
-                    download={`avclubs_${selected.id}${selected.mode.endsWith("vid") ? ".mp4" : ".jpg"}`}
+                    download={`wanwankewu_${selected.id}${selected.mode.endsWith("vid") ? ".mp4" : ".jpg"}`}
                     target="_blank"
                     rel="noopener"
                     className="flex-1 py-3 bg-white text-black font-semibold rounded-2xl flex items-center justify-center gap-x-2"

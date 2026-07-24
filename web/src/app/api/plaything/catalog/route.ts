@@ -7,6 +7,7 @@ import {
   resolvePlaythingCategory,
   type PlaythingCategoryId,
 } from "@/lib/plaything-categories";
+import { parseParamPolicy, resolveParamControls, type SchemaProp } from "@/lib/plaything-param-policy";
 
 export async function GET() {
   const user = await getCurrentUser();
@@ -24,6 +25,7 @@ export async function GET() {
           description: true,
           thumbnailUrl: true,
           apiSchema: true,
+          basePriceUsd: true,
         },
       },
     },
@@ -33,11 +35,15 @@ export async function GET() {
   const mapped = products.map((p) => {
     const type = p.catalogModel?.type ?? "";
     const { category, media_kind } = resolvePlaythingCategory(type, p.modelId);
+    const param_schema = parseSchema(p.paramSchemaOverride || p.catalogModel?.apiSchema);
+    const properties = (param_schema?.properties ?? {}) as Record<string, SchemaProp>;
+    const controls = resolveParamControls(properties, p.paramPolicy);
     return {
       id: p.id,
       model_id: p.modelId,
       label: p.label,
       credit_cost: p.creditCost,
+      base_price_usd: p.catalogModel?.basePriceUsd ?? 0,
       is_recommended: p.isRecommended,
       sort_order: p.sortOrder,
       type,
@@ -45,7 +51,9 @@ export async function GET() {
       thumbnail_url: p.catalogModel?.thumbnailUrl ?? null,
       category,
       media_kind,
-      param_schema: parseSchema(p.paramSchemaOverride || p.catalogModel?.apiSchema),
+      param_schema,
+      param_policy: parseParamPolicy(p.paramPolicy),
+      controls,
     };
   });
 
@@ -65,7 +73,7 @@ export async function GET() {
   );
 
   return NextResponse.json({
-    note: "玩物专区点数不享受 VIP 折扣",
+    note: "玩物专区点数不享受 VIP 折扣；报价随参数动态变化",
     categories,
     products: mapped,
   });

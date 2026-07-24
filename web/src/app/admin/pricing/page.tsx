@@ -246,7 +246,7 @@ export default function AdminPricingPage() {
               className="bg-[#111] border border-white/10 rounded-xl px-3 py-2 text-sm font-mono"
             />
             <input
-              placeholder="variant（脱衣: female/male/couple）"
+              placeholder="可选产品变体标识"
               value={productForm.variant_key}
               onChange={(e) => setProductForm({ ...productForm, variant_key: e.target.value })}
               className="bg-[#111] border border-white/10 rounded-xl px-3 py-2 text-sm"

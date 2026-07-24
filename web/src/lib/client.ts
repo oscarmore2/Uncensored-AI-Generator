@@ -47,13 +47,12 @@ export async function api<T>(path: string, init?: RequestInit): Promise<T> {
   return data as T;
 }
 
-export const MODES = [
+export const MODES: Array<{ key: string; label: string; icon: string }> = [
   { key: "txt2img", label: "文字生图", icon: "fa-font" },
   { key: "txt2vid", label: "文字生视频", icon: "fa-video" },
   { key: "img2img", label: "图片生图", icon: "fa-image" },
   { key: "img2vid", label: "图片生视频", icon: "fa-film" },
-  { key: "undress", label: "一键脱衣", icon: "fa-shirt" },
-] as const;
+];
 
 export type CatalogProduct = {
   id: number;

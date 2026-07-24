@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useApp } from "./AppContext";
 import { api } from "@/lib/client";
+import { BrandLogo } from "./BrandLogo";
 
 const NAV = [
   { href: "/make", label: "创作中心" },
@@ -57,15 +58,7 @@ export function Header() {
   return (
     <header className="sticky top-0 z-50 border-b border-white/10 bg-[#0a0a0a]/95 backdrop-blur-xl">
       <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-        <Link href="/make" className="flex items-center gap-x-3">
-          <div className="w-9 h-9 rounded-2xl bg-gradient-to-br from-rose-600 via-red-600 to-pink-700 flex items-center justify-center shadow-inner">
-            <span className="font-black text-white text-2xl tracking-tighter">AV</span>
-          </div>
-          <div>
-            <span className="font-bold text-2xl tracking-tight">AVClubs</span>
-            <span className="text-[10px] text-rose-500 font-mono ml-1">SECURE</span>
-          </div>
-        </Link>
+        <BrandLogo href="/make" compact />
 
         <nav className="hidden md:flex items-center gap-x-1 text-sm">
           {navItems.map((item) => (
@@ -132,7 +125,7 @@ export function Header() {
       {mobileOpen && (
         <div className="fixed inset-0 bg-black/90 z-[120] md:hidden flex flex-col p-6">
           <div className="flex justify-between mb-8">
-            <span className="font-bold text-2xl">AVClubs</span>
+            <BrandLogo href="/make" compact />
             <button className="text-4xl" onClick={() => setMobileOpen(false)}>
               &times;
             </button>

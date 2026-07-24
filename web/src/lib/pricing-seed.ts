@@ -29,6 +29,36 @@ async function seedPricingOnce(): Promise<void> {
     db.modeParamMapping.count(),
   ]);
 
+  // 品牌转型迁移：隐藏旧版敏感编辑产品，并清理会展示给用户的旧模型标签。
+  if (productCount > 0) {
+    await Promise.all([
+      db.generationProduct.updateMany({
+        where: { mode: "undress" },
+        data: { isActive: false },
+      }),
+      db.generationProduct.updateMany({
+        where: { mode: "txt2img", sortOrder: 10 },
+        data: { label: "文字生图 · 标准模型" },
+      }),
+      db.generationProduct.updateMany({
+        where: { mode: "txt2img", sortOrder: 20 },
+        data: { label: "文字生图 · 创意模型" },
+      }),
+      db.generationProduct.updateMany({
+        where: { mode: "img2img" },
+        data: { label: "图片生图 · 精细编辑模型" },
+      }),
+      db.generationProduct.updateMany({
+        where: { mode: "txt2vid", sortOrder: 10 },
+        data: { label: "文字生视频 · 动态模型" },
+      }),
+      db.generationProduct.updateMany({
+        where: { mode: "img2vid" },
+        data: { label: "图片生视频 · 动态模型" },
+      }),
+    ]);
+  }
+
   if (productCount === 0) {
     await db.generationProduct.createMany({
       data: [
@@ -37,7 +67,7 @@ async function seedPricingOnce(): Promise<void> {
           zenTool: "by_prompt",
           zenModel: "SDXL_NSFW",
           variantKey: "",
-          label: "文生图 · SDXL NSFW",
+          label: "文字生图 · 标准模型",
           creditCost: 2,
           isDefault: true,
           sortOrder: 10,
@@ -47,7 +77,7 @@ async function seedPricingOnce(): Promise<void> {
           zenTool: "by_prompt",
           zenModel: "GENERAL_NSFW",
           variantKey: "",
-          label: "文生图 · GENERAL NSFW",
+          label: "文字生图 · 创意模型",
           creditCost: 2,
           isDefault: false,
           sortOrder: 20,
@@ -57,7 +87,7 @@ async function seedPricingOnce(): Promise<void> {
           zenTool: "image_editor",
           zenModel: "SDXL_NSFW",
           variantKey: "",
-          label: "图生图 · SDXL NSFW",
+          label: "图片生图 · 精细编辑模型",
           creditCost: 3,
           isDefault: true,
           sortOrder: 10,
@@ -67,7 +97,7 @@ async function seedPricingOnce(): Promise<void> {
           zenTool: "text_to_video",
           zenModel: "wan@2.7-nsfw",
           variantKey: "",
-          label: "文生视频 · Wan 2.7 NSFW",
+          label: "文字生视频 · 动态模型",
           creditCost: 15,
           isDefault: true,
           sortOrder: 10,
@@ -87,43 +117,10 @@ async function seedPricingOnce(): Promise<void> {
           zenTool: "videogen",
           zenModel: "wan@2.7-nsfw",
           variantKey: "",
-          label: "图生视频 · Wan 2.7 NSFW",
+          label: "图片生视频 · 动态模型",
           creditCost: 20,
           isDefault: true,
           sortOrder: 10,
-        },
-        {
-          mode: "undress",
-          zenTool: "undress",
-          zenModel: "undress",
-          variantKey: "female",
-          label: "一键脱衣 · 女",
-          creditCost: 4,
-          batchFourMultiplier: 1,
-          isDefault: true,
-          sortOrder: 10,
-        },
-        {
-          mode: "undress",
-          zenTool: "male_undresser",
-          zenModel: "male_undresser",
-          variantKey: "male",
-          label: "一键脱衣 · 男",
-          creditCost: 4,
-          batchFourMultiplier: 1,
-          isDefault: false,
-          sortOrder: 20,
-        },
-        {
-          mode: "undress",
-          zenTool: "couple_undresser",
-          zenModel: "couple_undresser",
-          variantKey: "couple",
-          label: "一键脱衣 · 情侣",
-          creditCost: 4,
-          batchFourMultiplier: 1,
-          isDefault: false,
-          sortOrder: 30,
         },
       ],
     });

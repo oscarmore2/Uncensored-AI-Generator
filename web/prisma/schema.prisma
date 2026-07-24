@@ -18,6 +18,8 @@ model User {
   vipTierId        Int?
   playthingAccess  Boolean   @default(false) // 玩物专区单独授权
   disabledAt       DateTime? // 封禁时间；非空表示禁止登录且会话失效
+  acceptedTermsAt  DateTime?
+  termsVersion     String?
   createdAt        DateTime  @default(now())
 
   generations           Generation[]
@@ -349,6 +351,7 @@ model WaveSpeedProduct {
   isRecommended        Boolean  @default(false)
   sortOrder            Int      @default(100)
   paramSchemaOverride  String?
+  paramPolicy          String? // JSON：时长档位、媒体 MIME/尺寸约束等
   createdAt            DateTime @default(now())
   updatedAt            DateTime @updatedAt
 

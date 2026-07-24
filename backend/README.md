@@ -1,6 +1,6 @@
-# AVClubs Backend
+# 玩玩可物 Backend
 
-完整后端服务，完美搭配前端原型 `avclubs_clone.html`。
+旧版 FastAPI 后端原型；当前主应用位于 `web/`。
 
 ## 快速启动
 
@@ -49,7 +49,7 @@ uvicorn main:app --reload
 - 失败自动退款
 - Demo 模式下使用占位图，真实模式调用你的 Zen API Key
 
-**注意**：完整 NSFW 模型需要 Zen 账号完成首次充值成为 Trusted。
+**注意**：模型能力与可用范围取决于 Zen 账户配置；所有公开使用均应遵守平台内容政策。
 
 ## 生产部署建议
 

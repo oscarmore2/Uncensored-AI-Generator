@@ -1,8 +1,8 @@
-# AVClubs - AI 成人内容生成平台
+# 玩玩可物 - AI 媒体创作平台
 
 **项目状态**：已升级为 Next.js 安全全栈版（`web/` 目录，推荐使用）
 
-**核心目标**：复刻 avclubs.top 这类 AI NSFW 生成网站，并完整接入 **Zen Creator** API + 点数充值系统。
+**核心目标**：提供安全、易用的 AI 图片与视频创作体验，并完整接入 **Zen Creator** API、点数充值与内容治理系统。
 
 ---
 
@@ -90,7 +90,7 @@ uvicorn main:app --reload
 
 ### 前端
 - 单文件 HTML + Tailwind CSS + 原生 JavaScript
-- 响应式设计，深色成人向 UI
+- 响应式设计，现代深色 AI 创作 UI
 - 已完全对接后端 API（JWT 认证 + 实时数据同步）
 
 ### 后端
@@ -169,7 +169,7 @@ img2vid  → videogen
 ```
 
 - 失败自动退款
-- 支持 Trusted 账号的 NSFW 模型
+- 支持多种图片与视频生成模型，并在服务端执行内容政策
 - 生产环境建议把图片上传改成先传 OSS，再传 `asset_id`
 
 ---
@@ -219,7 +219,7 @@ zip -r AVClubs_Fullstack_Project.zip avclubs_fullstack_demo.html backend/
 
 ## 📝 备注
 
-- 本项目为**演示 + 学习用途**，包含成人内容相关功能。
+- 本项目为**演示 + 学习用途**，使用时应遵守用户条款与内容使用条款。
 - 所有生成内容均为 AI 虚构，请遵守当地法律法规。
 - 如需商业使用，请自行处理合规与支付通道。
 

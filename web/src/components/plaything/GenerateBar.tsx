@@ -8,6 +8,8 @@ export function GenerateBar({
   phase,
   progress,
   disabled,
+  quoteSource,
+  quoting,
   onGenerate,
   onTopUp,
 }: {
@@ -16,22 +18,26 @@ export function GenerateBar({
   phase: Phase;
   progress: number;
   disabled?: boolean;
+  quoteSource?: "wavespeed" | "fallback" | null;
+  quoting?: boolean;
   onGenerate: () => void;
   onTopUp: () => void;
 }) {
   const busy = phase !== "idle";
   const label =
     phase === "idle"
-      ? `生成 · ${creditCost} 点`
+      ? quoting
+        ? "估价中…"
+        : `生成 · ${creditCost} 点`
       : phase === "submitting"
-        ? "提交中…"
+        ? "上传并提交…"
         : `生成中 ${progress}%`;
 
   return (
     <div className="space-y-2 pt-2 border-t border-white/10">
       <button
         type="button"
-        disabled={busy || disabled}
+        disabled={busy || disabled || quoting}
         onClick={onGenerate}
         className="w-full py-3 rounded-2xl text-sm font-semibold bg-rose-600 hover:bg-rose-500 disabled:opacity-50 transition-colors"
       >
@@ -45,11 +51,17 @@ export function GenerateBar({
           />
         </div>
       )}
-      <div className="flex items-center justify-between text-xs text-gray-500">
+      <div className="flex items-center justify-between text-xs text-gray-500 gap-2">
         <span>
           余额 <span className="font-mono text-gray-300">{balance}</span> 点 · 无 VIP 折扣
+          {quoteSource === "wavespeed" && (
+            <span className="text-emerald-500/80 ml-1">· 动态价</span>
+          )}
+          {quoteSource === "fallback" && (
+            <span className="text-amber-500/80 ml-1">· 基准价</span>
+          )}
         </span>
-        <button type="button" onClick={onTopUp} className="text-rose-400 hover:text-rose-300">
+        <button type="button" onClick={onTopUp} className="text-rose-400 hover:text-rose-300 shrink-0">
           充值
         </button>
       </div>

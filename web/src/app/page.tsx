@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { getSession } from "@/lib/session";
 import { GuestHeader } from "@/components/GuestHeader";
 import { WorkMedia } from "@/components/WorkMedia";
+import { BrandLogo } from "@/components/BrandLogo";
 
 export const dynamic = "force-dynamic";
 
@@ -28,18 +29,15 @@ export default async function LandingPage() {
         </div>
 
         <div className="relative max-w-7xl mx-auto px-6 pt-24 pb-20 text-center">
-          <div className="inline-flex items-center gap-x-4 mb-8">
-            <div className="w-16 h-16 rounded-3xl bg-gradient-to-br from-rose-600 via-red-600 to-pink-700 flex items-center justify-center shadow-2xl shadow-rose-900/40">
-              <span className="font-black text-white text-4xl tracking-tighter">AV</span>
-            </div>
-            <span className="font-black text-6xl md:text-7xl tracking-tighter">AVClubs</span>
+          <div className="mb-8 flex justify-center">
+            <BrandLogo className="[&_span:last-child]:text-5xl md:[&_span:last-child]:text-7xl [&_span:first-child]:h-16 [&_span:first-child]:w-16" />
           </div>
 
           <h1 className="text-2xl md:text-4xl font-bold tracking-tight text-gray-100 max-w-3xl mx-auto">
-            用一句话，生成你想象中的成人内容
+            一句话，把灵感变成图片与视频
           </h1>
           <p className="mt-4 text-gray-400 max-w-xl mx-auto">
-            AI 图片与视频生成，注册即送体验点数。
+            从概念图、角色设计到动态短片，使用专业 AI 模型轻松创作。
           </p>
 
           <div className="mt-10 flex items-center justify-center gap-x-4">
@@ -90,7 +88,13 @@ export default async function LandingPage() {
       )}
 
       <footer className="border-t border-white/10 py-8 text-center text-xs text-gray-500">
-        AVClubs • 仅限 18 岁以上用户 • AI 生成内容
+        <span>© 2026 玩玩可物 • AI 媒体创作平台</span>
+        <span className="mx-2">·</span>
+        <Link href="/terms" className="hover:text-gray-300">用户条款</Link>
+        <span className="mx-2">·</span>
+        <Link href="/content-policy" className="hover:text-gray-300">内容使用条款</Link>
+        <span className="mx-2">·</span>
+        <Link href="/privacy" className="hover:text-gray-300">隐私与 Cookie</Link>
       </footer>
     </div>
   );

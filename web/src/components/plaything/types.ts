@@ -1,4 +1,5 @@
 import type { PlaythingCategoryId, PlaythingMediaKind } from "@/lib/plaything-categories";
+import type { PlaythingParamPolicy, ResolvedControl } from "@/lib/plaything-param-policy";
 
 export type ParamSchemaProp = {
   type?: string;
@@ -8,6 +9,8 @@ export type ParamSchemaProp = {
   minimum?: number;
   maximum?: number;
   format?: string;
+  items?: { type?: string; format?: string };
+  maxItems?: number;
 };
 
 export type PlaythingProduct = {
@@ -15,6 +18,7 @@ export type PlaythingProduct = {
   model_id: string;
   label: string;
   credit_cost: number;
+  base_price_usd?: number;
   is_recommended: boolean;
   sort_order: number;
   type: string;
@@ -26,6 +30,8 @@ export type PlaythingProduct = {
     properties: Record<string, ParamSchemaProp>;
     required: string[];
   } | null;
+  param_policy?: PlaythingParamPolicy;
+  controls?: ResolvedControl[];
 };
 
 export type PlaythingCategorySummary = {

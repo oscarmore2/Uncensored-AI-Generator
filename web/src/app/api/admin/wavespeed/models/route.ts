@@ -23,6 +23,7 @@ function catalogOut(
     isActive: boolean;
     isRecommended: boolean;
     sortOrder: number;
+    paramPolicy: string | null;
   } | null
 ) {
   return {
@@ -43,6 +44,15 @@ function catalogOut(
           is_active: product.isActive,
           is_recommended: product.isRecommended,
           sort_order: product.sortOrder,
+          param_policy: product.paramPolicy
+            ? (() => {
+                try {
+                  return JSON.parse(product.paramPolicy) as unknown;
+                } catch {
+                  return null;
+                }
+              })()
+            : null,
         }
       : null,
   };

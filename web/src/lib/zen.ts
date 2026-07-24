@@ -56,7 +56,7 @@ async function zenFetchWithKey(
       Authorization: `Bearer ${apiKey}`,
       Accept: "application/json",
       "Content-Type": "application/json",
-      "User-Agent": "AVClubs/1.0 (+https://avclubs; zen-api-client)",
+      "User-Agent": "WanWanKeWu/1.0 (zen-api-client)",
       ...(env.ZEN_PROXY_SECRET ? { "X-Zen-Proxy-Secret": env.ZEN_PROXY_SECRET } : {}),
       ...init?.headers,
     },
@@ -183,7 +183,7 @@ async function zenToolAndInput(
         },
       };
     case "undress": {
-      if (!imageAssetId) throw new Error("脱衣功能需要上传图片");
+      if (!imageAssetId) throw new Error("旧版编辑模式需要上传图片");
       return {
         tool: product.zenTool,
         input: { image_asset: imageAssetId },
@@ -215,7 +215,7 @@ async function uploadZenAsset(apiKey: string, imageBase64: string): Promise<stri
     headers: {
       Authorization: `Bearer ${apiKey}`,
       Accept: "application/json",
-      "User-Agent": "AVClubs/1.0 (+https://avclubs; zen-api-client)",
+      "User-Agent": "WanWanKeWu/1.0 (zen-api-client)",
       ...(env.ZEN_PROXY_SECRET ? { "X-Zen-Proxy-Secret": env.ZEN_PROXY_SECRET } : {}),
     },
     body: form,
@@ -303,7 +303,7 @@ export async function processGeneration(genId: number): Promise<void> {
     const job = (await zenFetchWithKey(creds.apiKey, "/generations", {
       method: "POST",
       body: JSON.stringify({ tool, input }),
-      headers: { "Idempotency-Key": `avclubs-gen-${genId}` },
+      headers: { "Idempotency-Key": `wanwankewu-gen-${genId}` },
     })) as unknown as ZenJob;
 
     await db.generation.update({

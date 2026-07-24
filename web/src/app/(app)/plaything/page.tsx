@@ -10,11 +10,15 @@ import { ModelPicker } from "@/components/plaything/ModelPicker";
 import {
   DynamicParamForm,
   defaultsFromProduct,
-  buildSubmitPayload,
+  buildFieldParams,
+  mediaFieldKinds,
+  mergeMediaUrlsIntoParams,
+  releaseFormMedia,
   type DynamicFormState,
 } from "@/components/plaything/DynamicParamForm";
 import { GenerateBar } from "@/components/plaything/GenerateBar";
 import { MediaBrowser } from "@/components/plaything/MediaBrowser";
+import { uploadAllPending } from "@/lib/plaything-upload-client";
 import type {
   Phase,
   PlaythingCategorySummary,
@@ -35,7 +39,11 @@ export default function PlaythingPage() {
   const [progress, setProgress] = useState(0);
   const [history, setHistory] = useState<PlaythingGen[]>([]);
   const [browserSelectedId, setBrowserSelectedId] = useState<number | null>(null);
+  const [quoteCost, setQuoteCost] = useState<number | null>(null);
+  const [quoteSource, setQuoteSource] = useState<"wavespeed" | "fallback" | null>(null);
+  const [quoting, setQuoting] = useState(false);
   const pollingRef = useRef(false);
+  const quoteTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const loadCatalog = useCallback(async () => {
     try {
@@ -60,8 +68,7 @@ export default function PlaythingPage() {
 
   const loadHistory = useCallback(async () => {
     try {
-      const gens = await api<PlaythingGen[]>("/api/plaything/generations");
-      setHistory(gens);
+      setHistory(await api<PlaythingGen[]>("/api/plaything/generations"));
     } catch {
       /* ignore */
     }
@@ -77,7 +84,6 @@ export default function PlaythingPage() {
     return products.filter((p) => p.category === category);
   }, [products, category]);
 
-  // 切品类：选推荐优先模型并重置表单
   useEffect(() => {
     if (!category) return;
     const list = products.filter((p) => p.category === category);
@@ -97,11 +103,16 @@ export default function PlaythingPage() {
   );
 
   useEffect(() => {
-    setForm(defaultsFromProduct(selected));
+    setForm((prev) => {
+      releaseFormMedia(prev);
+      return defaultsFromProduct(selected);
+    });
+    setQuoteCost(selected?.credit_cost ?? null);
+    setQuoteSource(null);
   }, [selected?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const mediaKind: PlaythingMediaKind = selected?.media_kind
-    ?? (category ? categoryMeta(category).mediaKind : "image");
+  const mediaKind: PlaythingMediaKind =
+    selected?.media_kind ?? (category ? categoryMeta(category).mediaKind : "image");
 
   const filteredHistory = useMemo(() => {
     if (!category) return history;
@@ -115,13 +126,45 @@ export default function PlaythingPage() {
     setBrowserSelectedId(firstOk?.id ?? null);
   }, [category]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  function selectCategory(id: PlaythingCategoryId) {
-    setCategory(id);
-  }
-
-  function selectModel(id: number) {
-    setSelectedId(id);
-  }
+  // 参数变化 → debounce 询价（媒体用占位，不先上传）
+  useEffect(() => {
+    if (!selected) return;
+    const payload = buildFieldParams(selected, form);
+    if (!payload.ok) {
+      setQuoteCost(selected.credit_cost);
+      setQuoteSource(null);
+      return;
+    }
+    if (quoteTimer.current) clearTimeout(quoteTimer.current);
+    quoteTimer.current = setTimeout(() => {
+      setQuoting(true);
+      void api<{
+        cost: number;
+        source: "wavespeed" | "fallback";
+      }>("/api/plaything/quote", {
+        method: "POST",
+        body: JSON.stringify({
+          product_id: selected.id,
+          inputs: {
+            ...payload.params,
+            ...(payload.prompt ? { prompt: payload.prompt } : {}),
+          },
+        }),
+      })
+        .then((q) => {
+          setQuoteCost(q.cost);
+          setQuoteSource(q.source);
+        })
+        .catch(() => {
+          setQuoteCost(selected.credit_cost);
+          setQuoteSource("fallback");
+        })
+        .finally(() => setQuoting(false));
+    }, 400);
+    return () => {
+      if (quoteTimer.current) clearTimeout(quoteTimer.current);
+    };
+  }, [form.prompt, form.negativePrompt, form.fields, selected]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function pollUntilDone(id: number) {
     if (pollingRef.current) return;
@@ -161,20 +204,13 @@ export default function PlaythingPage() {
 
   async function submit() {
     if (!selected || phase !== "idle") return;
-    const payload = buildSubmitPayload(selected, form);
-    if (payload.needsMedia) {
-      toast("该模型需要上传参考媒体");
+    const payload = buildFieldParams(selected, form);
+    if (!payload.ok) {
+      toast(payload.error);
       return;
     }
-    const reqPrompt = selected.param_schema?.required?.includes("prompt");
-    if ((reqPrompt || !payload.image_base64) && !form.prompt.trim() && !payload.image_base64) {
-      // soft: allow image-only tools
-      if (!Object.values(form.mediaFiles).some(Boolean)) {
-        toast("请填写提示词或上传参考媒体");
-        return;
-      }
-    }
-    if ((user?.balance ?? 0) < selected.credit_cost) {
+    const cost = quoteCost ?? selected.credit_cost;
+    if ((user?.balance ?? 0) < cost) {
       toast("点数不足");
       setRechargeOpen(true);
       return;
@@ -183,13 +219,20 @@ export default function PlaythingPage() {
     setPhase("submitting");
     setProgress(0);
     try {
+      // 点击生成后再上传媒体
+      const mediaUrls = await uploadAllPending({
+        productId: selected.id,
+        mediaByField: payload.mediaFiles,
+        fieldKinds: mediaFieldKinds(selected),
+      });
+      const params = mergeMediaUrlsIntoParams(selected, payload.params, mediaUrls);
+
       const gen = await api<PlaythingGen>("/api/plaything/generations", {
         method: "POST",
         body: JSON.stringify({
           product_id: selected.id,
           prompt: payload.prompt,
-          params: payload.params,
-          image_base64: payload.image_base64,
+          params,
         }),
       });
       await refreshUser();
@@ -198,7 +241,7 @@ export default function PlaythingPage() {
       void pollUntilDone(gen.id);
     } catch (e) {
       setPhase("idle");
-      toast(e instanceof ApiError ? e.message : "提交失败");
+      toast(e instanceof Error ? e.message : e instanceof ApiError ? e.message : "提交失败");
     }
   }
 
@@ -226,11 +269,7 @@ export default function PlaythingPage() {
       </div>
 
       <div className="flex flex-col lg:flex-row gap-4 lg:gap-5 min-h-[calc(100vh-10rem)]">
-        <CategoryRail
-          categories={categories}
-          active={category}
-          onChange={selectCategory}
-        />
+        <CategoryRail categories={categories} active={category} onChange={setCategory} />
 
         <aside className="lg:w-[340px] shrink-0 flex flex-col gap-4 glass rounded-3xl p-4 sm:p-5">
           {categoryProducts.length === 0 ? (
@@ -240,18 +279,25 @@ export default function PlaythingPage() {
               <ModelPicker
                 products={categoryProducts}
                 selectedId={selectedId}
-                onSelect={selectModel}
+                onSelect={setSelectedId}
               />
               {selected && (
                 <>
                   <div className="flex-1 overflow-y-auto max-h-[50vh] lg:max-h-none pr-1">
-                    <DynamicParamForm product={selected} value={form} onChange={setForm} />
+                    <DynamicParamForm
+                      product={selected}
+                      value={form}
+                      onChange={setForm}
+                      onError={(msg) => toast(msg)}
+                    />
                   </div>
                   <GenerateBar
-                    creditCost={selected.credit_cost}
+                    creditCost={quoteCost ?? selected.credit_cost}
                     balance={user?.balance ?? 0}
                     phase={phase}
                     progress={progress}
+                    quoteSource={quoteSource}
+                    quoting={quoting}
                     onGenerate={() => void submit()}
                     onTopUp={() => setRechargeOpen(true)}
                   />

@@ -12,7 +12,7 @@ const MODE_LABELS: Record<string, string> = {
   txt2vid: "文生视频",
   img2img: "图生图",
   img2vid: "图生视频",
-  undress: "一键脱衣",
+  undress: "图像编辑",
 };
 
 export default async function WorkDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -60,7 +60,7 @@ export default async function WorkDetailPage({ params }: { params: Promise<{ id:
 
           <div className="lg:col-span-5 space-y-5">
             <div>
-              <span className="nsfw-badge">{MODE_LABELS[work.mode] ?? work.mode}</span>
+              <span className="media-badge">{MODE_LABELS[work.mode] ?? work.mode}</span>
               <h1 className="text-2xl font-bold tracking-tight mt-3">{work.title ?? "社区作品"}</h1>
             </div>
 

@@ -75,7 +75,7 @@ export async function POST(req: Request) {
         {
           price_data: {
             currency: "usd",
-            product_data: { name: `AVClubs ${plan.label}` },
+            product_data: { name: `玩玩可物 ${plan.label}` },
             unit_amount: plan.priceCents,
             recurring: { interval: "month" },
           },

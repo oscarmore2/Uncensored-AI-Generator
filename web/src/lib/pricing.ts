@@ -175,7 +175,7 @@ export async function buildZenInputFromMappings(
     input[m.zenPath] = value;
   }
 
-  // 强制产品模型；脱衣工具不带 model 字段时仍可写（Zen undress 可忽略）
+  // 强制产品模型；旧版特殊编辑工具不带 model 字段时仍可写。
   if (mode !== "undress") {
     input.model = product.zenModel;
   }
