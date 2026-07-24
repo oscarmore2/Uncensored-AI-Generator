@@ -7,6 +7,9 @@ export interface ApiUser {
   role: string;
   balance: number;
   is_vip: boolean;
+  adult_mode_enabled: boolean;
+  adult_mode_requested: boolean;
+  age_verified: boolean;
   vip_expires_at: string | null;
   vip_tier?: {
     id: number;
@@ -24,6 +27,9 @@ export interface ApiGeneration {
   status: string;
   result_urls: string[] | null;
   cost: number;
+  is_adult: boolean;
+  media_expires_at: string | null;
+  media_deleted_at: string | null;
   created_at: string;
 }
 

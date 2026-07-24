@@ -18,6 +18,13 @@ export async function POST(_req: Request, ctx: { params: Promise<{ id: string }>
   if (gen.status !== "succeeded" || !gen.resultUrls) {
     return NextResponse.json({ error: "只能曝光生成成功的作品" }, { status: 400 });
   }
+  const selectionDeadline = new Date(gen.createdAt.getTime() + 7 * 24 * 60 * 60 * 1000);
+  if (Date.now() >= selectionDeadline.getTime()) {
+    return NextResponse.json(
+      { error: "作品生成已超过 7 天，无法再设为精选" },
+      { status: 410 }
+    );
+  }
 
   const existing = await db.publicWork.findFirst({ where: { sourceGenerationId: genId } });
   if (existing) {
@@ -42,10 +49,14 @@ export async function POST(_req: Request, ctx: { params: Promise<{ id: string }>
         source: "user_feature",
         sourceGenerationId: gen.id,
         sourceZenJobId: gen.zenJobId,
+        isAdult: gen.isAdult,
         featuredById: mod.id,
       },
     }),
-    db.generation.update({ where: { id: genId }, data: { visibility: "featured" } }),
+    db.generation.update({
+      where: { id: genId },
+      data: { visibility: "featured", mediaExpiresAt: null },
+    }),
   ]);
 
   return NextResponse.json({ ok: true, work: publicWorkModOut(work) }, { status: 201 });

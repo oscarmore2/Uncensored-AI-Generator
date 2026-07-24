@@ -6,7 +6,9 @@ import { processGeneration } from "@/lib/zen";
 import { isVipActive, resolveGenerationQuote } from "@/lib/pricing";
 import { generationOut } from "@/lib/serialize";
 import { rateLimit } from "@/lib/rate-limit";
-import { reviewPromptWithHarness } from "@/lib/content-safety";
+import { hasAlwaysBlockedCategory, reviewPromptWithHarness } from "@/lib/content-safety";
+import { hasAdultAccess } from "@/lib/adult-access";
+import { generatedMediaExpiry } from "@/lib/media-retention";
 
 export async function POST(req: Request) {
   const user = await getCurrentUser();
@@ -26,28 +28,36 @@ export async function POST(req: Request) {
   if (gen.mode === "undress") {
     return NextResponse.json({ error: "该旧版编辑模式已停止开放" }, { status: 410 });
   }
-  if (!isVipActive(user)) {
-    try {
-      const safety = await reviewPromptWithHarness({
-        mode: gen.mode,
-        prompt: gen.prompt,
-      });
-      if (!safety.allowed) {
-        return NextResponse.json(
-          {
-            error: `内容审查未通过：${safety.reason}`,
-            code: "CONTENT_POLICY_REJECTED",
-            categories: safety.categories,
-          },
-          { status: 422 }
-        );
-      }
-    } catch (error) {
+  const adultAccess = hasAdultAccess(user);
+  let isAdult = false;
+  let safetyCategories: string[] = [];
+  try {
+    const safety = await reviewPromptWithHarness({
+      mode: gen.mode,
+      prompt: gen.prompt,
+    });
+    isAdult = !safety.allowed;
+    safetyCategories = safety.categories;
+    if (isAdult && (!adultAccess || hasAlwaysBlockedCategory(safety.categories))) {
+      return NextResponse.json(
+        {
+          error: `内容审查未通过：${safety.reason}`,
+          code: "CONTENT_POLICY_REJECTED",
+          categories: safety.categories,
+        },
+        { status: 422 }
+      );
+    }
+  } catch (error) {
+    if (!adultAccess) {
       return NextResponse.json(
         { error: error instanceof Error ? error.message : "内容审查服务暂不可用" },
         { status: 503 }
       );
     }
+    // 成人模式不因分类器不可用而阻断；保守标记为 18+。
+    isAdult = true;
+    safetyCategories = ["unclassified_adult_mode"];
   }
 
   const quote = await resolveGenerationQuote({
@@ -59,6 +69,8 @@ export async function POST(req: Request) {
   });
   const cost = quote.cost;
   const prompt = gen.prompt.trim();
+  const ownerVipAtCreation = isVipActive(user);
+  const mediaExpiresAt = await generatedMediaExpiry("zen", ownerVipAtCreation);
 
   const charged = await db.user.updateMany({
     where: { id: user.id, balance: { gte: cost } },
@@ -80,6 +92,7 @@ export async function POST(req: Request) {
         quality: gen.quality,
         duration: gen.duration,
         resolution: gen.resolution,
+        seed: gen.seed,
         batch: gen.batch,
         undress_variant: gen.undress_variant,
         zen_model: quote.product.zenModel,
@@ -87,6 +100,11 @@ export async function POST(req: Request) {
         image_base64: gen.image_base64 ?? null,
       }),
       cost,
+      isAdult,
+      safetyCategories: JSON.stringify(safetyCategories),
+      ownerVipAtCreation,
+      retentionAssigned: true,
+      mediaExpiresAt,
       status: "pending",
     },
   });

@@ -53,6 +53,9 @@ export type PlaythingGen = {
   result_urls: string[] | null;
   cost: number;
   error: string | null;
+  is_adult: boolean;
+  media_expires_at: string | null;
+  media_deleted_at: string | null;
   created_at: string;
   category: PlaythingCategoryId;
   media_kind: PlaythingMediaKind;

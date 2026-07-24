@@ -47,6 +47,7 @@ export async function POST(req: Request) {
       thumbUrl: storedUrl,
       source: "zen_import",
       sourceZenJobId: data.source_zen_job_id ?? null,
+      isAdult: data.is_adult,
       featuredById: mod.id,
     },
   });

@@ -2,6 +2,7 @@
 
 import { EmptyState } from "./ImageAlbum";
 import type { PlaythingGen } from "./types";
+import { MediaExpiryBadge } from "@/components/MediaExpiryBadge";
 
 export function AudioLibrary({
   items,
@@ -27,7 +28,15 @@ export function AudioLibrary({
           <>
             <p className="text-sm text-gray-300 mb-3">
               #{selected!.id} · {selected!.product_label || selected!.model_id}
+              {selected!.is_adult ? " · 18+" : ""}
             </p>
+            <div className="mb-3">
+              <MediaExpiryBadge
+                expiresAt={selected!.media_expires_at}
+                deletedAt={selected!.media_deleted_at}
+                compact
+              />
+            </div>
             <audio key={url} src={url} controls className="w-full" />
           </>
         ) : (

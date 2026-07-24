@@ -63,6 +63,8 @@ const envSchema = z.object({
   // Cloudflare Turnstile (site key public; secret server-only)
   TURNSTILE_SITE_KEY: z.string().default(""),
   TURNSTILE_SECRET: z.string().default(""),
+  MEDIA_CLEANUP_SECRET: z.string().default(""),
+  MEDIA_CLEANUP_BATCH_SIZE: z.coerce.number().int().min(1).max(500).default(100),
 });
 
 function loadEnv() {

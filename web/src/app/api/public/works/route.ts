@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { publicWorkOut } from "@/lib/serialize";
+import { getCurrentUser } from "@/lib/auth";
+import { hasAdultAccess } from "@/lib/adult-access";
 
 /** 游客可访问的公共作品列表（仅已上架），分页 */
 export async function GET(req: Request) {
@@ -8,9 +10,12 @@ export async function GET(req: Request) {
   const page = Math.max(1, Number(url.searchParams.get("page")) || 1);
   const limit = Math.min(48, Math.max(1, Number(url.searchParams.get("limit")) || 24));
   const mode = url.searchParams.get("mode");
+  const user = await getCurrentUser();
+  const adultAccess = hasAdultAccess(user);
 
   const where = {
     isPublished: true,
+    ...(!adultAccess ? { isAdult: false } : {}),
     ...(mode ? { mode } : {}),
   };
 
@@ -29,5 +34,6 @@ export async function GET(req: Request) {
     page,
     limit,
     works: works.map(publicWorkOut),
+    adult_access: adultAccess,
   });
 }

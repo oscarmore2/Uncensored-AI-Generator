@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { requireRole } from "@/lib/auth";
 import { publicWorkModOut } from "@/lib/serialize";
 import { publicWorkPatchSchema } from "@/lib/validators";
+import { generatedMediaExpiry } from "@/lib/media-retention";
 
 /** 公共库单条：上下架 / 排序 / 改标题 */
 export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }> }) {
@@ -28,6 +29,7 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
       ...(parsed.data.is_published !== undefined ? { isPublished: parsed.data.is_published } : {}),
       ...(parsed.data.sort_order !== undefined ? { sortOrder: parsed.data.sort_order } : {}),
       ...(parsed.data.title !== undefined ? { title: parsed.data.title } : {}),
+      ...(parsed.data.is_adult !== undefined ? { isAdult: parsed.data.is_adult } : {}),
     },
   });
 
@@ -45,6 +47,19 @@ export async function DELETE(_req: Request, ctx: { params: Promise<{ id: string 
 
   const work = await db.publicWork.findUnique({ where: { id: workId } });
   if (!work) return NextResponse.json({ error: "作品不存在" }, { status: 404 });
+  const sourceGeneration = work.sourceGenerationId
+    ? await db.generation.findUnique({
+        where: { id: work.sourceGenerationId },
+        select: { id: true, createdAt: true, ownerVipAtCreation: true },
+      })
+    : null;
+  const restoredExpiry = sourceGeneration
+    ? await generatedMediaExpiry(
+        "zen",
+        sourceGeneration.ownerVipAtCreation,
+        sourceGeneration.createdAt
+      )
+    : null;
 
   await db.$transaction([
     db.publicWork.delete({ where: { id: workId } }),
@@ -53,7 +68,7 @@ export async function DELETE(_req: Request, ctx: { params: Promise<{ id: string 
       ? [
           db.generation.updateMany({
             where: { id: work.sourceGenerationId, visibility: "featured" },
-            data: { visibility: "private" },
+            data: { visibility: "private", mediaExpiresAt: restoredExpiry },
           }),
         ]
       : []),

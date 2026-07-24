@@ -4,6 +4,7 @@ import { useEffect, useMemo } from "react";
 import { EmptyState } from "./ImageAlbum";
 import { detectMediaKindFromUrl } from "@/lib/plaything-categories";
 import type { PlaythingGen } from "./types";
+import { MediaExpiryBadge } from "@/components/MediaExpiryBadge";
 
 export function Model3DViewer({
   items,
@@ -68,6 +69,15 @@ export function Model3DViewer({
         )}
       </div>
       <div className="lg:w-44 shrink-0 space-y-2 max-h-[60vh] overflow-y-auto">
+        {selected && (
+          <div className="pb-1">
+            <MediaExpiryBadge
+              expiresAt={selected.media_expires_at}
+              deletedAt={selected.media_deleted_at}
+              compact
+            />
+          </div>
+        )}
         {succeeded.map((g) => (
           <button
             key={g.id}

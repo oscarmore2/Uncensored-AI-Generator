@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { api, type ApiGeneration } from "@/lib/client";
 import { useApp } from "@/components/AppContext";
 import { AdaptiveMedia } from "@/components/WorkMedia";
+import { MediaExpiryBadge } from "@/components/MediaExpiryBadge";
 
 export default function HistoryPage() {
   const { toast } = useApp();
@@ -80,12 +81,20 @@ export default function HistoryPage() {
                 )}
                 <div className="absolute top-3 left-3">
                   <span className="text-[10px] px-2.5 py-px bg-black/60 rounded-full">{item.mode}</span>
+                  {item.is_adult && (
+                    <span className="ml-1 rounded-full bg-red-600 px-2 py-px text-[10px] font-bold text-white">18+</span>
+                  )}
                 </div>
                 <div className="absolute top-3 right-3 text-[10px] px-2 py-px bg-black/70 rounded-full">
                   {item.cost}pt
                 </div>
               </div>
               <div className="p-4">
+                <MediaExpiryBadge
+                  expiresAt={item.media_expires_at}
+                  deletedAt={item.media_deleted_at}
+                  compact
+                />
                 <div className="text-xs text-gray-400 mb-1">
                   {new Date(item.created_at).toLocaleDateString()}
                 </div>
@@ -112,6 +121,9 @@ export default function HistoryPage() {
             <div className="p-5 flex justify-between border-b border-white/10">
               <div>
                 <span className="font-semibold">{selected.mode}</span>
+                {selected.is_adult && (
+                  <span className="ml-2 rounded-full bg-red-600 px-2 py-0.5 text-[10px] font-bold text-white">18+</span>
+                )}
               </div>
               <button onClick={() => setSelected(null)} className="text-3xl text-gray-400 hover:text-white">
                 &times;
@@ -123,13 +135,19 @@ export default function HistoryPage() {
               ) : (
                 <div className="fake-image rounded-2xl h-80 flex items-center justify-center text-center">
                   <div>
-                    生成中或失败
+                    {selected.media_deleted_at ? "媒体已按保留策略清理" : "生成中或失败"}
                     <br />
                     <span className="text-xs">{selected.status}</span>
                   </div>
                 </div>
               )}
               <div className="mt-6 text-sm bg-black/40 p-4 rounded-2xl">{selected.prompt}</div>
+              <div className="mt-3">
+                <MediaExpiryBadge
+                  expiresAt={selected.media_expires_at}
+                  deletedAt={selected.media_deleted_at}
+                />
+              </div>
               <div className="flex gap-3 mt-6 px-4 pb-4">
                 {selected.result_urls?.length ? (
                   <a

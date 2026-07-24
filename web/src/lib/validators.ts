@@ -19,6 +19,7 @@ export const generationSchema = z
     quality: z.string().max(20).optional().default("quality"),
     duration: z.union([z.string().max(10), z.number()]).optional(),
     resolution: z.string().max(20).optional(),
+    seed: z.union([z.string().max(40), z.number().int()]).optional(),
     zen_model: z.string().max(80).optional(),
     batch: z.union([z.literal(1), z.literal(2), z.literal(4)]).optional().default(1),
     undress_variant: z.enum(["female", "male", "couple"]).optional().default("female"),
@@ -56,6 +57,7 @@ export const publicWorkImportSchema = z.object({
   params: z.record(z.string(), z.unknown()).optional(),
   source_zen_job_id: z.string().max(120).optional(),
   title: z.string().max(200).optional(),
+  is_adult: z.boolean().optional().default(false),
 });
 
 export const publicWorkPatchSchema = z
@@ -63,5 +65,6 @@ export const publicWorkPatchSchema = z
     is_published: z.boolean().optional(),
     sort_order: z.number().int().min(-9999).max(9999).optional(),
     title: z.string().max(200).nullable().optional(),
+    is_adult: z.boolean().optional(),
   })
   .refine((v) => Object.keys(v).length > 0, "至少提供一个字段");

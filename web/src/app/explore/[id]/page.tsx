@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
-import { getSession } from "@/lib/session";
+import { getCurrentUser } from "@/lib/auth";
+import { hasAdultAccess } from "@/lib/adult-access";
 import { GuestHeader } from "@/components/GuestHeader";
 import { AdaptiveMedia } from "@/components/WorkMedia";
 
@@ -20,10 +21,15 @@ export default async function WorkDetailPage({ params }: { params: Promise<{ id:
   const workId = Number(id);
   if (!Number.isInteger(workId)) notFound();
 
-  const [session, work] = await Promise.all([
-    getSession(),
-    db.publicWork.findFirst({ where: { id: workId, isPublished: true } }),
-  ]);
+  const user = await getCurrentUser();
+  const adultAccess = hasAdultAccess(user);
+  const work = await db.publicWork.findFirst({
+    where: {
+      id: workId,
+      isPublished: true,
+      ...(!adultAccess ? { isAdult: false } : {}),
+    },
+  });
   if (!work) notFound();
 
   let paramEntries: [string, unknown][] = [];
@@ -34,13 +40,8 @@ export default async function WorkDetailPage({ params }: { params: Promise<{ id:
   }
 
   // 同款参数创作：把 prompt/negative/mode 带进创作中心；未登录先走登录并回跳
-  const remixQuery = new URLSearchParams({
-    prompt: work.prompt,
-    ...(work.negativePrompt ? { negative: work.negativePrompt } : {}),
-    mode: work.mode,
-  }).toString();
-  const makeUrl = `/make?${remixQuery}`;
-  const ctaHref = session ? makeUrl : `/login?mode=register&next=${encodeURIComponent(makeUrl)}`;
+  const makeUrl = `/make?remix_work=${work.id}`;
+  const ctaHref = user ? makeUrl : `/login?mode=register&next=${encodeURIComponent(makeUrl)}`;
 
   return (
     <div className="min-h-screen">
@@ -61,6 +62,9 @@ export default async function WorkDetailPage({ params }: { params: Promise<{ id:
           <div className="lg:col-span-5 space-y-5">
             <div>
               <span className="media-badge">{MODE_LABELS[work.mode] ?? work.mode}</span>
+              {work.isAdult && (
+                <span className="ml-2 rounded-full bg-red-600 px-2 py-0.5 text-[10px] font-bold text-white">18+</span>
+              )}
               <h1 className="text-2xl font-bold tracking-tight mt-3">{work.title ?? "社区作品"}</h1>
             </div>
 
@@ -96,9 +100,9 @@ export default async function WorkDetailPage({ params }: { params: Promise<{ id:
                 className="generate-btn block w-full py-4 text-white font-bold text-lg rounded-3xl text-center shadow-xl active:scale-[0.985]"
               >
                 <i className="fas fa-magic mr-2" />
-                {session ? "用同款参数创作" : "注册后用同款参数创作"}
+                {user ? "用同款参数创作" : "注册后用同款参数创作"}
               </Link>
-              {!session && (
+              {!user && (
                 <p className="text-center text-xs text-gray-500 mt-3">注册即送体验点数，参数自动带入创作中心</p>
               )}
             </div>

@@ -1,7 +1,10 @@
 import Link from "next/link";
 import { db } from "@/lib/db";
 import { GuestHeader } from "@/components/GuestHeader";
-import { WorkMedia } from "@/components/WorkMedia";
+import { ExploreGallery, type ExploreWork } from "@/components/ExploreGallery";
+import { getCurrentUser } from "@/lib/auth";
+import { hasAdultAccess } from "@/lib/adult-access";
+import { publicWorkOut } from "@/lib/serialize";
 
 export const dynamic = "force-dynamic";
 
@@ -22,8 +25,14 @@ export default async function ExplorePage({
   const sp = await searchParams;
   const page = Math.max(1, Number(sp.page) || 1);
   const mode = sp.mode && sp.mode in MODE_LABELS ? sp.mode : undefined;
+  const user = await getCurrentUser();
+  const adultAccess = hasAdultAccess(user);
 
-  const where = { isPublished: true, ...(mode ? { mode } : {}) };
+  const where = {
+    isPublished: true,
+    ...(!adultAccess ? { isAdult: false } : {}),
+    ...(mode ? { mode } : {}),
+  };
   const [total, works] = await Promise.all([
     db.publicWork.count({ where }),
     db.publicWork.findMany({
@@ -75,25 +84,13 @@ export default async function ExplorePage({
             暂无公开作品，稍后再来看看
           </div>
         ) : (
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-            {works.map((w) => (
-              <Link
-                key={w.id}
-                href={`/explore/${w.id}`}
-                className="result-card group relative rounded-3xl overflow-hidden border border-white/10 bg-[#111] aspect-[3/4]"
-              >
-                <WorkMedia
-                  mode={w.mode}
-                  src={w.thumbUrl ?? w.mediaUrl}
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                />
-                <span className="absolute top-3 left-3 media-badge">{MODE_LABELS[w.mode] ?? w.mode}</span>
-                <div className="absolute inset-x-0 bottom-0 p-4 bg-gradient-to-t from-black/90 to-transparent">
-                  <p className="text-xs text-gray-300 line-clamp-2">{w.title ?? w.prompt}</p>
-                </div>
-              </Link>
-            ))}
-          </div>
+          <ExploreGallery
+            signedIn={Boolean(user)}
+            works={works.map((work) => ({
+              ...publicWorkOut(work),
+              created_at: work.createdAt.toISOString(),
+            })) as ExploreWork[]}
+          />
         )}
 
         {totalPages > 1 && (

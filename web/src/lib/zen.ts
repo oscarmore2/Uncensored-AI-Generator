@@ -385,6 +385,22 @@ export async function processGeneration(genId: number): Promise<void> {
   } catch (err) {
     console.error(`[zen] generation ${genId} error:`, err);
     await failAndRefund(genId, err instanceof Error ? err.message : String(err)).catch(() => {});
+  } finally {
+    const current = await db.generation.findUnique({ where: { id: genId }, select: { params: true } }).catch(() => null);
+    if (current) {
+      try {
+        const params = JSON.parse(current.params) as Record<string, unknown>;
+        if ("image_base64" in params) {
+          delete params.image_base64;
+          await db.generation.update({
+            where: { id: genId },
+            data: { params: JSON.stringify(params) },
+          });
+        }
+      } catch {
+        // 无效参数不阻断任务收尾
+      }
+    }
   }
 }
 

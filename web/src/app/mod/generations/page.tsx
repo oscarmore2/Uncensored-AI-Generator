@@ -15,6 +15,7 @@ interface ModGeneration {
   visibility: string;
   deleted_at: string | null;
   created_at: string;
+  is_adult: boolean;
 }
 
 interface ListResp {
@@ -138,6 +139,10 @@ function GenerationsInner() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
         {data?.generations.map((g) => (
+          (() => {
+            const featureDeadline = new Date(g.created_at).getTime() + 7 * 24 * 60 * 60 * 1000;
+            const featureExpired = Date.now() >= featureDeadline;
+            return (
           <div
             key={g.id}
             className={`glass rounded-3xl overflow-hidden ${g.deleted_at ? "opacity-60" : ""} ${
@@ -161,6 +166,9 @@ function GenerationsInner() {
                 {g.visibility === "featured" && (
                   <span className="text-[10px] px-2 py-0.5 bg-emerald-600/80 rounded-full">已曝光</span>
                 )}
+                {g.is_adult && (
+                  <span className="text-[10px] px-2 py-0.5 bg-red-600 rounded-full font-bold">18+</span>
+                )}
               </div>
             </div>
             <div className="p-4">
@@ -171,6 +179,14 @@ function GenerationsInner() {
                 <span>{g.username}</span>
               </div>
               <p className="text-xs text-gray-300 line-clamp-2 mb-3">{g.prompt}</p>
+              {g.visibility !== "featured" && (
+                <p className={`text-[11px] mb-3 ${featureExpired ? "text-red-300" : "text-amber-300"}`}>
+                  <i className="fas fa-hourglass-half mr-1" />
+                  {featureExpired
+                    ? "已超过 7 天，无法精选"
+                    : `精选截止：${new Date(featureDeadline).toLocaleString()}`}
+                </p>
+              )}
               <div className="flex gap-2">
                 {g.deleted_at ? (
                   <button
@@ -192,7 +208,8 @@ function GenerationsInner() {
                     {g.status === "succeeded" && g.visibility !== "featured" && (
                       <button
                         onClick={() => feature(g.id)}
-                        disabled={busy}
+                        disabled={busy || featureExpired}
+                        title={featureExpired ? "作品生成已超过 7 天" : "设为精选"}
                         className="flex-1 py-1.5 text-xs bg-emerald-600/20 hover:bg-emerald-600/40 border border-emerald-500/30 text-emerald-300 rounded-xl disabled:opacity-50"
                       >
                         曝光
@@ -203,6 +220,8 @@ function GenerationsInner() {
               </div>
             </div>
           </div>
+            );
+          })()
         ))}
       </div>
 

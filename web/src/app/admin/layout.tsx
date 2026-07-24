@@ -17,6 +17,7 @@ const NAV = [
   { href: "/admin/wavespeed/models", label: "玩物模型", icon: "fa-store" },
   { href: "/admin/pricing", label: "价格体系", icon: "fa-tags" },
   { href: "/admin/oss", label: "对象存储", icon: "fa-cloud" },
+  { href: "/admin/media-cleanup", label: "媒体清理", icon: "fa-clock-rotate-left" },
   { href: "/admin/audit", label: "审计日志", icon: "fa-clipboard-list" },
   { href: "/admin/webhooks", label: "Webhook", icon: "fa-bolt" },
   { href: "/admin/settings", label: "系统配置", icon: "fa-gear" },

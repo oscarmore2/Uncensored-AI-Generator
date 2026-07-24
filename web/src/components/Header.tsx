@@ -16,7 +16,7 @@ const NAV = [
 export function Header() {
   const pathname = usePathname();
   const router = useRouter();
-  const { user, setRechargeOpen, toast } = useApp();
+  const { user, toast } = useApp();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [plaything, setPlaything] = useState(false);
 
@@ -76,7 +76,7 @@ export function Header() {
 
         <div className="flex items-center gap-x-3">
           <div
-            onClick={() => setRechargeOpen(true)}
+            onClick={() => router.push("/pricing")}
             className="credit-display flex items-center gap-x-2 px-4 h-9 rounded-2xl cursor-pointer hover:border-rose-500/50 transition-colors"
           >
             <div className="flex items-center gap-x-1.5">
@@ -97,7 +97,7 @@ export function Header() {
           </Link>
 
           <button
-            onClick={() => setRechargeOpen(true)}
+            onClick={() => router.push("/pricing")}
             className="hidden md:flex items-center gap-x-2 px-4 h-9 text-sm font-semibold bg-white/5 hover:bg-white/10 border border-white/10 rounded-2xl transition-all active:scale-[0.985]"
           >
             <i className="fas fa-wallet" />
@@ -142,7 +142,7 @@ export function Header() {
           ))}
           <button
             onClick={() => {
-              setRechargeOpen(true);
+              router.push("/pricing");
               setMobileOpen(false);
             }}
             className="mt-auto py-4 bg-white text-black font-bold rounded-3xl"

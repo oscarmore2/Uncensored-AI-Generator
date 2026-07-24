@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import type { PlaythingGen } from "./types";
+import { MediaExpiryBadge } from "@/components/MediaExpiryBadge";
 
 export function ImageAlbum({
   items,
@@ -54,6 +55,12 @@ export function ImageAlbum({
               <img src={thumb} alt="" className="w-full h-full object-cover" />
               <span className="absolute bottom-1 left-1 text-[10px] px-1.5 py-0.5 rounded bg-black/60 font-mono">
                 #{g.id}
+              </span>
+              {g.is_adult && (
+                <span className="absolute right-1 top-1 rounded-full bg-red-600 px-2 py-0.5 text-[10px] font-bold">18+</span>
+              )}
+              <span className="absolute bottom-1 right-1">
+                <MediaExpiryBadge expiresAt={g.media_expires_at} deletedAt={g.media_deleted_at} compact />
               </span>
             </button>
           );

@@ -3,10 +3,11 @@ import { randomUUID } from "crypto";
 import { db } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
 import { hasPlaythingAccess } from "@/lib/plaything-access";
-import { uploadBuffer, ossConfigured } from "@/lib/oss";
+import { deleteObjectKey, uploadBufferWithMeta, ossConfigured } from "@/lib/oss";
 import { mergeMediaPolicy } from "@/lib/plaything-param-policy";
 import { extForMime, validateUploadedMedia } from "@/lib/plaything-media-validate";
 import { rateLimit } from "@/lib/rate-limit";
+import { uploadMediaExpiry } from "@/lib/media-retention";
 
 export const runtime = "nodejs";
 
@@ -78,9 +79,32 @@ export async function POST(req: Request) {
   const relativePath = `plaything/${user.id}/${randomUUID()}.${ext}`;
 
   try {
-    const url = await uploadBuffer(buffer, relativePath, validated.contentType);
+    const uploaded = await uploadBufferWithMeta(buffer, relativePath, validated.contentType);
+    let asset;
+    let expiresAt;
+    try {
+      expiresAt = await uploadMediaExpiry();
+      asset = await db.mediaAsset.create({
+        data: {
+          userId: user.id,
+          kind: "upload",
+          channel: "wavespeed",
+          url: uploaded.url,
+          objectKey: uploaded.objectKey,
+          contentType: validated.contentType,
+          bytes: validated.bytes,
+          retentionAssigned: true,
+          expiresAt,
+        },
+      });
+    } catch (error) {
+      await deleteObjectKey(uploaded.objectKey, uploaded.config).catch(() => undefined);
+      throw error;
+    }
     return NextResponse.json({
-      url,
+      url: uploaded.url,
+      asset_id: asset.id,
+      expires_at: expiresAt,
       content_type: validated.contentType,
       bytes: validated.bytes,
       width: validated.width ?? null,

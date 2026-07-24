@@ -4,10 +4,11 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { api, type ApiGeneration } from "@/lib/client";
 import { useApp } from "@/components/AppContext";
+import { AdultModeSettings } from "@/components/AdultModeSettings";
 
 export default function ProfilePage() {
   const router = useRouter();
-  const { user, refreshUser, setRechargeOpen, toast } = useApp();
+  const { user, refreshUser, toast } = useApp();
   const [totalGens, setTotalGens] = useState<number | null>(null);
 
   useEffect(() => {
@@ -46,7 +47,7 @@ export default function ProfilePage() {
 
             <div className="mt-4 flex gap-2">
               <button
-                onClick={() => setRechargeOpen(true)}
+                onClick={() => router.push("/pricing")}
                 className="px-5 py-2 text-sm font-semibold bg-white text-black rounded-2xl flex items-center gap-x-2 hover:bg-gray-100"
               >
                 <i className="fas fa-wallet" /> <span>充值点数</span>
@@ -93,6 +94,7 @@ export default function ProfilePage() {
           </p>
         </div>
       )}
+      <AdultModeSettings />
     </div>
   );
 }

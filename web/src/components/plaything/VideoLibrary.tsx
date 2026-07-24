@@ -2,6 +2,7 @@
 
 import { EmptyState } from "./ImageAlbum";
 import type { PlaythingGen } from "./types";
+import { MediaExpiryBadge } from "@/components/MediaExpiryBadge";
 
 export function VideoLibrary({
   items,
@@ -24,13 +25,23 @@ export function VideoLibrary({
     <div className="flex flex-col lg:flex-row gap-4 min-h-[320px]">
       <div className="flex-1 rounded-2xl bg-black/40 border border-white/10 overflow-hidden flex items-center justify-center min-h-[220px]">
         {activeUrl ? (
-          <video
-            key={activeUrl}
-            src={activeUrl}
-            controls
-            playsInline
-            className="max-h-[min(60vh,560px)] w-full object-contain"
-          />
+          <div className="relative w-full">
+            <video
+              key={activeUrl}
+              src={activeUrl}
+              controls
+              playsInline
+              className="max-h-[min(60vh,560px)] w-full object-contain"
+            />
+            {selected?.is_adult && (
+              <span className="absolute right-3 top-3 rounded-full bg-red-600 px-2 py-0.5 text-[10px] font-bold">18+</span>
+            )}
+            {selected && (
+              <span className="absolute left-3 top-3">
+                <MediaExpiryBadge expiresAt={selected.media_expires_at} deletedAt={selected.media_deleted_at} compact />
+              </span>
+            )}
+          </div>
         ) : (
           <p className="text-sm text-gray-500 px-4 text-center">
             {items.some((g) => g.status === "processing" || g.status === "pending")
@@ -57,6 +68,9 @@ export function VideoLibrary({
                 <span className="absolute bottom-1 left-1 text-[10px] px-1 rounded bg-black/60 font-mono">
                   #{g.id}
                 </span>
+                {g.is_adult && (
+                  <span className="absolute right-1 top-1 rounded-full bg-red-600 px-2 py-0.5 text-[9px] font-bold">18+</span>
+                )}
               </div>
               <div className="px-2 py-1.5 text-[11px] text-gray-400 truncate">
                 {g.product_label || g.model_id}

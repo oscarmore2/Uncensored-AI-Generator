@@ -14,6 +14,7 @@ interface ModPublicWork {
   sort_order: number;
   is_published: boolean;
   created_at: string;
+  is_adult: boolean;
 }
 
 interface ListResp {
@@ -30,6 +31,7 @@ const EMPTY_FORM = {
   negative_prompt: "",
   source_zen_job_id: "",
   title: "",
+  is_adult: false,
 };
 
 export default function ModPublicPage() {
@@ -87,6 +89,16 @@ export default function ModPublicPage() {
       `#${w.id} 排序已调整为 ${w.sort_order + delta}`
     );
 
+  const toggleAdult = (w: ModPublicWork) =>
+    action(
+      () =>
+        api(`/api/mod/public-works/${w.id}`, {
+          method: "PATCH",
+          body: JSON.stringify({ is_adult: !w.is_adult }),
+        }),
+      `#${w.id} 已${w.is_adult ? "移除" : "加上"} 18+ 标记`
+    );
+
   const remove = (w: ModPublicWork) => {
     if (!window.confirm(`确定从公共库删除 #${w.id}？此操作不可恢复（不影响原用户作品）。`)) return;
     void action(() => api(`/api/mod/public-works/${w.id}`, { method: "DELETE" }), `#${w.id} 已删除`);
@@ -104,6 +116,7 @@ export default function ModPublicPage() {
           negative_prompt: form.negative_prompt.trim() || undefined,
           source_zen_job_id: form.source_zen_job_id.trim() || undefined,
           title: form.title.trim() || undefined,
+          is_adult: form.is_adult,
         }),
       });
       setForm(EMPTY_FORM);
@@ -153,6 +166,14 @@ export default function ModPublicPage() {
                 className="w-full bg-[#111] border border-white/10 rounded-2xl px-3 py-2.5 text-sm outline-none"
               />
             </div>
+            <label className="flex items-center gap-2 text-sm text-gray-300">
+              <input
+                type="checkbox"
+                checked={form.is_adult}
+                onChange={(e) => setForm({ ...form, is_adult: e.target.checked })}
+              />
+              标记为 18+ 成人作品
+            </label>
             <div>
               <label className="text-xs text-gray-400 block mb-1">Zen Job ID（自动拉取结果 URL）</label>
               <input
@@ -219,6 +240,7 @@ export default function ModPublicPage() {
               <img src={w.thumb_url ?? w.media_url} alt={`#${w.id}`} className="w-full h-full object-cover" loading="lazy" />
               <div className="absolute top-3 right-3 flex gap-1">
                 <span className="text-[10px] px-2 py-0.5 bg-black/70 rounded-full">{w.source}</span>
+                {w.is_adult && <span className="text-[10px] px-2 py-0.5 bg-red-600 rounded-full font-bold">18+</span>}
                 {!w.is_published && <span className="text-[10px] px-2 py-0.5 bg-gray-600/90 rounded-full">未上架</span>}
               </div>
             </div>
@@ -246,6 +268,16 @@ export default function ModPublicPage() {
                   title="排序值 -1（越小越靠前）"
                 >
                   <i className="fas fa-arrow-up" />
+                </button>
+                <button
+                  onClick={() => toggleAdult(w)}
+                  disabled={busy}
+                  className={`px-3 py-1.5 border rounded-xl disabled:opacity-50 ${
+                    w.is_adult ? "border-red-500/40 bg-red-500/15 text-red-300" : "border-white/10 bg-white/5"
+                  }`}
+                  title="切换 18+ 标记"
+                >
+                  18+
                 </button>
                 <button
                   onClick={() => changeSort(w, 1)}

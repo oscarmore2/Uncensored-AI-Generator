@@ -20,6 +20,9 @@ model User {
   disabledAt       DateTime? // 封禁时间；非空表示禁止登录且会话失效
   acceptedTermsAt  DateTime?
   termsVersion     String?
+  birthDate        DateTime?
+  ageVerifiedAt    DateTime?
+  adultModeEnabled Boolean   @default(false)
   createdAt        DateTime  @default(now())
 
   generations           Generation[]
@@ -28,6 +31,7 @@ model User {
   featuredWorks         PublicWork[]
   vipTier               VipTier?               @relation(fields: [vipTierId], references: [id], onDelete: SetNull)
   waveSpeedGenerations  WaveSpeedGeneration[]
+  mediaAssets           MediaAsset[]
 }
 
 /** Cryptomus 商户配置：Merchant ID 与 Payment API Key 一一对应；同一时间最多一个 isActive=true */
@@ -96,6 +100,12 @@ model Generation {
   zenCreditsCost Int? // 估算或记录的 Zen 侧消耗（成功时按本站 cost×系数）
   deletedAt      DateTime?
   visibility     String    @default("private") // private | featured | hidden
+  isAdult        Boolean   @default(false)
+  safetyCategories String  @default("[]")
+  ownerVipAtCreation Boolean @default(false)
+  retentionAssigned  Boolean @default(false)
+  mediaExpiresAt DateTime?
+  mediaDeletedAt DateTime?
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @default(now()) @updatedAt
 
@@ -106,6 +116,7 @@ model Generation {
   @@index([deletedAt, status, createdAt])
   @@index([zenJobId])
   @@index([zenAccountId, createdAt])
+  @@index([mediaExpiresAt, mediaDeletedAt])
 }
 
 model PublicWork {
@@ -122,13 +133,64 @@ model PublicWork {
   sourceZenJobId     String?
   sortOrder          Int      @default(0)
   isPublished        Boolean  @default(true)
+  isAdult            Boolean  @default(false)
   featuredById       Int?
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
 
   featuredBy User? @relation(fields: [featuredById], references: [id])
 
-  @@index([isPublished, sortOrder, createdAt])
+  @@index([isPublished, isAdult, sortOrder, createdAt])
+}
+
+/** 自动清理策略：按媒体类型、生成渠道和创建时会员状态区分 */
+model MediaCleanupPolicy {
+  id            Int      @id @default(autoincrement())
+  mediaType     String   // upload | generated
+  channel       String   // all | zen | wavespeed
+  audience      String   // all | non_vip | vip
+  retentionDays Int?     // null = 永不过期
+  updatedAt     DateTime @updatedAt
+
+  @@unique([mediaType, channel, audience])
+}
+
+/** 上传接口产生的一次性输入媒体；生成结果由 Generation 表管理 */
+model MediaAsset {
+  id             Int       @id @default(autoincrement())
+  userId         Int
+  kind           String    // upload
+  channel        String    // wavespeed
+  url            String
+  objectKey      String?
+  contentType    String?
+  bytes          Int?
+  sourceId       Int?
+  retentionAssigned Boolean @default(false)
+  expiresAt      DateTime?
+  deletedAt      DateTime?
+  deleteAttempts Int       @default(0)
+  lastError      String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([expiresAt, deletedAt])
+  @@index([userId, createdAt])
+  @@index([sourceId])
+}
+
+model MediaCleanupRun {
+  id          Int       @id @default(autoincrement())
+  dryRun      Boolean   @default(false)
+  status      String    @default("running")
+  scanned     Int       @default(0)
+  deleted     Int       @default(0)
+  failed      Int       @default(0)
+  detail      String    @default("{}")
+  startedAt   DateTime  @default(now())
+  completedAt DateTime?
 }
 
 /** Stripe 账户配置：Secret Key + Webhook Secret 成对；同一时间最多一个 isActive=true */
@@ -375,6 +437,12 @@ model WaveSpeedGeneration {
   error        String?
   resultUrls   String?
   cost         Int
+  isAdult      Boolean   @default(false)
+  safetyCategories String @default("[]")
+  ownerVipAtCreation Boolean @default(false)
+  retentionAssigned  Boolean @default(false)
+  mediaExpiresAt DateTime?
+  mediaDeletedAt DateTime?
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
 
@@ -385,4 +453,5 @@ model WaveSpeedGeneration {
   @@index([userId, createdAt])
   @@index([externalId])
   @@index([status, createdAt])
+  @@index([mediaExpiresAt, mediaDeletedAt])
 }

@@ -105,6 +105,8 @@ Railway 会注入 `PORT`，`npm start` 会自动监听。
 | `OSS_ACCESS_KEY_ID` / `OSS_SECRET_ACCESS_KEY` | 访问密钥 |
 | `OSS_PUBLIC_BASE_URL` | 对外 CDN 域名 |
 | `OSS_MIRROR_ZEN_RESULTS` | 是否镜像生成结果到桶（默认 `true`） |
+| `MEDIA_CLEANUP_SECRET` | 自动媒体清理内部接口密钥，使用 `openssl rand -hex 32` 生成 |
+| `MEDIA_CLEANUP_BATCH_SIZE` | 每次每类清理数量（默认 `100`，最大 `500`） |
 
 ### 可选
 
@@ -118,6 +120,13 @@ Railway 会注入 `PORT`，`npm start` 会自动监听。
 
 1. 保存 Variables，等待自动部署（或手动 **Redeploy**）。
 2. 查看 Build / Deploy / Release 日志，确认 `prisma generate`、`next build`、`prisma db push` 成功。
+
+## 自动媒体清理 Cron
+
+在同一 Project 新增独立 Cron Service，Root Directory 设为 `web`，Config File 设为
+`/railway.cleanup.toml`，并与 Web Service 共享 `APP_URL`、`MEDIA_CLEANUP_SECRET`。
+默认每小时（UTC）运行 `npm run cleanup:media`。完整说明见
+[`MEDIA_CLEANUP.md`](MEDIA_CLEANUP.md)。
 3. **Networking → Generate Domain** 获取临时 HTTPS 域名。
 4. 将 `APP_URL` 更新为该域名并重新部署（若已变更）。
 

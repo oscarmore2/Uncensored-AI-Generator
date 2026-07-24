@@ -3,8 +3,8 @@ import { z } from "zod";
 import { getCurrentUser } from "@/lib/auth";
 import { rateLimit } from "@/lib/rate-limit";
 import { enhancePrompt } from "@/lib/magic-prompt";
-import { reviewPromptWithHarness } from "@/lib/content-safety";
-import { isVipActive } from "@/lib/pricing";
+import { hasAlwaysBlockedCategory, reviewPromptWithHarness } from "@/lib/content-safety";
+import { hasAdultAccess } from "@/lib/adult-access";
 
 const bodySchema = z.object({
   prompt: z.string().min(1).max(2000),
@@ -33,7 +33,8 @@ export async function POST(req: Request) {
   }
 
   try {
-    if (!isVipActive(user)) {
+    const adultAccess = hasAdultAccess(user);
+    if (!adultAccess) {
       const inputSafety = await reviewPromptWithHarness({
         mode: parsed.data.mode,
         prompt: parsed.data.prompt,
@@ -44,9 +45,24 @@ export async function POST(req: Request) {
           { status: 422 }
         );
       }
+    } else {
+      try {
+        const hardSafety = await reviewPromptWithHarness({
+          mode: parsed.data.mode,
+          prompt: parsed.data.prompt,
+        });
+        if (hasAlwaysBlockedCategory(hardSafety.categories)) {
+          return NextResponse.json(
+            { error: `内容审查未通过：${hardSafety.reason}`, code: "CONTENT_POLICY_REJECTED" },
+            { status: 422 }
+          );
+        }
+      } catch {
+        // 成人模式不会因分类服务暂时不可用而阻断提示词优化。
+      }
     }
-    const result = await enhancePrompt(parsed.data);
-    if (!isVipActive(user)) {
+    const result = await enhancePrompt({ ...parsed.data, allow_sensitive: adultAccess });
+    if (!adultAccess) {
       const safety = await reviewPromptWithHarness({
         mode: parsed.data.mode,
         prompt: result.prompt,

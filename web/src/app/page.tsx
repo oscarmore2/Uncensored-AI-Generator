@@ -11,7 +11,7 @@ export default async function LandingPage() {
   const [session, works] = await Promise.all([
     getSession(),
     db.publicWork.findMany({
-      where: { isPublished: true },
+      where: { isPublished: true, isAdult: false },
       orderBy: [{ sortOrder: "asc" }, { createdAt: "desc" }],
       take: 8,
     }),

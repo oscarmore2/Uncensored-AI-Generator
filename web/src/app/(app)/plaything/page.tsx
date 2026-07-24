@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { api, ApiError } from "@/lib/client";
 import { useApp } from "@/components/AppContext";
 import type { PlaythingCategoryId, PlaythingMediaKind } from "@/lib/plaything-categories";
@@ -27,7 +28,8 @@ import type {
 } from "@/components/plaything/types";
 
 export default function PlaythingPage() {
-  const { user, refreshUser, toast, setRechargeOpen } = useApp();
+  const { user, refreshUser, toast } = useApp();
+  const router = useRouter();
   const [products, setProducts] = useState<PlaythingProduct[]>([]);
   const [categories, setCategories] = useState<PlaythingCategorySummary[]>([]);
   const [note, setNote] = useState("");
@@ -212,7 +214,7 @@ export default function PlaythingPage() {
     const cost = quoteCost ?? selected.credit_cost;
     if ((user?.balance ?? 0) < cost) {
       toast("点数不足");
-      setRechargeOpen(true);
+      router.push("/pricing");
       return;
     }
 
@@ -299,7 +301,7 @@ export default function PlaythingPage() {
                     quoteSource={quoteSource}
                     quoting={quoting}
                     onGenerate={() => void submit()}
-                    onTopUp={() => setRechargeOpen(true)}
+                    onTopUp={() => router.push("/pricing")}
                   />
                 </>
               )}

@@ -1,7 +1,7 @@
 "use client";
 
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   api,
   MODES,
@@ -13,6 +13,7 @@ import {
 } from "@/lib/client";
 import { useApp } from "@/components/AppContext";
 import { AdaptiveMedia } from "@/components/WorkMedia";
+import { MediaExpiryBadge } from "@/components/MediaExpiryBadge";
 
 const EXAMPLE_PROMPTS = [
   "一座漂浮在云海上的未来城市，清晨金色光线，电影级广角构图，高细节",
@@ -23,7 +24,8 @@ const EXAMPLE_PROMPTS = [
 type Phase = "idle" | "submitting" | "polling";
 
 function MakePageInner() {
-  const { user, refreshUser, toast, setRechargeOpen } = useApp();
+  const { user, refreshUser, toast } = useApp();
+  const router = useRouter();
   // 引流页「同款参数创作」通过 query 带入 prompt/negative/mode
   const searchParams = useSearchParams();
   const [modeIdx, setModeIdx] = useState(() => {
@@ -43,7 +45,13 @@ function MakePageInner() {
   const [imageBase64, setImageBase64] = useState<string | null>(null);
   const [phase, setPhase] = useState<Phase>("idle");
   const [progress, setProgress] = useState(0);
-  const [result, setResult] = useState<{ id: number; urls: string[]; mode: string } | null>(null);
+  const [result, setResult] = useState<{
+    id: number;
+    urls: string[];
+    mode: string;
+    isAdult: boolean;
+    mediaExpiresAt: string | null;
+  } | null>(null);
   const [magicBusy, setMagicBusy] = useState(false);
   const [magicEnabled, setMagicEnabled] = useState(false);
   const [catalog, setCatalog] = useState<CatalogResponse | null>(null);
@@ -52,6 +60,50 @@ function MakePageInner() {
   const [resolution, setResolution] = useState("1280x720");
   const [extraParams, setExtraParams] = useState<Record<string, string>>({});
   const pollingRef = useRef(false);
+  const remixLoadedRef = useRef(false);
+
+  useEffect(() => {
+    if (user && user.balance <= 0) {
+      router.replace("/pricing");
+    }
+  }, [router, user]);
+
+  useEffect(() => {
+    const workId = searchParams.get("remix_work");
+    if (!workId || remixLoadedRef.current) return;
+    remixLoadedRef.current = true;
+    api<{
+      mode: string;
+      prompt: string;
+      negative_prompt: string | null;
+      params: Record<string, unknown>;
+    }>(`/api/public/works/${encodeURIComponent(workId)}`)
+      .then((work) => {
+        const index = MODES.findIndex((item) => item.key === work.mode);
+        if (index >= 0) setModeIdx(index);
+        setPrompt(work.prompt);
+        if (work.negative_prompt) setNegative(work.negative_prompt);
+        const p = work.params ?? {};
+        if (typeof p.ratio === "string") setRatio(p.ratio);
+        if (typeof p.style === "string") setStyle(p.style);
+        if (typeof p.quality === "string") setQuality(p.quality);
+        if (typeof p.duration === "string" || typeof p.duration === "number") setDuration(String(p.duration));
+        if (typeof p.resolution === "string") setResolution(p.resolution);
+        if (typeof p.zen_model === "string") setZenModel(p.zen_model);
+        if (p.batch === 1 || p.batch === 2 || p.batch === 4) setBatch(p.batch);
+        if (typeof p.image_base64 === "string") setImageBase64(p.image_base64);
+        const known = new Set(["ratio", "style", "quality", "duration", "resolution", "zen_model", "batch", "image_base64", "product_id"]);
+        setExtraParams(
+          Object.fromEntries(
+            Object.entries(p)
+              .filter(([key, value]) => !known.has(key) && (typeof value === "string" || typeof value === "number"))
+              .map(([key, value]) => [key, String(value)])
+          )
+        );
+        toast("作品参数已复制到生成器");
+      })
+      .catch((error) => toast(error instanceof Error ? error.message : "无法复制作品参数", true));
+  }, [searchParams, toast]);
 
   useEffect(() => {
     let cancelled = false;
@@ -199,6 +251,9 @@ function MakePageInner() {
       void poll(gen.id);
     } catch (e) {
       toast(`生成失败: ${e instanceof Error ? e.message : e}`, true);
+      if (e instanceof Error && e.message.includes("点数不足")) {
+        router.push("/pricing");
+      }
       setPhase("idle");
     }
   }
@@ -215,10 +270,18 @@ function MakePageInner() {
             progress?: number;
             result_urls: string[] | null;
             error?: string | null;
+            is_adult?: boolean;
+            media_expires_at?: string | null;
           }>(`/api/generations/${genId}/status`);
           if (typeof data.progress === "number") setProgress(data.progress);
           if ((data.status === "succeeded" || data.status === "partial") && data.result_urls?.length) {
-            setResult({ id: genId, urls: data.result_urls, mode: modeKey });
+            setResult({
+              id: genId,
+              urls: data.result_urls,
+              mode: modeKey,
+              isAdult: Boolean(data.is_adult),
+              mediaExpiresAt: data.media_expires_at ?? null,
+            });
             setProgress(100);
             await refreshUser();
             return;
@@ -562,7 +625,7 @@ function MakePageInner() {
 
           <div className="mt-3 text-center">
             <button
-              onClick={() => setRechargeOpen(true)}
+              onClick={() => router.push("/pricing")}
               className="text-xs text-gray-400 hover:text-rose-400 flex items-center justify-center gap-x-1 mx-auto"
             >
               <i className="fas fa-coins fa-sm" /> <span>点数不足？立即充值</span>
@@ -589,6 +652,10 @@ function MakePageInner() {
           <div className="flex justify-between mb-3">
             <h3 className="font-semibold flex items-center gap-x-2">
               <i className="fas fa-check-circle text-emerald-400" /> 生成完成
+              {result.isAdult && (
+                <span className="rounded-full bg-red-600 px-2 py-0.5 text-[10px] font-bold text-white">18+</span>
+              )}
+              <MediaExpiryBadge expiresAt={result.mediaExpiresAt} deletedAt={null} compact />
             </h3>
             <button
               onClick={() => setResult(null)}

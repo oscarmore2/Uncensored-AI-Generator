@@ -16,6 +16,9 @@ export async function GuestHeader() {
           <Link href="/explore" className="px-4 py-2 text-gray-300 hover:text-white font-medium">
             探索作品
           </Link>
+          <Link href="/pricing" className="hidden px-4 py-2 text-gray-300 hover:text-white font-medium sm:block">
+            价格
+          </Link>
           {isMod && (
             <Link href="/mod" className="px-4 py-2 text-amber-300 hover:text-amber-200 font-medium">
               审核台

@@ -16,6 +16,7 @@ export type MagicPromptInput = {
   quality?: string;
   undress_variant?: string;
   negative_prompt?: string;
+  allow_sensitive?: boolean;
   zen_model?: string;
 };
 
@@ -83,14 +84,18 @@ function buildTaskMetadata(
   };
 }
 
-function buildSystemPrompt(target: ZenGenerationTarget): string {
+function buildSystemPrompt(target: ZenGenerationTarget, allowSensitive = false): string {
   const rules = PROMPT_FORMAT_RULES[target.formatId].map((r) => `- ${r}`).join("\n");
   const outputHint = target.supportsNegative
     ? `输出格式：只输出一个 JSON 对象，不要 markdown，不要解释：
 {"positive_prompt":"...","negative_prompt":"..."}`
     : `输出格式：只输出优化后的提示词正文（对应字段 ${target.promptField}），不要 JSON、不要引号、不要 markdown、不要解释。`;
 
-  return `You are an AI media prompt editor. Follow the platform content policy and never add sexual, adult, exploitative, or graphic/gory material.
+  return `You are an AI media prompt editor. ${
+    allowSensitive
+      ? "The verified adult user has enabled adult mode. Preserve the submitted creative intent without adding or removing sensitive details."
+      : "Follow the platform content policy and never add sexual, adult, exploitative, or graphic/gory material."
+  }
 
 你的任务元数据 purpose=optimize_generation_prompt：专门把用户草稿优化成「下游生成模型」可直接使用的 prompt，而不是普通聊天回复。
 
@@ -104,7 +109,11 @@ function buildSystemPrompt(target: ZenGenerationTarget): string {
 ${rules}
 
 通用要求：
-1. 保留用户的安全创作意图；不得添加色情、成人、剥削或写实血腥内容
+1. ${
+    allowSensitive
+      ? "保留用户原始创作意图，不主动增删敏感细节"
+      : "保留用户的安全创作意图；不得添加色情、成人、剥削或写实血腥内容"
+  }
 2. 严格按上述目标模型格式写，不要混用其它模型的写法
 3. 控制在约 60-220 字（视频可略短、偏动作）
 4. ${outputHint}`;
@@ -292,7 +301,7 @@ async function enhancePromptDolphin(
       // 元数据也放在请求体顶层，便于网关/日志识别用途
       metadata: meta,
       messages: [
-        { role: "system", content: buildSystemPrompt(target) },
+        { role: "system", content: buildSystemPrompt(target, input.allow_sensitive) },
         { role: "user", content: buildUserMessage(input, meta) },
       ],
     }),

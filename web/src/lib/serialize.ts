@@ -1,5 +1,6 @@
 import type { Generation, PublicWork, User, VipTier } from "@prisma/client";
 import { isVipActive } from "./pricing";
+import { hasAdultAccess } from "./adult-access";
 
 export function userOut(
   user: User & {
@@ -13,6 +14,9 @@ export function userOut(
     role: user.role,
     balance: user.balance,
     is_vip: vipActive,
+    adult_mode_enabled: hasAdultAccess(user),
+    adult_mode_requested: user.adultModeEnabled,
+    age_verified: Boolean(user.ageVerifiedAt && user.birthDate),
     vip_expires_at: user.vipExpiresAt,
     vip_tier: user.vipTier
       ? {
@@ -37,6 +41,10 @@ export function generationOut(gen: Generation) {
     zen_job_id: gen.zenJobId,
     result_urls: gen.resultUrls ? (JSON.parse(gen.resultUrls) as string[]) : null,
     cost: gen.cost,
+    is_adult: gen.isAdult,
+    safety_categories: safeStringArray(gen.safetyCategories),
+    media_expires_at: gen.mediaExpiresAt,
+    media_deleted_at: gen.mediaDeletedAt,
     created_at: gen.createdAt,
   };
 }
@@ -64,6 +72,7 @@ export function publicWorkOut(work: PublicWork) {
     params: safeJson(work.params),
     media_url: work.mediaUrl,
     thumb_url: work.thumbUrl,
+    is_adult: work.isAdult,
     created_at: work.createdAt,
   };
 }
@@ -86,5 +95,14 @@ function safeJson(s: string): unknown {
     return JSON.parse(s);
   } catch {
     return {};
+  }
+}
+
+function safeStringArray(s: string): string[] {
+  try {
+    const value = JSON.parse(s) as unknown;
+    return Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : [];
+  } catch {
+    return [];
   }
 }

@@ -11,7 +11,9 @@ import {
 import { playthingGenerationOut, playthingProductInclude } from "@/lib/plaything-serialize";
 import { assertTierValue, type SchemaProp } from "@/lib/plaything-param-policy";
 import { rateLimit } from "@/lib/rate-limit";
-import { reviewPromptWithHarness } from "@/lib/content-safety";
+import { hasAlwaysBlockedCategory, reviewPromptWithHarness } from "@/lib/content-safety";
+import { hasAdultAccess } from "@/lib/adult-access";
+import { generatedMediaExpiry } from "@/lib/media-retention";
 import { isVipActive } from "@/lib/pricing";
 
 const createSchema = z.object({
@@ -76,10 +78,15 @@ export async function POST(req: Request) {
   const prompt = parsed.data.prompt.trim();
   const params: Record<string, unknown> = { ...(parsed.data.params ?? {}) };
 
-  if (!isVipActive(user) && prompt) {
+  const adultAccess = hasAdultAccess(user);
+  let isAdult = false;
+  let safetyCategories: string[] = [];
+  if (prompt) {
     try {
       const safety = await reviewPromptWithHarness({ mode: product.modelId, prompt });
-      if (!safety.allowed) {
+      isAdult = !safety.allowed;
+      safetyCategories = safety.categories;
+      if (isAdult && (!adultAccess || hasAlwaysBlockedCategory(safety.categories))) {
         return NextResponse.json(
           {
             error: `内容审查未通过：${safety.reason}`,
@@ -90,10 +97,14 @@ export async function POST(req: Request) {
         );
       }
     } catch (error) {
-      return NextResponse.json(
-        { error: error instanceof Error ? error.message : "内容审查服务暂不可用" },
-        { status: 503 }
-      );
+      if (!adultAccess) {
+        return NextResponse.json(
+          { error: error instanceof Error ? error.message : "内容审查服务暂不可用" },
+          { status: 503 }
+        );
+      }
+      isAdult = true;
+      safetyCategories = ["unclassified_adult_mode"];
     }
   }
 
@@ -124,6 +135,8 @@ export async function POST(req: Request) {
     );
   }
 
+  const ownerVipAtCreation = isVipActive(user);
+  const mediaExpiresAt = await generatedMediaExpiry("wavespeed", ownerVipAtCreation);
   const charged = await db.user.updateMany({
     where: { id: user.id, balance: { gte: cost } },
     data: { balance: { decrement: cost } },
@@ -131,7 +144,6 @@ export async function POST(req: Request) {
   if (charged.count === 0) {
     return NextResponse.json({ error: "点数不足，请先充值" }, { status: 400 });
   }
-
   await db.transaction.create({
     data: {
       userId: user.id,
@@ -148,10 +160,28 @@ export async function POST(req: Request) {
       prompt,
       params: JSON.stringify(params),
       cost,
+      isAdult,
+      safetyCategories: JSON.stringify(safetyCategories),
+      ownerVipAtCreation,
+      retentionAssigned: true,
+      mediaExpiresAt,
       status: "pending",
     },
     include: { product: { select: playthingProductInclude } },
   });
+  const uploadedUrls = Object.values(params)
+    .flatMap((value) => Array.isArray(value) ? value : [value])
+    .filter((value): value is string => typeof value === "string" && /^https?:\/\//i.test(value));
+  if (uploadedUrls.length > 0) {
+    await db.mediaAsset.updateMany({
+      where: {
+        userId: user.id,
+        sourceId: null,
+        url: { in: uploadedUrls },
+      },
+      data: { sourceId: record.id },
+    });
+  }
 
   void processWaveSpeedGeneration(record.id);
 

@@ -22,5 +22,8 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
     zen_job_id: gen.zenJobId,
     error: gen.zenError,
     result_urls: gen.resultUrls ? (JSON.parse(gen.resultUrls) as string[]) : null,
+    is_adult: gen.isAdult,
+    media_expires_at: gen.mediaExpiresAt,
+    media_deleted_at: gen.mediaDeletedAt,
   });
 }

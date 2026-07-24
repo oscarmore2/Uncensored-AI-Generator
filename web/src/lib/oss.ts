@@ -1,5 +1,5 @@
 import "server-only";
-import { PutObjectCommand, HeadBucketCommand, S3Client } from "@aws-sdk/client-s3";
+import { DeleteObjectCommand, PutObjectCommand, HeadBucketCommand, S3Client } from "@aws-sdk/client-s3";
 import { env } from "./env";
 import { db } from "./db";
 import { decryptSecret } from "./secret-crypto";
@@ -145,6 +145,59 @@ export async function uploadBuffer(
     })
   );
   return publicUrlForKey(cfg, key);
+}
+
+export async function uploadBufferWithMeta(
+  buffer: Buffer,
+  relativePath: string,
+  contentType: string,
+  config?: OssConfig
+): Promise<{ url: string; objectKey: string; config: OssConfig }> {
+  const cfg = config ?? (await getActiveOssConfig());
+  if (!cfg) throw new Error("OSS is not configured");
+  const objectKey = buildObjectKey(cfg, relativePath);
+  const url = await uploadBuffer(buffer, relativePath, contentType, cfg);
+  return { url, objectKey, config: cfg };
+}
+
+export async function deleteObjectKey(objectKey: string, config?: OssConfig): Promise<void> {
+  const cfg = config ?? (await getActiveOssConfig());
+  if (!cfg) throw new Error("OSS is not configured");
+  const client = createS3Client(cfg);
+  await client.send(new DeleteObjectCommand({ Bucket: cfg.bucket, Key: objectKey }));
+}
+
+export function objectKeyFromPublicUrl(config: OssConfig, mediaUrl: string): string | null {
+  try {
+    const url = new URL(mediaUrl);
+    if (config.publicBaseUrl) {
+      const base = new URL(config.publicBaseUrl);
+      if (url.origin === base.origin && url.pathname.startsWith(`${base.pathname.replace(/\/$/, "")}/`)) {
+        return decodeURIComponent(url.pathname.slice(base.pathname.replace(/\/$/, "").length + 1));
+      }
+    }
+    const endpoint = new URL(config.endpoint);
+    if (config.forcePathStyle && url.origin === endpoint.origin) {
+      const prefix = `/${config.bucket}/`;
+      return url.pathname.startsWith(prefix) ? decodeURIComponent(url.pathname.slice(prefix.length)) : null;
+    }
+    if (url.hostname === `${config.bucket}.${endpoint.hostname}`) {
+      return decodeURIComponent(url.pathname.replace(/^\/+/, ""));
+    }
+  } catch {
+    return null;
+  }
+  return null;
+}
+
+/** 只删除当前激活 OSS 所管理的 URL；外部供应商 URL 返回 false。 */
+export async function deleteManagedMediaUrl(mediaUrl: string): Promise<boolean> {
+  const config = await getActiveOssConfig();
+  if (!config) return false;
+  const key = objectKeyFromPublicUrl(config, mediaUrl);
+  if (!key) return false;
+  await deleteObjectKey(key, config);
+  return true;
 }
 
 /** 从远程 URL 下载并上传到 OSS（带 SSRF 防护） */

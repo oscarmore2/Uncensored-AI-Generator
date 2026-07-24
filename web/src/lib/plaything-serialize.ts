@@ -16,6 +16,9 @@ export function playthingGenerationOut(g: {
   cost: number;
   error: string | null;
   createdAt: Date;
+  isAdult: boolean;
+  mediaExpiresAt: Date | null;
+  mediaDeletedAt: Date | null;
   product?: GenProduct | null;
 }) {
   const type = g.product?.catalogModel?.type ?? "";
@@ -32,6 +35,9 @@ export function playthingGenerationOut(g: {
     result_urls: g.resultUrls ? (JSON.parse(g.resultUrls) as string[]) : null,
     cost: g.cost,
     error: g.error,
+    is_adult: g.isAdult,
+    media_expires_at: g.mediaExpiresAt,
+    media_deleted_at: g.mediaDeletedAt,
     created_at: g.createdAt,
     category,
     media_kind,
