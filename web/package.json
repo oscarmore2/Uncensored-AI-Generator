@@ -15,6 +15,7 @@
     "@aws-sdk/client-s3": "^3.1091.0",
     "@google/model-viewer": "^4.3.1",
     "@prisma/client": "^6.3.0",
+    "@swc/helpers": "^0.5.23",
     "bcryptjs": "^3.0.2",
     "image-size": "^2.0.2",
     "jose": "^6.0.10",
