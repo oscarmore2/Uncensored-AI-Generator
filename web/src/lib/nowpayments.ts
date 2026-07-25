@@ -6,6 +6,7 @@ import {
   type JsonValue,
   verifyNowPaymentsSignature,
 } from "./nowpayments-signature";
+import { decryptSecret } from "./secret-crypto";
 
 export interface NowPaymentsInvoice {
   id: string | number;
@@ -17,19 +18,69 @@ export interface NowPaymentsInvoice {
   updated_at?: string;
 }
 
-export function nowPaymentsConfigured(): boolean {
-  return Boolean(env.NOWPAYMENTS_API_KEY && env.NOWPAYMENTS_IPN_SECRET);
+export interface NowPaymentsCredentials {
+  apiKey: string;
+  ipnSecret: string;
+  baseUrl: string;
+  accountRefId: number | null;
+  source: "db" | "env";
+  label: string;
+}
+
+function normalizedBaseUrl(value: string): string {
+  return value.replace(/\/+$/, "");
+}
+
+/** 管理端激活配置优先；没有可用的 DB 配置时才读取 env。 */
+export async function getActiveNowPaymentsCredentials(): Promise<NowPaymentsCredentials | null> {
+  const active = await db.nowPaymentsAccount.findFirst({
+    where: { isActive: true },
+    orderBy: { updatedAt: "desc" },
+  });
+  if (active) {
+    try {
+      return {
+        apiKey: decryptSecret(active.apiKeyEnc),
+        ipnSecret: decryptSecret(active.ipnSecretEnc),
+        baseUrl: normalizedBaseUrl(active.baseUrl),
+        accountRefId: active.id,
+        source: "db",
+        label: active.label,
+      };
+    } catch (error) {
+      console.error("[nowpayments] unable to decrypt active DB configuration", error);
+    }
+  }
+  if (env.NOWPAYMENTS_API_KEY || env.NOWPAYMENTS_IPN_SECRET) {
+    return {
+      apiKey: env.NOWPAYMENTS_API_KEY,
+      ipnSecret: env.NOWPAYMENTS_IPN_SECRET,
+      baseUrl: normalizedBaseUrl(env.NOWPAYMENTS_BASE_URL),
+      accountRefId: null,
+      source: "env",
+      label: "env fallback",
+    };
+  }
+  return null;
+}
+
+export async function nowPaymentsConfigured(): Promise<boolean> {
+  const credentials = await getActiveNowPaymentsCredentials();
+  return Boolean(credentials?.apiKey && credentials.ipnSecret);
 }
 
 async function nowPaymentsRequest<T>(
   path: string,
-  init: { method?: "GET" | "POST"; body?: Record<string, unknown> } = {}
+  init: { method?: "GET" | "POST"; body?: Record<string, unknown> } = {},
+  providedCredentials?: NowPaymentsCredentials
 ): Promise<T> {
-  if (!env.NOWPAYMENTS_API_KEY) throw new Error("NOWPayments API key is not configured");
-  const response = await fetch(`${env.NOWPAYMENTS_BASE_URL}${path}`, {
+  const credentials =
+    providedCredentials ?? (await getActiveNowPaymentsCredentials());
+  if (!credentials?.apiKey) throw new Error("NOWPayments API key is not configured");
+  const response = await fetch(`${credentials.baseUrl}${path}`, {
     method: init.method ?? "GET",
     headers: {
-      "x-api-key": env.NOWPAYMENTS_API_KEY,
+      "x-api-key": credentials.apiKey,
       "Content-Type": "application/json",
     },
     body: init.body ? JSON.stringify(init.body) : undefined,
@@ -53,8 +104,12 @@ export async function createNowPaymentsInvoice(params: {
   callbackUrl: string;
   successUrl: string;
   cancelUrl: string;
-}): Promise<NowPaymentsInvoice> {
-  return nowPaymentsRequest<NowPaymentsInvoice>("/invoice", {
+}): Promise<{ invoice: NowPaymentsInvoice; accountRefId: number | null }> {
+  const credentials = await getActiveNowPaymentsCredentials();
+  if (!credentials?.apiKey || !credentials.ipnSecret) {
+    throw new Error("NOWPayments is not fully configured");
+  }
+  const invoice = await nowPaymentsRequest<NowPaymentsInvoice>("/invoice", {
     method: "POST",
     body: {
       price_amount: params.amountUsd,
@@ -68,14 +123,32 @@ export async function createNowPaymentsInvoice(params: {
       is_fixed_rate: true,
       is_fee_paid_by_user: false,
     },
-  });
+  }, credentials);
+  return { invoice, accountRefId: credentials.accountRefId };
 }
 
-export function verifyNowPaymentsIpn(
+async function allNowPaymentsIpnSecrets(): Promise<string[]> {
+  const accounts = await db.nowPaymentsAccount.findMany({
+    select: { ipnSecretEnc: true },
+  });
+  const secrets: string[] = [];
+  for (const account of accounts) {
+    try {
+      const secret = decryptSecret(account.ipnSecretEnc);
+      if (secret) secrets.push(secret);
+    } catch {
+      // Skip unreadable stored credentials and continue with the remaining candidates.
+    }
+  }
+  if (env.NOWPAYMENTS_IPN_SECRET) secrets.push(env.NOWPAYMENTS_IPN_SECRET);
+  return [...new Set(secrets)];
+}
+
+export async function verifyNowPaymentsIpn(
   rawBody: string,
   receivedSignature: string | null
-): { valid: boolean; payload: Record<string, JsonValue> | null } {
-  if (!env.NOWPAYMENTS_IPN_SECRET || !receivedSignature) {
+): Promise<{ valid: boolean; payload: Record<string, JsonValue> | null }> {
+  if (!receivedSignature) {
     return { valid: false, payload: null };
   }
   let payload: Record<string, JsonValue>;
@@ -84,14 +157,35 @@ export function verifyNowPaymentsIpn(
   } catch {
     return { valid: false, payload: null };
   }
+  const secrets = await allNowPaymentsIpnSecrets();
   return {
-    valid: verifyNowPaymentsSignature(
-      payload,
-      env.NOWPAYMENTS_IPN_SECRET,
-      receivedSignature
+    valid: secrets.some((secret) =>
+      verifyNowPaymentsSignature(payload, secret, receivedSignature)
     ),
     payload,
   };
+}
+
+export async function testNowPaymentsCredentials(params: {
+  apiKey: string;
+  ipnSecret: string;
+  baseUrl: string;
+}): Promise<void> {
+  if (!params.apiKey || !params.ipnSecret) {
+    throw new Error("API Key 与 IPN Secret 均为必填");
+  }
+  await nowPaymentsRequest<Record<string, unknown>>(
+    "/balance",
+    { method: "GET" },
+    {
+      apiKey: params.apiKey,
+      ipnSecret: params.ipnSecret,
+      baseUrl: normalizedBaseUrl(params.baseUrl),
+      accountRefId: null,
+      source: "db",
+      label: "test",
+    }
+  );
 }
 
 export type CreditNowPaymentOptions = {

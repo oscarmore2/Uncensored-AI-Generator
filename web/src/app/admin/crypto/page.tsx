@@ -7,6 +7,7 @@ import { api, ApiError } from "@/lib/client";
 interface CryptoOrder {
   id: number;
   order_id: string;
+  account: { id: number; label: string } | null;
   user_id: number;
   username: string;
   credits: number;
@@ -147,6 +148,9 @@ export default function AdminCryptoPage() {
               <tr key={p.id} className="border-b border-white/5 hover:bg-white/[0.02]">
                 <td className="px-4 py-3 font-mono text-xs text-gray-400" title={p.order_id}>
                   {p.order_id.length > 22 ? `${p.order_id.slice(0, 22)}…` : p.order_id}
+                  <div className="mt-1 font-sans text-[10px] text-gray-600">
+                    {p.account ? p.account.label : "ENV / 旧订单"}
+                  </div>
                 </td>
                 <td className="px-4 py-3">
                   <Link href={`/admin/users/${p.user_id}`} className="hover:text-rose-300">

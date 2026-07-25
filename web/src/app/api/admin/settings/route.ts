@@ -3,7 +3,7 @@ import { db } from "@/lib/db";
 import { env } from "@/lib/env";
 import { requireRole } from "@/lib/auth";
 import { telegramConfigured } from "@/lib/telegram";
-import { nowPaymentsConfigured } from "@/lib/nowpayments";
+import { getActiveNowPaymentsCredentials } from "@/lib/nowpayments";
 import { stripeConfigured } from "@/lib/stripe";
 import { ossConfigured } from "@/lib/oss";
 import { hfConfigured } from "@/lib/hf";
@@ -38,6 +38,8 @@ export async function GET() {
     tierCount,
     planCount,
     signupInitialCredits,
+    nowPaymentsCredentials,
+    nowPaymentsAccountCount,
   ] = await Promise.all([
     db.zenAccount.findFirst({ where: { isActive: true }, select: { id: true, label: true } }),
     db.stripeAccount.findFirst({ where: { isActive: true }, select: { id: true, label: true } }),
@@ -55,6 +57,8 @@ export async function GET() {
     db.vipTier.count({ where: { isActive: true } }),
     db.vipPlan.count({ where: { isActive: true } }),
     getSignupInitialCredits(),
+    getActiveNowPaymentsCredentials(),
+    db.nowPaymentsAccount.count(),
   ]);
 
   return NextResponse.json({
@@ -78,7 +82,12 @@ export async function GET() {
       env_webhook_configured: Boolean(env.STRIPE_WEBHOOK_SECRET),
     },
     nowpayments: {
-      configured: nowPaymentsConfigured(),
+      configured: Boolean(
+        nowPaymentsCredentials?.apiKey && nowPaymentsCredentials.ipnSecret
+      ),
+      source: nowPaymentsCredentials?.source ?? null,
+      active_label: nowPaymentsCredentials?.label ?? null,
+      db_accounts: nowPaymentsAccountCount,
       api_key_configured: Boolean(env.NOWPAYMENTS_API_KEY),
       ipn_secret_configured: Boolean(env.NOWPAYMENTS_IPN_SECRET),
       base_url: env.NOWPAYMENTS_BASE_URL,

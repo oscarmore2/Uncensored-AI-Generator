@@ -17,7 +17,8 @@ export type AdminAuditAction =
   | "pricing_vip_plan"
   | "wavespeed_sync"
   | "wavespeed_product"
-  | "system_signup_credits";
+  | "system_signup_credits"
+  | "nowpayments_account";
 
 export async function logAdminAction(
   adminId: number,

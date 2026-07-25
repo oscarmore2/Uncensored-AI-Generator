@@ -127,6 +127,9 @@ Demo 模式（`DEMO_MODE=true`）下：
 | PATCH | `/api/admin/crypto-payments/[id]/credit` | 【admin】人工确认加密订单入账 |
 | GET | `/api/admin/audit-logs` | 【admin】管理端审计日志 |
 | GET | `/api/admin/settings` | 【admin】只读配置快照（脱敏） |
+| GET/POST | `/api/admin/nowpayments-accounts` | 【admin】NOWPayments 数据库配置列表/新增 |
+| PATCH/DELETE | `/api/admin/nowpayments-accounts/{id}` | 【admin】更新、激活或删除未关联订单的配置 |
+| POST | `/api/admin/nowpayments-accounts/{id}/test` | 【admin】使用余额接口测试 API Key |
 | GET | `/api/admin/webhook-logs` | 【admin】Stripe/NOWPayments Webhook 事件日志 |
 | GET/POST | `/api/admin/mods` | 【admin】审核员列表；提升用户为审核员 |
 | PATCH | `/api/admin/mods/[id]` | 【admin】启停审核员 / 撤销角色 |
@@ -143,11 +146,11 @@ Demo 模式（`DEMO_MODE=true`）下：
 
 流程：用户选套餐 → `crypto/create` 调用 `POST /v1/invoice` 创建 USD 计价的托管发票 → 用户在 NOWPayments 收银台选择币种并付款 → NOWPayments 向 `crypto/webhook` 发送 IPN → 验签、核对订单金额并在 `finished` 状态幂等加点 → 前端轮询 `crypto/status` 刷新余额。
 
-环境变量：
+推荐配置方式：
 
-- `NOWPAYMENTS_API_KEY`：Store Settings 中创建的 API Key。
-- `NOWPAYMENTS_IPN_SECRET`：Store Settings 中创建、只显示一次的 IPN Secret。
-- `NOWPAYMENTS_BASE_URL`：默认 `https://api.nowpayments.io/v1`。
+- 管理员进入 `/admin/nowpayments`，添加 API Key、IPN Secret 与 Base URL 并激活。
+- 数据库密钥使用 `AUTH_SECRET` 派生的 AES-256-GCM 密钥加密保存。
+- `NOWPAYMENTS_API_KEY`、`NOWPAYMENTS_IPN_SECRET`、`NOWPAYMENTS_BASE_URL` 仅作为无激活数据库配置时的兜底。
 - `APP_URL`：必须是公网 HTTPS 地址，IPN 为 `{APP_URL}/api/payments/crypto/webhook`。
 
 实现要点：

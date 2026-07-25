@@ -15,7 +15,7 @@ export async function POST(req: Request) {
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  if (!nowPaymentsConfigured()) {
+  if (!(await nowPaymentsConfigured())) {
     return NextResponse.json({ error: "加密货币支付未配置" }, { status: 503 });
   }
 
@@ -49,7 +49,7 @@ export async function POST(req: Request) {
   });
 
   try {
-    const invoice = await createNowPaymentsInvoice({
+    const { invoice, accountRefId } = await createNowPaymentsInvoice({
       orderId,
       amountUsd,
       callbackUrl: `${env.APP_URL}/api/payments/crypto/webhook`,
@@ -62,6 +62,7 @@ export async function POST(req: Request) {
       data: {
         invoiceId: String(invoice.id),
         status: "waiting",
+        nowPaymentsAccountId: accountRefId,
       },
     });
 

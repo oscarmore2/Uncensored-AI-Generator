@@ -1,23 +1,18 @@
 import { NextResponse } from "next/server";
 import {
-  nowPaymentsConfigured,
   settleNowPayment,
   verifyNowPaymentsIpn,
 } from "@/lib/nowpayments";
 import { logWebhookEvent } from "@/lib/webhook-log";
 
 export async function POST(req: Request) {
-  if (!nowPaymentsConfigured()) {
-    return NextResponse.json({ error: "Not configured" }, { status: 503 });
-  }
-
   const { rateLimit, clientIp } = await import("@/lib/rate-limit");
   if (!rateLimit(`nowpayments-webhook:${clientIp(req)}`, 120, 60_000)) {
     return NextResponse.json({ error: "Too many requests" }, { status: 429 });
   }
 
   const rawBody = await req.text();
-  const { valid, payload } = verifyNowPaymentsIpn(
+  const { valid, payload } = await verifyNowPaymentsIpn(
     rawBody,
     req.headers.get("x-nowpayments-sig")
   );

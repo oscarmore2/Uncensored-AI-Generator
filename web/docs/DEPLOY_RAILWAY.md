@@ -93,7 +93,7 @@ Railway 会注入 `PORT`，`npm start` 会自动监听。
 |------|------|
 | `ZEN_API_KEY` | AI 生成 API（或在 `/admin/zen` 配置多账户） |
 | `STRIPE_SECRET_KEY` / `STRIPE_WEBHOOK_SECRET` | 或在 `/admin/stripe` 配置 |
-| `NOWPAYMENTS_API_KEY` / `NOWPAYMENTS_IPN_SECRET` | 可选，NOWPayments 托管加密支付与 IPN 验签 |
+| `NOWPAYMENTS_API_KEY` / `NOWPAYMENTS_IPN_SECRET` | 可选兜底；推荐部署后在 `/admin/nowpayments` 保存数据库配置 |
 | `RESEND_API_KEY` / `EMAIL_FROM` | 邮箱注册验证；`EMAIL_FROM` 必须来自 Resend 已验证域名 |
 | `SEED_ADMIN_USERNAME` / `SEED_ADMIN_PASSWORD` | 首个管理员（密码 ≥ 8 位），首次登录自动创建/提升 |
 | `CREDIT_PACKAGES` / `VIP_PRICE` | 有默认值，可按需覆盖 |
@@ -134,6 +134,13 @@ Railway 会注入 `PORT`，`npm start` 会自动监听。
 
 密码注册账户在邮箱验证成功前不能登录。Google 使用已验证邮箱时可与同邮箱账户安全绑定；
 Facebook 不会仅凭同邮箱自动合并既有账户，以避免账户接管。
+
+### NOWPayments 数据库配置
+
+部署后进入 `/admin/nowpayments`，填写 API Key、IPN Secret 和 API Base URL，并激活配置。
+密钥会使用 `AUTH_SECRET` 派生的 AES-256-GCM 密钥加密保存。创建新订单时优先使用激活的
+数据库配置；只有没有可用激活配置时才回退 `NOWPAYMENTS_*` 环境变量。IPN 验签会尝试
+所有已保存配置和 ENV Secret，以兼容切换配置前创建的未完成订单。
 
 注册所在地识别会优先使用 Cloudflare、Vercel 等平台可信请求头；配置 `IPINFO_TOKEN`
 后可补充查询。该结果只是出口 IP 的粗略推测，VPN、代理、Tor、移动网络或企业网关

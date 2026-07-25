@@ -23,7 +23,10 @@ export async function GET(req: Request) {
     db.nowPayment.count({ where }),
     db.nowPayment.findMany({
       where,
-      include: { user: { select: { username: true } } },
+      include: {
+        user: { select: { username: true } },
+        nowPaymentsAccount: { select: { id: true, label: true } },
+      },
       orderBy: { createdAt: "desc" },
       skip: (page - 1) * limit,
       take: limit,
@@ -37,6 +40,9 @@ export async function GET(req: Request) {
     payments: payments.map((p) => ({
       id: p.id,
       order_id: p.orderId,
+      account: p.nowPaymentsAccount
+        ? { id: p.nowPaymentsAccount.id, label: p.nowPaymentsAccount.label }
+        : null,
       user_id: p.userId,
       username: p.user.username,
       credits: p.credits,
