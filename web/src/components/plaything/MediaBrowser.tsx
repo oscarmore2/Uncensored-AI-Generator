@@ -6,6 +6,7 @@ import { ImageAlbum } from "./ImageAlbum";
 import { VideoLibrary } from "./VideoLibrary";
 import { AudioLibrary } from "./AudioLibrary";
 import { Model3DViewer } from "./Model3DViewer";
+import { useTranslations } from "next-intl";
 
 export function MediaBrowser({
   mediaKind,
@@ -18,14 +19,15 @@ export function MediaBrowser({
   selectedId: number | null;
   onSelect: (id: number) => void;
 }) {
+  const t = useTranslations("Plaything");
   return (
     <div className="h-full flex flex-col min-h-0">
       <div className="flex items-center gap-4 border-b border-white/10 px-1 mb-3">
         <span className="text-sm font-medium text-white border-b-2 border-rose-500 pb-2">
-          我的生成
+          {t("myGenerations")}
         </span>
-        <span className="text-sm text-gray-600 pb-2 cursor-default" title="暂未提供">
-          示例
+        <span className="text-sm text-gray-600 pb-2 cursor-default" title={t("comingSoon")}>
+          {t("examples")}
         </span>
       </div>
       <div
@@ -33,8 +35,7 @@ export function MediaBrowser({
         role="status"
       >
         <i className="fas fa-triangle-exclamation mr-1.5 text-amber-400" />
-        WaveSpeed 平台上的生成结果通常仅保留约 <strong className="font-semibold text-amber-50">7 天</strong>
-        。请及时下载备份；本站会在配置对象存储时尽量镜像存档，但仍不保证永久可访问。
+        {t("retentionNotice")}
       </div>
       <div className="flex-1 min-h-0 overflow-y-auto">
         {mediaKind === "video" && (

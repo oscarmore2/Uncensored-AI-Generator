@@ -5,8 +5,11 @@ import { api, type ApiGeneration } from "@/lib/client";
 import { useApp } from "@/components/AppContext";
 import { AdaptiveMedia } from "@/components/WorkMedia";
 import { MediaExpiryBadge } from "@/components/MediaExpiryBadge";
+import { useLocale, useTranslations } from "next-intl";
 
 export default function HistoryPage() {
+  const t = useTranslations("History");
+  const locale = useLocale();
   const { toast } = useApp();
   const [items, setItems] = useState<ApiGeneration[]>([]);
   const [search, setSearch] = useState("");
@@ -17,11 +20,11 @@ export default function HistoryPage() {
     try {
       setItems(await api<ApiGeneration[]>("/api/generations"));
     } catch {
-      toast("加载历史失败", true);
+      toast(t("loadFailed"), true);
     } finally {
       setLoaded(true);
     }
-  }, [toast]);
+  }, [t, toast]);
 
   useEffect(() => {
     void load();
@@ -34,19 +37,19 @@ export default function HistoryPage() {
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-4xl font-bold tracking-tighter">我的作品</h1>
+        <h1 className="text-4xl font-bold tracking-tighter">{t("title")}</h1>
         <div className="flex gap-2">
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="搜索提示词..."
+            placeholder={t("search")}
             className="bg-[#111] border border-white/10 px-4 py-2 rounded-2xl text-sm w-64 focus:border-rose-500/50 outline-none"
           />
           <button
             onClick={load}
             className="px-4 py-2 text-sm bg-white/5 hover:bg-white/10 border border-white/10 rounded-2xl flex items-center gap-x-2"
           >
-            <i className="fas fa-sync-alt" /> <span className="hidden md:inline">刷新</span>
+            <i className="fas fa-sync-alt" /> <span className="hidden md:inline">{t("refresh")}</span>
           </button>
         </div>
       </div>
@@ -55,9 +58,9 @@ export default function HistoryPage() {
         <div className="text-center py-16">
           <i className="fas fa-images text-6xl text-gray-700 mb-4" />
           <p className="text-gray-400">
-            还没有生成记录
+            {t("empty")}
             <br />
-            快去创作中心试试吧！
+            {t("emptyHint")}
           </p>
         </div>
       ) : (
@@ -96,13 +99,13 @@ export default function HistoryPage() {
                   compact
                 />
                 <div className="text-xs text-gray-400 mb-1">
-                  {new Date(item.created_at).toLocaleDateString()}
+                  {new Date(item.created_at).toLocaleDateString(locale)}
                 </div>
                 <div className="text-sm line-clamp-2">{item.prompt}</div>
                 <div
                   className={`mt-3 text-xs ${item.status === "failed" ? "text-red-400" : "text-emerald-400"}`}
                 >
-                  {item.status}
+                  {t.has(`statuses.${item.status}`) ? t(`statuses.${item.status}` as "statuses.pending") : item.status}
                 </div>
               </div>
             </div>
@@ -135,7 +138,7 @@ export default function HistoryPage() {
               ) : (
                 <div className="fake-image rounded-2xl h-80 flex items-center justify-center text-center">
                   <div>
-                    {selected.media_deleted_at ? "媒体已按保留策略清理" : "生成中或失败"}
+                    {selected.media_deleted_at ? t("mediaDeleted") : t("processingOrFailed")}
                     <br />
                     <span className="text-xs">{selected.status}</span>
                   </div>
@@ -157,14 +160,14 @@ export default function HistoryPage() {
                     rel="noopener"
                     className="flex-1 py-3 bg-white text-black font-semibold rounded-2xl flex items-center justify-center gap-x-2"
                   >
-                    <i className="fas fa-download" /> 下载
+                    <i className="fas fa-download" /> {t("download")}
                   </a>
                 ) : null}
                 <button
                   onClick={() => setSelected(null)}
                   className="flex-1 py-3 bg-white/5 border border-white/10 rounded-2xl"
                 >
-                  关闭
+                  {t("close")}
                 </button>
               </div>
             </div>

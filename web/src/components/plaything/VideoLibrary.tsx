@@ -3,6 +3,7 @@
 import { EmptyState } from "./ImageAlbum";
 import type { PlaythingGen } from "./types";
 import { MediaExpiryBadge } from "@/components/MediaExpiryBadge";
+import { useTranslations } from "next-intl";
 
 export function VideoLibrary({
   items,
@@ -13,12 +14,13 @@ export function VideoLibrary({
   selectedId: number | null;
   onSelect: (id: number) => void;
 }) {
+  const t = useTranslations("Plaything");
   const succeeded = items.filter((g) => g.status === "succeeded" && g.result_urls?.length);
   const selected = succeeded.find((g) => g.id === selectedId) ?? succeeded[0] ?? null;
   const activeUrl = selected?.result_urls?.[0] ?? null;
 
   if (!items.length) {
-    return <EmptyState title="还没有视频" hint="选择视频模型并生成后，将在此播放与浏览" />;
+    return <EmptyState title={t("noVideos")} hint={t("videoHint")} />;
   }
 
   return (
@@ -45,8 +47,8 @@ export function VideoLibrary({
         ) : (
           <p className="text-sm text-gray-500 px-4 text-center">
             {items.some((g) => g.status === "processing" || g.status === "pending")
-              ? "生成中，完成后可在此播放"
-              : "选择左侧视频开始播放"}
+              ? t("videoProcessing")
+              : t("selectVideo")}
           </p>
         )}
       </div>

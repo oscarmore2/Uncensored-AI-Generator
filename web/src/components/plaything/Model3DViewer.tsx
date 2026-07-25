@@ -5,6 +5,7 @@ import { EmptyState } from "./ImageAlbum";
 import { detectMediaKindFromUrl } from "@/lib/plaything-categories";
 import type { PlaythingGen } from "./types";
 import { MediaExpiryBadge } from "@/components/MediaExpiryBadge";
+import { useTranslations } from "next-intl";
 
 export function Model3DViewer({
   items,
@@ -15,6 +16,7 @@ export function Model3DViewer({
   selectedId: number | null;
   onSelect: (id: number) => void;
 }) {
+  const t = useTranslations("Plaything");
   useEffect(() => {
     void import("@google/model-viewer");
   }, []);
@@ -29,7 +31,7 @@ export function Model3DViewer({
   }, [selected]);
 
   if (!items.length) {
-    return <EmptyState title="还没有 3D 资产" hint="选择 3D 模型并生成后，可在此旋转查看" />;
+    return <EmptyState title={t("no3d")} hint={t("threeDHint")} />;
   }
 
   return (
@@ -38,7 +40,7 @@ export function Model3DViewer({
         {modelUrl ? (
           <model-viewer
             src={modelUrl}
-            alt="3D 生成结果"
+            alt={t("threeDAlt")}
             camera-controls
             touch-action="pan-y"
             auto-rotate
@@ -46,7 +48,7 @@ export function Model3DViewer({
           />
         ) : selected?.result_urls?.length ? (
           <div className="p-6 text-sm text-gray-400 space-y-3">
-            <p>当前结果不是可预览的 glb/gltf，可下载查看：</p>
+            <p>{t("threeDDownload")}</p>
             <ul className="space-y-2">
               {selected.result_urls.map((u) => (
                 <li key={u}>
@@ -64,7 +66,7 @@ export function Model3DViewer({
           </div>
         ) : (
           <div className="flex items-center justify-center h-full text-sm text-gray-500">
-            选择一条 3D 结果开始预览
+            {t("select3d")}
           </div>
         )}
       </div>

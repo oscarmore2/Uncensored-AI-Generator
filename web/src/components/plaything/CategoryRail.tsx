@@ -2,6 +2,7 @@
 
 import type { PlaythingCategorySummary } from "./types";
 import type { PlaythingCategoryId } from "@/lib/plaything-categories";
+import { useTranslations } from "next-intl";
 
 export function CategoryRail({
   categories,
@@ -12,10 +13,11 @@ export function CategoryRail({
   active: PlaythingCategoryId | null;
   onChange: (id: PlaythingCategoryId) => void;
 }) {
+  const t = useTranslations("Plaything");
   return (
     <nav
       className="flex lg:flex-col gap-1 overflow-x-auto lg:overflow-visible shrink-0 lg:w-[72px] pb-1 lg:pb-0"
-      aria-label="玩物品类"
+      aria-label={t("categoryAria")}
     >
       {categories.map((c) => {
         const selected = c.id === active;

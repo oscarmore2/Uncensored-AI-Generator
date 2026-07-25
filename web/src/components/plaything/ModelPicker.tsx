@@ -1,6 +1,7 @@
 "use client";
 
 import type { PlaythingProduct } from "./types";
+import { useTranslations } from "next-intl";
 
 export function ModelPicker({
   products,
@@ -11,11 +12,12 @@ export function ModelPicker({
   selectedId: number | null;
   onSelect: (id: number) => void;
 }) {
+  const t = useTranslations("Plaything");
   const selected = products.find((p) => p.id === selectedId) ?? null;
 
   return (
     <div className="space-y-2">
-      <label className="text-xs text-gray-400 block">模型</label>
+      <label className="text-xs text-gray-400 block">{t("model")}</label>
       <div className="relative">
         <select
           value={selectedId ?? ""}
@@ -25,7 +27,7 @@ export function ModelPicker({
           {products.map((p) => (
             <option key={p.id} value={p.id}>
               {p.is_recommended ? "★ " : ""}
-              {p.label} · {p.credit_cost} 点
+              {p.label} · {p.credit_cost} {t("credits")}
             </option>
           ))}
         </select>
@@ -48,7 +50,7 @@ export function ModelPicker({
               {selected.label}
               {selected.is_recommended && (
                 <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300">
-                  推荐
+                  {t("recommended")}
                 </span>
               )}
             </div>

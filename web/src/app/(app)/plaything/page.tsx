@@ -26,8 +26,10 @@ import type {
   PlaythingGen,
   PlaythingProduct,
 } from "@/components/plaything/types";
+import { useTranslations } from "next-intl";
 
 export default function PlaythingPage() {
+  const t = useTranslations("Plaything");
   const { user, refreshUser, toast } = useApp();
   const router = useRouter();
   const [products, setProducts] = useState<PlaythingProduct[]>([]);
@@ -64,9 +66,9 @@ export default function PlaythingPage() {
         setForbidden(true);
         return;
       }
-      toast(e instanceof ApiError ? e.message : "加载失败");
+      toast(e instanceof ApiError ? e.message : t("loadFailed"));
     }
-  }, [toast]);
+  }, [t, toast]);
 
   const loadHistory = useCallback(async () => {
     try {
@@ -131,7 +133,7 @@ export default function PlaythingPage() {
   // 参数变化 → debounce 询价（媒体用占位，不先上传）
   useEffect(() => {
     if (!selected) return;
-    const payload = buildFieldParams(selected, form);
+    const payload = buildFieldParams(selected, form, (key, values) => t(key, values));
     if (!payload.ok) {
       setQuoteCost(selected.credit_cost);
       setQuoteSource(null);
@@ -186,18 +188,18 @@ export default function PlaythingPage() {
           setBrowserSelectedId(g.id);
           await refreshUser();
           await loadHistory();
-          toast("生成完成");
+          toast(t("completed"));
           return;
         }
         if (g.status === "failed") {
           setPhase("idle");
           await refreshUser();
           await loadHistory();
-          toast(g.error || "生成失败，点数已退回");
+          toast(g.error || t("failedRefunded"));
           return;
         }
       }
-      toast("仍在处理中，可稍后在右侧媒体库查看");
+      toast(t("stillProcessing"));
       setPhase("idle");
     } finally {
       pollingRef.current = false;
@@ -206,14 +208,14 @@ export default function PlaythingPage() {
 
   async function submit() {
     if (!selected || phase !== "idle") return;
-    const payload = buildFieldParams(selected, form);
+    const payload = buildFieldParams(selected, form, (key, values) => t(key, values));
     if (!payload.ok) {
       toast(payload.error);
       return;
     }
     const cost = quoteCost ?? selected.credit_cost;
     if ((user?.balance ?? 0) < cost) {
-      toast("点数不足");
+      toast(t("insufficient"));
       router.push("/pricing");
       return;
     }
@@ -243,16 +245,21 @@ export default function PlaythingPage() {
       void pollUntilDone(gen.id);
     } catch (e) {
       setPhase("idle");
-      toast(e instanceof Error ? e.message : e instanceof ApiError ? e.message : "提交失败");
+      if (e instanceof ApiError && e.code === "INSUFFICIENT_CREDITS") {
+        toast(t("insufficient"));
+        router.push("/pricing");
+      } else {
+        toast(e instanceof Error ? e.message : e instanceof ApiError ? e.message : t("submitFailed"));
+      }
     }
   }
 
   if (forbidden) {
     return (
       <div className="max-w-xl mx-auto py-24 text-center px-6">
-        <h1 className="text-3xl font-bold tracking-tighter mb-3">玩物专区</h1>
+        <h1 className="text-3xl font-bold tracking-tighter mb-3">{t("title")}</h1>
         <p className="text-gray-400 text-sm">
-          暂无访问权限。请联系管理员开通，或开通带玩物权限的 VIP 等级。
+          {t("noAccess")}
         </p>
       </div>
     );
@@ -262,9 +269,9 @@ export default function PlaythingPage() {
     <div className="max-w-[1400px] mx-auto px-4 sm:px-6 py-6 sm:py-8">
       <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-3xl sm:text-4xl font-bold tracking-tighter mb-1">玩物专区</h1>
+          <h1 className="text-3xl sm:text-4xl font-bold tracking-tighter mb-1">{t("title")}</h1>
           <p className="text-gray-400 text-sm">
-            WaveSpeed 工作台 · 按品类创作
+            {t("subtitle")}
             {note ? ` · ${note}` : ""}
           </p>
         </div>
@@ -275,7 +282,7 @@ export default function PlaythingPage() {
 
         <aside className="lg:w-[340px] shrink-0 flex flex-col gap-4 glass rounded-3xl p-4 sm:p-5">
           {categoryProducts.length === 0 ? (
-            <p className="text-sm text-gray-500 py-8 text-center">该品类暂无上架模型</p>
+            <p className="text-sm text-gray-500 py-8 text-center">{t("emptyCategory")}</p>
           ) : (
             <>
               <ModelPicker

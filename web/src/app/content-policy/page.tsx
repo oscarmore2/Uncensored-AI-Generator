@@ -1,9 +1,46 @@
 import type { Metadata } from "next";
 import { LegalPage } from "@/components/LegalPage";
+import { getLocale } from "next-intl/server";
 
-export const metadata: Metadata = { title: "内容使用条款" };
+export async function generateMetadata(): Promise<Metadata> {
+  const isEnglish = (await getLocale()) === "en";
+  const title = isEnglish ? "Content Policy" : "内容使用条款";
+  const description = isEnglish
+    ? "Rules for prompts, uploads, AI-generated media, public creations, safety classification, and adult mode."
+    : "玩玩可物关于提示词、上传素材、AI 生成媒体、公开作品、安全分类和成人模式的内容规则。";
+  return {
+    title,
+    description,
+    alternates: { canonical: "/content-policy" },
+    openGraph: { type: "website", title, description, url: "/content-policy", images: ["/opengraph-image"] },
+  };
+}
 
-export default function ContentPolicyPage() {
+export default async function ContentPolicyPage() {
+  if ((await getLocale()) === "en") {
+    return (
+      <LegalPage title="玩玩可物 Content Policy" updated="July 25, 2026">
+        <p>This policy applies to prompts, uploads, generated output, public creations, and other content submitted to the platform. You are responsible for your content and how you use it.</p>
+        <h2>1. Prohibited content</h2>
+        <p>You must not request, upload, generate, edit, share, or facilitate:</p>
+        <ul>
+          <li>Sexualized content involving minors or people who cannot clearly be identified as adults.</li>
+          <li>Non-consensual intimate media, face swaps, undressing, voyeurism, sexual humiliation, or sexualized content involving real people without consent.</li>
+          <li>Hate, harassment, threats, fraud, illegal trade, terrorism promotion, or facilitation of crime.</li>
+          <li>Content that violates intellectual property, privacy, publicity, confidential information, or other third-party rights.</li>
+          <li>Attempts to bypass age verification or access controls, or expose minors to adult content.</li>
+        </ul>
+        <h2>2. Adult mode</h2>
+        <p>Only active VIP users who complete 18+ verification may enable adult mode. It may be used only for clearly adult, fictional, or authorized subjects. Content involving minors or non-consensual conduct is always prohibited.</p>
+        <h2>3. Real people and synthetic media</h2>
+        <p>Obtain all necessary consent before using a real person’s likeness or voice. Do not create deceptive impersonation, defamation, political manipulation, fraud, or non-consensual sensitive synthetic media. Clearly disclose AI generation or editing where appropriate.</p>
+        <h2>4. Review system</h2>
+        <p>Generation requests are classified when submitted to determine whether output requires an 18+ label. Accounts without adult mode are blocked from adult, sexual, or realistic graphic content. Adult-mode classifications control labels and display treatment, while content involving minors or non-consensual activity remains blocked. 18+ work is returned only to eligible VIP accounts and is blurred by default.</p>
+        <h2>5. Enforcement and appeals</h2>
+        <p>Violations may lead to rejection, hiding or deletion, loss of publishing privileges, restrictions, suspension, or termination. You may request review through the support channel with the prompt, task number, and relevant context.</p>
+      </LegalPage>
+    );
+  }
   return (
     <LegalPage title="玩玩可物内容使用条款" updated="2026 年 7 月 25 日">
       <p>

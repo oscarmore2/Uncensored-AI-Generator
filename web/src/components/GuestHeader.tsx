@@ -1,9 +1,12 @@
 import Link from "next/link";
 import { getSession } from "@/lib/session";
 import { BrandLogo } from "./BrandLogo";
+import { LanguageSwitcher } from "./LanguageSwitcher";
+import { getTranslations } from "next-intl/server";
 
 /** 游客侧导航：未登录显示登录/注册，已登录显示进入创作中心 */
 export async function GuestHeader() {
+  const t = await getTranslations("Header");
   const session = await getSession();
   const isMod = session && (session.role === "moderator" || session.role === "admin");
 
@@ -14,19 +17,19 @@ export async function GuestHeader() {
 
         <nav className="flex items-center gap-x-2 text-sm">
           <Link href="/explore" className="px-4 py-2 text-gray-300 hover:text-white font-medium">
-            探索作品
+            {t("explore")}
           </Link>
           <Link href="/pricing" className="hidden px-4 py-2 text-gray-300 hover:text-white font-medium sm:block">
-            价格
+            {t("pricing")}
           </Link>
           {isMod && (
             <Link href="/mod" className="px-4 py-2 text-amber-300 hover:text-amber-200 font-medium">
-              审核台
+              {t("moderation")}
             </Link>
           )}
           {session?.role === "admin" && (
             <Link href="/admin" className="px-4 py-2 text-rose-300 hover:text-rose-200 font-medium">
-              管理端
+              {t("admin")}
             </Link>
           )}
           {session ? (
@@ -34,21 +37,22 @@ export async function GuestHeader() {
               href="/make"
               className="px-5 py-2 bg-rose-600 hover:bg-rose-500 text-white font-semibold rounded-2xl transition-colors"
             >
-              去创作
+              {t("goCreate")}
             </Link>
           ) : (
             <>
               <Link href="/login" className="px-4 py-2 text-gray-300 hover:text-white font-medium">
-                登录
+                {t("login")}
               </Link>
               <Link
                 href="/login?mode=register"
                 className="px-5 py-2 bg-rose-600 hover:bg-rose-500 text-white font-semibold rounded-2xl transition-colors"
               >
-                免费注册
+                {t("register")}
               </Link>
             </>
           )}
+          <LanguageSwitcher compact />
         </nav>
       </div>
     </header>

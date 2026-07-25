@@ -1,9 +1,47 @@
 import type { Metadata } from "next";
 import { LegalPage } from "@/components/LegalPage";
+import { getLocale } from "next-intl/server";
 
-export const metadata: Metadata = { title: "隐私与 Cookie 政策" };
+export async function generateMetadata(): Promise<Metadata> {
+  const isEnglish = (await getLocale()) === "en";
+  const title = isEnglish ? "Privacy & Cookie Policy" : "隐私与 Cookie 政策";
+  const description = isEnglish
+    ? "How 玩玩可物 handles account data, prompts, uploads, generated media, payments, cookies, and retention."
+    : "玩玩可物如何处理账户数据、提示词、上传素材、生成媒体、支付记录、Cookie 与数据保留。";
+  return {
+    title,
+    description,
+    alternates: { canonical: "/privacy" },
+    openGraph: { type: "website", title, description, url: "/privacy", images: ["/opengraph-image"] },
+  };
+}
 
-export default function PrivacyPage() {
+export default async function PrivacyPage() {
+  if ((await getLocale()) === "en") {
+    return (
+      <LegalPage title="Privacy & Cookie Policy" updated="July 25, 2026">
+        <p>This policy explains how 玩玩可物 handles account information, device and log data, payments, prompts, uploaded media, and generated output.</p>
+        <h2>1. Data we collect</h2>
+        <ul>
+          <li>Account data: username, password hash, role, membership, acceptance records, and adult-mode settings.</li>
+          <li>Age verification data: date of birth and verification time submitted when adult mode is enabled.</li>
+          <li>Service data: prompts, parameters, uploads, output, task status, and credit transactions.</li>
+          <li>Security data: IP address, request information, error logs, anti-abuse signals, and verification results.</li>
+          <li>Transaction data: order identifiers, amounts, status, and necessary payment-provider identifiers. We do not store full card details.</li>
+        </ul>
+        <h2>2. Why we use data</h2>
+        <p>We process necessary data to provide the service, secure accounts, complete payments, enforce content rules, resolve disputes, and meet legal obligations. Optional analytics or experience data is used only with consent.</p>
+        <h2>3. Cookies and local storage</h2>
+        <p>Necessary cookies support sessions, language preference, security, and service delivery. Optional cookies are enabled only after consent. Your cookie selection is stored locally and the notice will return if browser data is cleared.</p>
+        <h2>4. Sharing, transfers, and retention</h2>
+        <p>We share only necessary data with hosting, AI inference, object storage, payment, verification, and notification providers. Uploads and generated media follow the retention policy and countdown shown in the interface. By default, uploads and unfeatured non-VIP output are kept for seven days, while VIP-created output is retained permanently; administrators may change these settings. Task, prompt, transaction, and security records may remain after media deletion when needed for disputes or law.</p>
+        <h2>5. Your rights</h2>
+        <p>Subject to applicable law, you may request access, correction, deletion, export, restriction, or objection, and may withdraw optional consent. We may need to verify your identity. Records required by law or fraud prevention may not be deleted immediately.</p>
+        <h2>6. Security and contact</h2>
+        <p>We use access controls, encrypted transport, protected secrets, and audit measures, but no system is completely secure. Use the published support channel for privacy requests or security reports.</p>
+      </LegalPage>
+    );
+  }
   return (
     <LegalPage title="隐私与 Cookie 政策" updated="2026 年 7 月 25 日">
       <p>
@@ -28,7 +66,7 @@ export default function PrivacyPage() {
 
       <h2>3. Cookie 与本地存储</h2>
       <p>
-        必要 Cookie 用于登录会话、安全校验和负载处理，无法通过同意横栏关闭。你的 Cookie 选择保存在浏览器
+        必要 Cookie 用于登录会话、语言偏好、安全校验和负载处理，无法通过同意横栏关闭。你的 Cookie 选择保存在浏览器
         本地存储中。可选 Cookie 用于产品分析和体验优化，只有选择“同意并继续”后才应启用。清除浏览器数据后，
         横栏会再次出现。
       </p>

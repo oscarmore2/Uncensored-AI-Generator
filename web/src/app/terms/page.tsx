@@ -1,9 +1,49 @@
 import type { Metadata } from "next";
 import { LegalPage } from "@/components/LegalPage";
+import { getLocale } from "next-intl/server";
 
-export const metadata: Metadata = { title: "用户条款" };
+export async function generateMetadata(): Promise<Metadata> {
+  const isEnglish = (await getLocale()) === "en";
+  const title = isEnglish ? "Terms of Service" : "用户条款";
+  const description = isEnglish
+    ? "Terms governing accounts, AI media generation, credits, subscriptions, content, retention, and platform safety."
+    : "玩玩可物关于账户、AI 媒体生成、点数、会员、内容、媒体保留和平台安全的用户条款。";
+  return {
+    title,
+    description,
+    alternates: { canonical: "/terms" },
+    openGraph: { type: "website", title, description, url: "/terms", images: ["/opengraph-image"] },
+  };
+}
 
-export default function TermsPage() {
+export default async function TermsPage() {
+  if ((await getLocale()) === "en") {
+    return (
+      <LegalPage title="玩玩可物 Terms of Service" updated="July 25, 2026">
+        <p>By registering, signing in, accessing, or using 玩玩可物, you agree to these Terms and our Content Policy. If you do not agree, do not use the service.</p>
+        <h2>1. Accounts and eligibility</h2>
+        <p>Provide accurate and lawful information and protect your credentials. You may not sell, rent, or share accounts, or bypass access controls and safety limits. Adult mode is limited to verified users aged 18 or older with active VIP membership.</p>
+        <h2>2. Service</h2>
+        <p>We provide AI image, video, media generation, editing, storage, and display tools. AI output is probabilistic, and we do not guarantee accuracy, uniqueness, continuous availability, or fitness for a particular purpose.</p>
+        <h2>3. Credits, subscriptions, and refunds</h2>
+        <p>Credits are usable only within the platform, have no cash value, and are not transferable unless required by law. Tasks consume the displayed credits. Confirmed platform failures may receive automatic refunds. VIP benefits and renewal terms are shown at purchase.</p>
+        <h2>4. Your content and media retention</h2>
+        <p>You retain rights you lawfully hold in your inputs. You grant us a non-exclusive, worldwide, royalty-free license limited to hosting, processing, transmitting, generating, reviewing, and maintaining the service. Uploads and unfeatured output may be permanently deleted after the countdown shown in the interface. Download anything you wish to keep. VIP output follows the displayed retention policy, while uploads have a separate retention period. Moderator-featured work may be retained for public display.</p>
+        <h2>5. Intellectual property and third-party rights</h2>
+        <p>You must have the rights needed for anything you upload, enter, or publish. Do not infringe copyright, trademarks, privacy, publicity, confidential information, or other rights. We may remove content or restrict accounts after a valid complaint.</p>
+        <h2>6. Safety review and enforcement</h2>
+        <p>We may use automated systems and human reviewers to assess prompts, metadata, and public content. We may reject generation, hide or remove content, restrict accounts, and retain or disclose records when required by law or urgent safety concerns.</p>
+        <h2>7. Suspension and termination</h2>
+        <p>We may suspend or terminate service for violations, fraud, unpaid charges, safety risks, or legal requirements. Obligations incurred before termination continue to apply.</p>
+        <h2>8. Disclaimers and liability</h2>
+        <p>To the fullest extent permitted by law, the service is provided “as is” and “as available.” We are not liable for indirect, incidental, special, or consequential losses. Review output before publication, commercial use, or important decisions.</p>
+        <h2>9. Updates</h2>
+        <p>We may update these Terms for product, legal, or safety reasons. Material changes will be communicated reasonably. Mandatory consumer rights remain unaffected.</p>
+        <h2>10. Contact and disputes</h2>
+        <p>Contact us through the support channel published by the platform. Applicable law, jurisdiction, and mandatory consumer protections depend on the operating entity and your location.</p>
+      </LegalPage>
+    );
+  }
   return (
     <LegalPage title="玩玩可物用户条款" updated="2026 年 7 月 25 日">
       <p>

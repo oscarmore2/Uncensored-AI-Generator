@@ -8,6 +8,7 @@ import {
   type PendingMedia,
 } from "@/lib/plaything-upload-client";
 import type { PlaythingProduct } from "./types";
+import { useTranslations } from "next-intl";
 
 export type DynamicFormState = {
   prompt: string;
@@ -72,6 +73,7 @@ export function DynamicParamForm({
   onChange: (next: DynamicFormState) => void;
   onError?: (msg: string) => void;
 }) {
+  const t = useTranslations("Plaything");
   const controls = useMemo(() => getControls(product), [product]);
   const props = product.param_schema?.properties ?? {};
   const required = new Set(product.param_schema?.required ?? []);
@@ -89,7 +91,7 @@ export function DynamicParamForm({
     const existing = value.mediaFiles[c.key] ?? [];
     const room = Math.max(0, max - existing.length);
     if (room <= 0) {
-      onError?.(`最多选择 ${max} 个文件`);
+      onError?.(t("maxFiles", { max }));
       return;
     }
     const list = Array.from(files).slice(0, room);
@@ -116,7 +118,7 @@ export function DynamicParamForm({
         },
       });
     } catch (e) {
-      onError?.(e instanceof Error ? e.message : "文件校验失败");
+      onError?.(e instanceof Error ? e.message : t("fileValidationFailed"));
     }
   }
 
@@ -138,13 +140,13 @@ export function DynamicParamForm({
       {hasPrompt && (
         <div>
           <label className="text-xs text-gray-400 block mb-1">
-            提示词{required.has("prompt") ? " *" : ""}
+            {t("prompt")}{required.has("prompt") ? " *" : ""}
           </label>
           <textarea
             value={value.prompt}
             onChange={(e) => onChange({ ...value, prompt: e.target.value })}
             rows={4}
-            placeholder="描述你想生成的内容…"
+            placeholder={t("promptPlaceholder")}
             className="w-full bg-[#111] border border-white/10 rounded-2xl px-4 py-3 text-sm outline-none resize-y focus:border-rose-500/40"
           />
         </div>
@@ -152,7 +154,7 @@ export function DynamicParamForm({
 
       {hasNegative && (
         <div>
-          <label className="text-xs text-gray-400 block mb-1">负面提示词</label>
+          <label className="text-xs text-gray-400 block mb-1">{t("negativePrompt")}</label>
           <textarea
             value={value.negativePrompt}
             onChange={(e) => onChange({ ...value, negativePrompt: e.target.value })}
@@ -164,7 +166,7 @@ export function DynamicParamForm({
 
       {mediaControls.length > 0 && (
         <div className="space-y-3">
-          <div className="text-xs text-gray-400">参考媒体（生成时上传）</div>
+          <div className="text-xs text-gray-400">{t("referenceMedia")}</div>
           {mediaControls.map((c) => {
             if (c.kind !== "media") return null;
             const items = value.mediaFiles[c.key] ?? [];
@@ -177,7 +179,7 @@ export function DynamicParamForm({
                   {required.has(c.key) ? " *" : ""}
                   <span className="text-gray-600">
                     {" "}
-                    · 最多 {max} · {c.policy.accept?.join(", ") || c.mediaKind}
+                    · {t("mediaLimit", { max, accept: c.policy.accept?.join(", ") || c.mediaKind })}
                   </span>
                 </label>
                 <div className="rounded-2xl border border-dashed border-white/15 bg-white/[0.02] p-3">
@@ -318,7 +320,16 @@ export function DynamicParamForm({
 }
 
 /** 组装非媒体参数；媒体由 upload 后再 merge */
-export function buildFieldParams(product: PlaythingProduct, form: DynamicFormState) {
+export type PlaythingFormTranslator = (
+  key: "chooseField" | "fillField",
+  values: { field: string }
+) => string;
+
+export function buildFieldParams(
+  product: PlaythingProduct,
+  form: DynamicFormState,
+  translate?: PlaythingFormTranslator
+) {
   const controls = getControls(product);
   const required = new Set(product.param_schema?.required ?? []);
   const params: Record<string, unknown> = {};
@@ -331,14 +342,20 @@ export function buildFieldParams(product: PlaythingProduct, form: DynamicFormSta
     if (c.kind === "media") {
       const items = form.mediaFiles[c.key] ?? [];
       if (!items.length && required.has(c.key)) {
-        return { ok: false as const, error: `请选择 ${c.key}` };
+        return {
+          ok: false as const,
+          error: translate ? translate("chooseField", { field: c.key }) : `请选择 ${c.key}`,
+        };
       }
       continue;
     }
     const raw = form.fields[c.key];
     if (raw === undefined || raw === "") {
       if (required.has(c.key)) {
-        return { ok: false as const, error: `请填写 ${c.key}` };
+        return {
+          ok: false as const,
+          error: translate ? translate("fillField", { field: c.key }) : `请填写 ${c.key}`,
+        };
       }
       continue;
     }

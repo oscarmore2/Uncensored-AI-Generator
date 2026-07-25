@@ -1,13 +1,36 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { db } from "@/lib/db";
 import { getSession } from "@/lib/session";
 import { GuestHeader } from "@/components/GuestHeader";
 import { WorkMedia } from "@/components/WorkMedia";
 import { BrandLogo } from "@/components/BrandLogo";
+import { getTranslations } from "next-intl/server";
+import { absoluteUrl, SITE_NAME, SITE_URL } from "@/lib/site";
 
 export const dynamic = "force-dynamic";
 
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("Metadata");
+  return {
+    title: { absolute: t("title") },
+    description: t("description"),
+    alternates: { canonical: "/" },
+    openGraph: {
+      type: "website",
+      title: t("title"),
+      description: t("description"),
+      url: "/",
+      images: ["/opengraph-image"],
+    },
+  };
+}
+
 export default async function LandingPage() {
+  const [t, metadata] = await Promise.all([
+    getTranslations("Landing"),
+    getTranslations("Metadata"),
+  ]);
   const [session, works] = await Promise.all([
     getSession(),
     db.publicWork.findMany({
@@ -16,9 +39,41 @@ export default async function LandingPage() {
       take: 8,
     }),
   ]);
+  const structuredData = [
+    {
+      "@context": "https://schema.org",
+      "@type": "WebSite",
+      name: SITE_NAME,
+      url: SITE_URL,
+      description: metadata("description"),
+      inLanguage: ["zh-CN", "en"],
+    },
+    {
+      "@context": "https://schema.org",
+      "@type": "WebApplication",
+      name: SITE_NAME,
+      url: SITE_URL,
+      description: metadata("description"),
+      applicationCategory: "MultimediaApplication",
+      operatingSystem: "Any",
+      browserRequirements: "Requires JavaScript",
+      offers: {
+        "@type": "Offer",
+        price: "0",
+        priceCurrency: "USD",
+        url: absoluteUrl("/pricing"),
+      },
+    },
+  ];
 
   return (
     <div className="min-h-screen">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify(structuredData).replace(/</g, "\\u003c"),
+        }}
+      />
       <GuestHeader />
 
       {/* Hero：品牌 + 一句卖点 + CTA，背景用玫红氛围光 */}
@@ -34,10 +89,10 @@ export default async function LandingPage() {
           </div>
 
           <h1 className="text-2xl md:text-4xl font-bold tracking-tight text-gray-100 max-w-3xl mx-auto">
-            一句话，把灵感变成图片与视频
+            {t("headline")}
           </h1>
           <p className="mt-4 text-gray-400 max-w-xl mx-auto">
-            从概念图、角色设计到动态短片，使用专业 AI 模型轻松创作。
+            {t("subheading")}
           </p>
 
           <div className="mt-10 flex items-center justify-center gap-x-4">
@@ -45,13 +100,41 @@ export default async function LandingPage() {
               href={session ? "/make" : "/login?mode=register"}
               className="generate-btn px-10 py-4 text-white font-bold text-lg rounded-3xl shadow-xl active:scale-[0.985]"
             >
-              {session ? "进入创作中心" : "免费开始创作"}
+              {session ? t("enterStudio") : t("startFree")}
             </Link>
             <Link
               href="/explore"
               className="px-8 py-4 font-semibold rounded-3xl border border-white/15 hover:bg-white/5 transition-colors"
             >
-              先逛逛作品
+              {t("browse")}
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      <section className="border-y border-white/10 bg-white/[0.02]">
+        <div className="mx-auto max-w-7xl px-6 py-20">
+          <p className="text-sm font-semibold uppercase tracking-[0.24em] text-violet-300">
+            {t("seoEyebrow")}
+          </p>
+          <h2 className="mt-3 max-w-3xl text-3xl font-black tracking-tight md:text-4xl">
+            {t("seoTitle")}
+          </h2>
+          <p className="mt-4 max-w-3xl leading-7 text-gray-400">{t("seoDescription")}</p>
+          <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {(["textToImage", "textToVideo", "imageToVideo", "multiModel"] as const).map((key) => (
+              <article key={key} className="glass rounded-3xl p-6">
+                <h3 className="font-bold text-gray-100">{t(`seoCards.${key}.title`)}</h3>
+                <p className="mt-2 text-sm leading-6 text-gray-400">{t(`seoCards.${key}.body`)}</p>
+              </article>
+            ))}
+          </div>
+          <div className="mt-8 flex flex-wrap gap-4 text-sm font-semibold">
+            <Link href="/explore" className="text-rose-300 hover:text-rose-200">
+              {t("exploreLink")} <i className="fas fa-arrow-right ml-1" />
+            </Link>
+            <Link href="/pricing" className="text-violet-300 hover:text-violet-200">
+              {t("pricingLink")} <i className="fas fa-arrow-right ml-1" />
             </Link>
           </div>
         </div>
@@ -61,9 +144,9 @@ export default async function LandingPage() {
       {works.length > 0 && (
         <section className="max-w-7xl mx-auto px-6 pb-24">
           <div className="flex items-end justify-between mb-6">
-            <h2 className="text-2xl font-bold tracking-tight">社区精选</h2>
+            <h2 className="text-2xl font-bold tracking-tight">{t("featured")}</h2>
             <Link href="/explore" className="text-sm text-rose-400 hover:text-rose-300">
-              查看全部 <i className="fas fa-arrow-right ml-1" />
+              {t("viewAll")} <i className="fas fa-arrow-right ml-1" />
             </Link>
           </div>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -88,13 +171,17 @@ export default async function LandingPage() {
       )}
 
       <footer className="border-t border-white/10 py-8 text-center text-xs text-gray-500">
-        <span>© 2026 玩玩可物 • AI 媒体创作平台</span>
+        <span>{t("footer")}</span>
         <span className="mx-2">·</span>
-        <Link href="/terms" className="hover:text-gray-300">用户条款</Link>
+        <Link href="/terms" className="hover:text-gray-300">{t("terms")}</Link>
         <span className="mx-2">·</span>
-        <Link href="/content-policy" className="hover:text-gray-300">内容使用条款</Link>
+        <Link href="/content-policy" className="hover:text-gray-300">{t("contentPolicy")}</Link>
         <span className="mx-2">·</span>
-        <Link href="/privacy" className="hover:text-gray-300">隐私与 Cookie</Link>
+        <Link href="/privacy" className="hover:text-gray-300">{t("privacy")}</Link>
+        <span className="mx-2">·</span>
+        <Link href="/explore" className="hover:text-gray-300">{t("exploreLink")}</Link>
+        <span className="mx-2">·</span>
+        <Link href="/pricing" className="hover:text-gray-300">{t("pricingLink")}</Link>
       </footer>
     </div>
   );

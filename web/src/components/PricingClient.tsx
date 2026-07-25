@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { api, type CatalogPackage, type CatalogVipPlan } from "@/lib/client";
+import { useTranslations } from "next-intl";
 
 export function PricingClient({
   packages,
@@ -15,6 +16,7 @@ export function PricingClient({
   signedIn: boolean;
   initialTab: "credits" | "vip";
 }) {
+  const t = useTranslations("Pricing");
   const router = useRouter();
   const [tab, setTab] = useState<"credits" | "vip">(initialTab);
   const [selected, setSelected] = useState(
@@ -45,7 +47,7 @@ export function PricingClient({
         );
         if (data.checkout_url) window.location.href = data.checkout_url;
         else if (data.demo) {
-          setMessage(data.message ?? "点数已到账");
+          setMessage(data.message ?? t("creditsReceived"));
           router.push("/make");
         }
       } else {
@@ -56,7 +58,7 @@ export function PricingClient({
         window.location.href = data.checkout_url;
       }
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "创建付款失败");
+      setMessage(error instanceof Error ? error.message : t("paymentFailed"));
     } finally {
       setBusy(null);
     }
@@ -73,11 +75,11 @@ export function PricingClient({
       );
       if (data.checkout_url) window.location.href = data.checkout_url;
       else {
-        setMessage(data.message ?? "VIP 已开通");
+        setMessage(data.message ?? t("vipActivated"));
         router.push("/profile");
       }
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "VIP 购买失败");
+      setMessage(error instanceof Error ? error.message : t("vipFailed"));
     } finally {
       setBusy(null);
     }
@@ -91,14 +93,14 @@ export function PricingClient({
           onClick={() => setTab("credits")}
           className={`rounded-xl px-5 py-3 text-sm font-semibold ${tab === "credits" ? "bg-violet-500 text-white" : "text-gray-400"}`}
         >
-          点数购买
+          {t("creditsTab")}
         </button>
         <button
           type="button"
           onClick={() => setTab("vip")}
           className={`rounded-xl px-5 py-3 text-sm font-semibold ${tab === "vip" ? "bg-amber-400 text-black" : "text-gray-400"}`}
         >
-          VIP 购买
+          {t("vipTab")}
         </button>
       </div>
 
@@ -130,7 +132,7 @@ export function PricingClient({
                   <div className="text-sm text-gray-400">{item.label}</div>
                   <div className="mt-4 text-4xl font-black">
                     {item.credits}
-                    <span className="ml-2 text-sm font-normal text-gray-500">点数</span>
+                    <span className="ml-2 text-sm font-normal text-gray-500">{t("credits")}</span>
                   </div>
                   <div className="mt-5 text-2xl font-bold">${(item.price_cents / 100).toFixed(2)}</div>
                 </button>
@@ -144,7 +146,7 @@ export function PricingClient({
               onClick={() => void buyCredits("card")}
               className="rounded-2xl bg-white py-3.5 font-bold text-black hover:bg-gray-100 disabled:opacity-40"
             >
-              {busy === "card" ? "处理中…" : signedIn ? "银行卡购买" : "注册后购买"}
+              {busy === "card" ? t("processing") : signedIn ? t("card") : t("registerToBuy")}
             </button>
             <button
               type="button"
@@ -152,7 +154,7 @@ export function PricingClient({
               onClick={() => void buyCredits("crypto")}
               className="rounded-2xl border border-emerald-400/30 bg-emerald-400/10 py-3.5 font-bold text-emerald-300 hover:bg-emerald-400/15 disabled:opacity-40"
             >
-              {busy === "crypto" ? "处理中…" : "加密货币购买"}
+              {busy === "crypto" ? t("processing") : t("crypto")}
             </button>
           </div>
         </div>
@@ -165,15 +167,15 @@ export function PricingClient({
               <p className="mt-1 text-sm text-gray-400">{plan.tier.name}</p>
               <div className="mt-6 text-4xl font-black">
                 ${(plan.price_cents / 100).toFixed(2)}
-                <span className="text-sm font-normal text-gray-500"> / {plan.duration_days} 天</span>
+                <span className="text-sm font-normal text-gray-500"> / {t("days", { days: plan.duration_days })}</span>
               </div>
               <ul className="my-6 flex-1 space-y-3 text-sm text-gray-300">
-                <li><i className="fas fa-check mr-2 text-amber-300" />可完成 18+ 年龄验证并开启成人模式</li>
+                <li><i className="fas fa-check mr-2 text-amber-300" />{t("adultMode")}</li>
                 {plan.tier.discount_percent > 0 && (
-                  <li><i className="fas fa-check mr-2 text-amber-300" />生成费用优惠 {plan.tier.discount_percent}%</li>
+                  <li><i className="fas fa-check mr-2 text-amber-300" />{t("discount", { percent: plan.tier.discount_percent })}</li>
                 )}
                 {plan.bonus_credits > 0 && (
-                  <li><i className="fas fa-check mr-2 text-amber-300" />赠送 {plan.bonus_credits} 点数</li>
+                  <li><i className="fas fa-check mr-2 text-amber-300" />{t("bonus", { credits: plan.bonus_credits })}</li>
                 )}
               </ul>
               <button
@@ -182,7 +184,7 @@ export function PricingClient({
                 onClick={() => void buyVip(plan)}
                 className="rounded-2xl bg-amber-400 py-3 font-bold text-black hover:bg-amber-300 disabled:opacity-40"
               >
-                {busy === plan.id ? "处理中…" : signedIn ? "选择此方案" : "注册后订阅"}
+                {busy === plan.id ? t("processing") : signedIn ? t("select") : t("registerToSubscribe")}
               </button>
             </article>
           ))}
@@ -190,7 +192,7 @@ export function PricingClient({
       )}
 
       {(tab === "credits" ? packages : vipPlans).length === 0 && (
-        <div className="rounded-3xl border border-white/10 p-12 text-center text-gray-500">暂无可购买方案</div>
+        <div className="rounded-3xl border border-white/10 p-12 text-center text-gray-500">{t("empty")}</div>
       )}
     </div>
   );

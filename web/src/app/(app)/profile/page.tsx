@@ -5,8 +5,11 @@ import { useRouter } from "next/navigation";
 import { api, type ApiGeneration } from "@/lib/client";
 import { useApp } from "@/components/AppContext";
 import { AdultModeSettings } from "@/components/AdultModeSettings";
+import { useLocale, useTranslations } from "next-intl";
 
 export default function ProfilePage() {
+  const t = useTranslations("Profile");
+  const locale = useLocale();
   const router = useRouter();
   const { user, refreshUser, toast } = useApp();
   const [totalGens, setTotalGens] = useState<number | null>(null);
@@ -20,14 +23,14 @@ export default function ProfilePage() {
 
   async function logout() {
     await api("/api/auth/logout", { method: "POST" }).catch(() => {});
-    toast("已退出登录");
+    toast(t("loggedOut"));
     router.push("/login");
     router.refresh();
   }
 
   return (
     <div className="max-w-3xl mx-auto">
-      <h1 className="text-4xl font-bold tracking-tighter mb-8">个人中心</h1>
+      <h1 className="text-4xl font-bold tracking-tighter mb-8">{t("title")}</h1>
 
       <div className="glass rounded-3xl p-8 mb-6">
         <div className="flex items-center gap-x-6">
@@ -43,20 +46,20 @@ export default function ProfilePage() {
                 </span>
               )}
             </div>
-            <p className="text-gray-400 text-sm">Cookie 会话 • 同源 API</p>
+            <p className="text-gray-400 text-sm">{t("session")}</p>
 
             <div className="mt-4 flex gap-2">
               <button
                 onClick={() => router.push("/pricing")}
                 className="px-5 py-2 text-sm font-semibold bg-white text-black rounded-2xl flex items-center gap-x-2 hover:bg-gray-100"
               >
-                <i className="fas fa-wallet" /> <span>充值点数</span>
+                <i className="fas fa-wallet" /> <span>{t("buyCredits")}</span>
               </button>
               <button
                 onClick={logout}
                 className="px-5 py-2 text-sm font-semibold border border-white/20 hover:bg-white/5 rounded-2xl"
               >
-                退出登录
+                {t("logout")}
               </button>
             </div>
           </div>
@@ -66,17 +69,17 @@ export default function ProfilePage() {
       <div className="grid grid-cols-3 gap-4 mb-6">
         <div className="glass rounded-3xl p-5 text-center">
           <div className="text-4xl font-mono font-bold text-rose-400 stat-number">{totalGens ?? "—"}</div>
-          <div className="text-xs text-gray-400 mt-1">已生成作品</div>
+          <div className="text-xs text-gray-400 mt-1">{t("creations")}</div>
         </div>
         <div className="glass rounded-3xl p-5 text-center">
           <div className="text-4xl font-mono font-bold text-amber-400 stat-number">{user?.balance ?? "—"}</div>
-          <div className="text-xs text-gray-400 mt-1">当前点数余额</div>
+          <div className="text-xs text-gray-400 mt-1">{t("balance")}</div>
         </div>
         <div className="glass rounded-3xl p-5 text-center">
           <div className="text-4xl font-mono font-bold text-emerald-400">
-            {user?.is_vip ? user.vip_tier?.name ?? "VIP" : "普通"}
+            {user?.is_vip ? user.vip_tier?.name ?? "VIP" : t("standard")}
           </div>
-          <div className="text-xs text-gray-400 mt-1">账户等级</div>
+          <div className="text-xs text-gray-400 mt-1">{t("level")}</div>
         </div>
       </div>
 
@@ -84,12 +87,12 @@ export default function ProfilePage() {
         <div className="glass rounded-3xl p-6">
           <h3 className="font-semibold mb-2 flex items-center">
             <i className="fas fa-crown text-amber-400 mr-2" />{" "}
-            {user.vip_tier?.name ?? "VIP"} 有效期
+            {t("validity", { tier: user.vip_tier?.name ?? "VIP" })}
           </h3>
           <p className="text-sm text-gray-400">
-            到期时间：{new Date(user.vip_expires_at).toLocaleDateString()}
+            {t("expires", { date: new Date(user.vip_expires_at).toLocaleDateString(locale) })}
             {user.vip_tier && user.vip_tier.discount_percent > 0
-              ? ` · 生成折扣 ${user.vip_tier.discount_percent}%`
+              ? ` · ${t("discount", { percent: user.vip_tier.discount_percent })}`
               : ""}
           </p>
         </div>

@@ -29,13 +29,16 @@ export async function POST(req: Request) {
 
   const ip = clientIp(req);
   if (!rateLimit(`register:${ip}`, 5, 60_000)) {
-    return NextResponse.json({ error: "请求过于频繁，请稍后再试" }, { status: 429 });
+    return NextResponse.json({ error: "请求过于频繁，请稍后再试", code: "RATE_LIMITED" }, { status: 429 });
   }
 
   const body = await req.json().catch(() => null);
   const parsed = registerBodySchema.safeParse(body);
   if (!parsed.success) {
-    return NextResponse.json({ error: parsed.error.issues[0].message }, { status: 400 });
+    return NextResponse.json(
+      { error: parsed.error.issues[0].message, code: "INVALID_REGISTRATION" },
+      { status: 400 }
+    );
   }
 
   const captcha = await verifyTurnstileToken(extractTurnstileToken(parsed.data), ip);
@@ -46,12 +49,12 @@ export async function POST(req: Request) {
   const { username, password } = parsed.data;
   const seedName = process.env.SEED_ADMIN_USERNAME?.trim();
   if (RESERVED.has(username) || (seedName && username === seedName)) {
-    return NextResponse.json({ error: "该用户名不可用" }, { status: 400 });
+    return NextResponse.json({ error: "该用户名不可用", code: "USERNAME_UNAVAILABLE" }, { status: 400 });
   }
 
   const existing = await db.user.findUnique({ where: { username } });
   if (existing) {
-    return NextResponse.json({ error: "该用户名不可用" }, { status: 400 });
+    return NextResponse.json({ error: "该用户名不可用", code: "USERNAME_UNAVAILABLE" }, { status: 400 });
   }
 
   const user = await db.user.create({

@@ -35,9 +35,11 @@ export interface ApiGeneration {
 
 export class ApiError extends Error {
   status: number;
-  constructor(status: number, message: string) {
+  code?: string;
+  constructor(status: number, message: string, code?: string) {
     super(message);
     this.status = status;
+    this.code = code;
   }
 }
 
@@ -48,7 +50,12 @@ export async function api<T>(path: string, init?: RequestInit): Promise<T> {
   });
   const data = await resp.json().catch(() => ({}));
   if (!resp.ok) {
-    throw new ApiError(resp.status, (data as { error?: string }).error ?? `请求失败 (${resp.status})`);
+    const errorData = data as { error?: string; code?: string };
+    throw new ApiError(
+      resp.status,
+      errorData.error ?? `请求失败 (${resp.status})`,
+      errorData.code
+    );
   }
   return data as T;
 }

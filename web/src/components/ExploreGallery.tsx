@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { AdaptiveMedia, WorkMedia } from "./WorkMedia";
+import { useTranslations } from "next-intl";
 
 export type ExploreWork = {
   id: number;
@@ -17,19 +18,13 @@ export type ExploreWork = {
   created_at: string;
 };
 
-const MODE_LABELS: Record<string, string> = {
-  txt2img: "文生图",
-  txt2vid: "文生视频",
-  img2img: "图生图",
-  img2vid: "图生视频",
-  undress: "图像编辑",
-};
+const MODE_KEYS = new Set(["txt2img", "txt2vid", "img2img", "img2vid", "undress"]);
 
-function displayValue(value: unknown): string {
+function displayValue(value: unknown, inlineMedia: string): string {
   if (value === null || value === undefined) return "—";
   if (typeof value === "object") return JSON.stringify(value);
   const text = String(value);
-  return text.startsWith("data:") ? "内嵌媒体数据" : text;
+  return text.startsWith("data:") ? inlineMedia : text;
 }
 
 function referenceMedia(params: Record<string, unknown>): string[] {
@@ -53,6 +48,7 @@ export function ExploreGallery({
   works: ExploreWork[];
   signedIn: boolean;
 }) {
+  const t = useTranslations("Explore");
   const router = useRouter();
   const [revealed, setRevealed] = useState<Set<number>>(new Set());
   const [selected, setSelected] = useState<ExploreWork | null>(null);
@@ -100,7 +96,7 @@ export function ExploreGallery({
                 }`}
               />
               <div className="absolute left-3 top-3 flex gap-1.5">
-                <span className="media-badge">{MODE_LABELS[work.mode] ?? work.mode}</span>
+                <span className="media-badge">{MODE_KEYS.has(work.mode) ? t(`modes.${work.mode}` as "modes.txt2img") : work.mode}</span>
                 {work.is_adult && (
                   <span className="rounded-full bg-red-600 px-2 py-0.5 text-[10px] font-bold text-white">18+</span>
                 )}
@@ -114,11 +110,11 @@ export function ExploreGallery({
                       reveal(work.id);
                     }}
                     className="flex h-12 w-12 items-center justify-center rounded-full border border-white/25 bg-black/70 text-xl text-white hover:bg-black/85"
-                    aria-label="显示 18+ 作品预览"
+                    aria-label={t("showAdultAria")}
                   >
                     <i className="fas fa-eye" />
                   </button>
-                  <p className="mt-3 text-xs font-medium text-white">点击眼睛显示 18+ 预览</p>
+                  <p className="mt-3 text-xs font-medium text-white">{t("showAdult")}</p>
                 </div>
               )}
               <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 to-transparent p-4">
@@ -134,7 +130,7 @@ export function ExploreGallery({
           className="fixed inset-0 z-[220] flex items-center justify-center bg-black/90 p-3 sm:p-6"
           role="dialog"
           aria-modal="true"
-          aria-label="作品媒体与参数"
+          aria-label={t("dialogAria")}
           onClick={(event) => {
             if (event.target === event.currentTarget) setSelected(null);
           }}
@@ -152,12 +148,12 @@ export function ExploreGallery({
               <div className="flex items-start justify-between gap-4">
                 <div>
                   <div className="flex gap-2">
-                    <span className="media-badge">{MODE_LABELS[selected.mode] ?? selected.mode}</span>
+                    <span className="media-badge">{MODE_KEYS.has(selected.mode) ? t(`modes.${selected.mode}` as "modes.txt2img") : selected.mode}</span>
                     {selected.is_adult && (
                       <span className="rounded-full bg-red-600 px-2 py-0.5 text-[10px] font-bold">18+</span>
                     )}
                   </div>
-                  <h2 className="mt-3 text-xl font-bold">{selected.title ?? "社区作品"}</h2>
+                  <h2 className="mt-3 text-xl font-bold">{selected.title ?? t("communityWork")}</h2>
                 </div>
                 <button type="button" onClick={() => setSelected(null)} className="text-3xl text-gray-500 hover:text-white">
                   &times;
@@ -179,24 +175,24 @@ export function ExploreGallery({
                 <div className="rounded-2xl border border-white/10 bg-white/[0.025] p-3">
                   <div className="text-[10px] font-semibold text-gray-500">MODEL</div>
                   <div className="mt-1 truncate text-xs font-mono text-gray-200">
-                    {displayValue(selected.params.zen_model ?? selected.params.model)}
+                    {displayValue(selected.params.zen_model ?? selected.params.model, t("inlineMedia"))}
                   </div>
                 </div>
                 <div className="rounded-2xl border border-white/10 bg-white/[0.025] p-3">
                   <div className="text-[10px] font-semibold text-gray-500">SEED</div>
                   <div className="mt-1 truncate text-xs font-mono text-gray-200">
-                    {displayValue(selected.params.seed)}
+                    {displayValue(selected.params.seed, t("inlineMedia"))}
                   </div>
                 </div>
               </div>
 
               {refs.length > 0 && (
                 <div className="mt-5">
-                  <div className="mb-2 text-xs font-semibold text-gray-500">输入参考图</div>
+                  <div className="mb-2 text-xs font-semibold text-gray-500">{t("referenceImages")}</div>
                   <div className="grid grid-cols-3 gap-2">
                     {refs.map((src, index) => (
                       // eslint-disable-next-line @next/next/no-img-element
-                      <img key={`${src.slice(0, 60)}-${index}`} src={src} alt={`参考图 ${index + 1}`} className="aspect-square w-full rounded-xl object-cover" />
+                      <img key={`${src.slice(0, 60)}-${index}`} src={src} alt={t("referenceAlt", { number: index + 1 })} className="aspect-square w-full rounded-xl object-cover" />
                     ))}
                   </div>
                 </div>
@@ -204,12 +200,12 @@ export function ExploreGallery({
 
               {paramEntries.length > 0 && (
                 <div className="mt-5">
-                  <div className="mb-2 text-xs font-semibold text-gray-500">生成参数</div>
+                  <div className="mb-2 text-xs font-semibold text-gray-500">{t("parameters")}</div>
                   <div className="divide-y divide-white/5 rounded-2xl border border-white/10 px-4">
                     {paramEntries.map(([key, value]) => (
                       <div key={key} className="flex justify-between gap-4 py-2.5 text-xs">
                         <span className="font-mono text-gray-500">{key}</span>
-                        <span className="max-w-[65%] break-all text-right font-mono text-gray-300">{displayValue(value)}</span>
+                        <span className="max-w-[65%] break-all text-right font-mono text-gray-300">{displayValue(value, t("inlineMedia"))}</span>
                       </div>
                     ))}
                   </div>
@@ -222,7 +218,7 @@ export function ExploreGallery({
                 className="mt-6 w-full rounded-2xl bg-violet-500 py-3 font-bold text-white hover:bg-violet-400"
               >
                 <i className="fas fa-copy mr-2" />
-                {signedIn ? "复制参数到生成器" : "注册后复制参数"}
+                {signedIn ? t("copyToGenerator") : t("registerToCopy")}
               </button>
             </aside>
           </div>

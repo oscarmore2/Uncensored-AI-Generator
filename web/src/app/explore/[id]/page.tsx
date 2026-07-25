@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
@@ -5,19 +6,65 @@ import { getCurrentUser } from "@/lib/auth";
 import { hasAdultAccess } from "@/lib/adult-access";
 import { GuestHeader } from "@/components/GuestHeader";
 import { AdaptiveMedia } from "@/components/WorkMedia";
+import { getTranslations } from "next-intl/server";
 
 export const dynamic = "force-dynamic";
 
-const MODE_LABELS: Record<string, string> = {
-  txt2img: "文生图",
-  txt2vid: "文生视频",
-  img2img: "图生图",
-  img2vid: "图生视频",
-  undress: "图像编辑",
-};
+const MODE_KEYS = new Set(["txt2img", "txt2vid", "img2img", "img2vid", "undress"]);
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}): Promise<Metadata> {
+  const { id } = await params;
+  const workId = Number(id);
+  if (!Number.isInteger(workId)) {
+    return { robots: { index: false, follow: false } };
+  }
+
+  const work = await db.publicWork.findUnique({
+    where: { id: workId },
+    select: {
+      title: true,
+      prompt: true,
+      mediaUrl: true,
+      thumbUrl: true,
+      isPublished: true,
+      isAdult: true,
+    },
+  });
+  if (!work || !work.isPublished || work.isAdult) {
+    return { robots: { index: false, follow: false, nocache: true } };
+  }
+
+  const t = await getTranslations("Explore");
+  const title = work.title?.trim() || `${t("communityWork")} #${workId}`;
+  const description = work.prompt.replace(/\s+/g, " ").trim().slice(0, 160);
+  const image = work.thumbUrl ?? work.mediaUrl;
+  return {
+    title,
+    description,
+    alternates: { canonical: `/explore/${workId}` },
+    openGraph: {
+      type: "article",
+      title,
+      description,
+      url: `/explore/${workId}`,
+      images: [{ url: image, alt: title }],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
+      images: [image],
+    },
+  };
+}
 
 export default async function WorkDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
+  const t = await getTranslations("Explore");
   const workId = Number(id);
   if (!Number.isInteger(workId)) notFound();
 
@@ -49,7 +96,7 @@ export default async function WorkDetailPage({ params }: { params: Promise<{ id:
       <div className="max-w-6xl mx-auto px-6 pt-8 pb-16">
         <Link href="/explore" className="text-sm text-gray-400 hover:text-white">
           <i className="fas fa-arrow-left mr-2" />
-          返回探索
+          {t("back")}
         </Link>
 
         <div className="mt-6 grid grid-cols-1 lg:grid-cols-12 gap-8">
@@ -61,28 +108,28 @@ export default async function WorkDetailPage({ params }: { params: Promise<{ id:
 
           <div className="lg:col-span-5 space-y-5">
             <div>
-              <span className="media-badge">{MODE_LABELS[work.mode] ?? work.mode}</span>
+              <span className="media-badge">{MODE_KEYS.has(work.mode) ? t(`modes.${work.mode}` as "modes.txt2img") : work.mode}</span>
               {work.isAdult && (
                 <span className="ml-2 rounded-full bg-red-600 px-2 py-0.5 text-[10px] font-bold text-white">18+</span>
               )}
-              <h1 className="text-2xl font-bold tracking-tight mt-3">{work.title ?? "社区作品"}</h1>
+              <h1 className="text-2xl font-bold tracking-tight mt-3">{work.title ?? t("communityWork")}</h1>
             </div>
 
             <div className="glass rounded-3xl p-5">
-              <div className="text-xs font-semibold text-gray-400 mb-2">提示词 (Prompt)</div>
+              <div className="text-xs font-semibold text-gray-400 mb-2">{t("prompt")}</div>
               <p className="text-sm leading-relaxed whitespace-pre-wrap">{work.prompt}</p>
             </div>
 
             {work.negativePrompt && (
               <div className="glass rounded-3xl p-5">
-                <div className="text-xs font-semibold text-gray-400 mb-2">负面提示词 (Negative)</div>
+                <div className="text-xs font-semibold text-gray-400 mb-2">{t("negativePrompt")}</div>
                 <p className="text-sm text-gray-300">{work.negativePrompt}</p>
               </div>
             )}
 
             {paramEntries.length > 0 && (
               <div className="glass rounded-3xl p-5">
-                <div className="text-xs font-semibold text-gray-400 mb-3">生成参数</div>
+                <div className="text-xs font-semibold text-gray-400 mb-3">{t("parameters")}</div>
                 <div className="space-y-2 text-xs">
                   {paramEntries.map(([k, v]) => (
                     <div key={k} className="flex justify-between gap-x-4">
@@ -100,10 +147,10 @@ export default async function WorkDetailPage({ params }: { params: Promise<{ id:
                 className="generate-btn block w-full py-4 text-white font-bold text-lg rounded-3xl text-center shadow-xl active:scale-[0.985]"
               >
                 <i className="fas fa-magic mr-2" />
-                {user ? "用同款参数创作" : "注册后用同款参数创作"}
+                {user ? t("createSame") : t("registerCreateSame")}
               </Link>
               {!user && (
-                <p className="text-center text-xs text-gray-500 mt-3">注册即送体验点数，参数自动带入创作中心</p>
+                <p className="text-center text-xs text-gray-500 mt-3">{t("signupHint")}</p>
               )}
             </div>
           </div>

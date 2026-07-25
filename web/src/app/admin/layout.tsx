@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { requireRole } from "@/lib/auth";
@@ -22,6 +23,10 @@ const NAV = [
   { href: "/admin/webhooks", label: "Webhook", icon: "fa-bolt" },
   { href: "/admin/settings", label: "系统配置", icon: "fa-gear" },
 ];
+
+export const metadata: Metadata = {
+  robots: { index: false, follow: false, nocache: true },
+};
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   // middleware 已按 JWT role 拦截，这里再按数据库 role 校验一次

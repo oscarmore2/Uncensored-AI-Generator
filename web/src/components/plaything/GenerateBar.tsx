@@ -1,6 +1,7 @@
 "use client";
 
 import type { Phase } from "./types";
+import { useTranslations } from "next-intl";
 
 export function GenerateBar({
   creditCost,
@@ -23,15 +24,16 @@ export function GenerateBar({
   onGenerate: () => void;
   onTopUp: () => void;
 }) {
+  const t = useTranslations("Plaything");
   const busy = phase !== "idle";
   const label =
     phase === "idle"
       ? quoting
-        ? "估价中…"
-        : `生成 · ${creditCost} 点`
+        ? t("quoting")
+        : t("generate", { credits: creditCost })
       : phase === "submitting"
-        ? "上传并提交…"
-        : `生成中 ${progress}%`;
+        ? t("uploading")
+        : t("progress", { progress });
 
   return (
     <div className="space-y-2 pt-2 border-t border-white/10">
@@ -53,16 +55,16 @@ export function GenerateBar({
       )}
       <div className="flex items-center justify-between text-xs text-gray-500 gap-2">
         <span>
-          余额 <span className="font-mono text-gray-300">{balance}</span> 点 · 无 VIP 折扣
+          {t("balance")} <span className="font-mono text-gray-300">{balance}</span> {t("credits")} · {t("noDiscount")}
           {quoteSource === "wavespeed" && (
-            <span className="text-emerald-500/80 ml-1">· 动态价</span>
+            <span className="text-emerald-500/80 ml-1">· {t("dynamicPrice")}</span>
           )}
           {quoteSource === "fallback" && (
-            <span className="text-amber-500/80 ml-1">· 基准价</span>
+            <span className="text-amber-500/80 ml-1">· {t("basePrice")}</span>
           )}
         </span>
         <button type="button" onClick={onTopUp} className="text-rose-400 hover:text-rose-300 shrink-0">
-          充值
+          {t("topUp")}
         </button>
       </div>
     </div>

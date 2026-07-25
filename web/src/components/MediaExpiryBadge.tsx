@@ -1,17 +1,21 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 
-function countdown(expiresAt: string): string {
+function countdown(
+  expiresAt: string,
+  t: (key: "waiting" | "days" | "hours" | "minutes", values?: Record<string, number>) => string
+): string {
   const ms = new Date(expiresAt).getTime() - Date.now();
-  if (ms <= 0) return "等待清理";
+  if (ms <= 0) return t("waiting");
   const totalMinutes = Math.ceil(ms / 60_000);
   const days = Math.floor(totalMinutes / 1440);
   const hours = Math.floor((totalMinutes % 1440) / 60);
   const minutes = totalMinutes % 60;
-  if (days > 0) return `${days}天 ${hours}小时后清理`;
-  if (hours > 0) return `${hours}小时 ${minutes}分钟后清理`;
-  return `${minutes}分钟后清理`;
+  if (days > 0) return t("days", { days, hours });
+  if (hours > 0) return t("hours", { hours, minutes });
+  return t("minutes", { minutes });
 }
 
 export function MediaExpiryBadge({
@@ -23,6 +27,7 @@ export function MediaExpiryBadge({
   deletedAt: string | null;
   compact?: boolean;
 }) {
+  const t = useTranslations("MediaExpiry");
   const [, tick] = useState(0);
   useEffect(() => {
     if (!expiresAt || deletedAt) return;
@@ -30,7 +35,7 @@ export function MediaExpiryBadge({
     return () => window.clearInterval(timer);
   }, [deletedAt, expiresAt]);
 
-  const label = deletedAt ? "媒体已清理" : expiresAt ? countdown(expiresAt) : "永久保留";
+  const label = deletedAt ? t("deleted") : expiresAt ? countdown(expiresAt, t) : t("permanent");
   const color = deletedAt
     ? "bg-gray-700/80 text-gray-300"
     : expiresAt

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import type { PlaythingGen } from "./types";
 import { MediaExpiryBadge } from "@/components/MediaExpiryBadge";
+import { useTranslations } from "next-intl";
 
 export function ImageAlbum({
   items,
@@ -13,6 +14,7 @@ export function ImageAlbum({
   selectedId: number | null;
   onSelect: (id: number) => void;
 }) {
+  const t = useTranslations("Plaything");
   const [lightbox, setLightbox] = useState<string[] | null>(null);
   const [lbIndex, setLbIndex] = useState(0);
 
@@ -21,7 +23,7 @@ export function ImageAlbum({
   const failed = items.filter((g) => g.status === "failed");
 
   if (!items.length) {
-    return <EmptyState title="还没有图片" hint="选择模型、填写提示词后点击生成" />;
+    return <EmptyState title={t("noImages")} hint={t("imageHint")} />;
   }
 
   return (
@@ -71,7 +73,7 @@ export function ImageAlbum({
         <div className="space-y-1">
           {failed.slice(0, 5).map((g) => (
             <p key={g.id} className="text-xs text-red-400/80">
-              #{g.id} 失败{g.error ? `：${g.error.slice(0, 80)}` : ""}
+              #{g.id} {t("failed")}{g.error ? `: ${g.error.slice(0, 80)}` : ""}
             </p>
           ))}
         </div>
@@ -111,6 +113,7 @@ function Lightbox({
   onIndex: (i: number) => void;
   onClose: () => void;
 }) {
+  const t = useTranslations("Plaything");
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if (e.key === "Escape") onClose();
@@ -140,7 +143,7 @@ function Lightbox({
             className="px-3 py-1.5 text-sm rounded-xl border border-white/20 disabled:opacity-40"
             onClick={() => onIndex(index - 1)}
           >
-            上一张
+            {t("previousImage")}
           </button>
           <span className="text-sm text-gray-400 self-center">
             {index + 1} / {urls.length}
@@ -151,14 +154,14 @@ function Lightbox({
             className="px-3 py-1.5 text-sm rounded-xl border border-white/20 disabled:opacity-40"
             onClick={() => onIndex(index + 1)}
           >
-            下一张
+            {t("nextImage")}
           </button>
           <button
             type="button"
             className="px-3 py-1.5 text-sm rounded-xl border border-white/20"
             onClick={onClose}
           >
-            关闭
+            {t("close")}
           </button>
         </div>
       </div>

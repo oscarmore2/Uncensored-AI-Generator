@@ -4,6 +4,7 @@ import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   api,
+  ApiError,
   MODES,
   estimateCost,
   type ApiGeneration,
@@ -14,16 +15,13 @@ import {
 import { useApp } from "@/components/AppContext";
 import { AdaptiveMedia } from "@/components/WorkMedia";
 import { MediaExpiryBadge } from "@/components/MediaExpiryBadge";
-
-const EXAMPLE_PROMPTS = [
-  "一座漂浮在云海上的未来城市，清晨金色光线，电影级广角构图，高细节",
-  "赛博朋克风格的街头摄影师，霓虹雨夜，透明雨衣，动态光影",
-  "一只戴着飞行员护目镜的橘猫驾驶复古飞机，童话插画风，明亮色彩",
-];
+import { useTranslations } from "next-intl";
 
 type Phase = "idle" | "submitting" | "polling";
 
 function MakePageInner() {
+  const t = useTranslations("Make");
+  const examplePrompts = t.raw("examples") as string[];
   const { user, refreshUser, toast } = useApp();
   const router = useRouter();
   // 引流页「同款参数创作」通过 query 带入 prompt/negative/mode
@@ -34,7 +32,7 @@ function MakePageInner() {
   });
   const [prompt, setPrompt] = useState(() => searchParams.get("prompt") ?? "");
   const [negative, setNegative] = useState(
-    () => searchParams.get("negative") ?? "低质量, 模糊, 变形, 文字, watermark, 丑陋"
+    () => searchParams.get("negative") ?? t("defaultNegative")
   );
   const [ratio, setRatio] = useState("1:1");
   const [quality, setQuality] = useState("quality");
@@ -100,10 +98,10 @@ function MakePageInner() {
               .map(([key, value]) => [key, String(value)])
           )
         );
-        toast("作品参数已复制到生成器");
+        toast(t("copied"));
       })
-      .catch((error) => toast(error instanceof Error ? error.message : "无法复制作品参数", true));
-  }, [searchParams, toast]);
+      .catch((error) => toast(error instanceof Error ? error.message : t("copyFailed"), true));
+  }, [searchParams, t, toast]);
 
   useEffect(() => {
     let cancelled = false;
@@ -172,7 +170,7 @@ function MakePageInner() {
     const file = e.target.files?.[0];
     if (!file) return;
     if (file.size > 10 * 1024 * 1024) {
-      toast("图片不能超过 10MB", true);
+      toast(t("imageTooLarge"), true);
       return;
     }
     const reader = new FileReader();
@@ -182,7 +180,7 @@ function MakePageInner() {
 
   async function runMagicPrompt() {
     if (magicBusy) return;
-    if (!prompt.trim()) return toast("请先输入提示词，再使用魔法指令", true);
+    if (!prompt.trim()) return toast(t("promptFirst"), true);
     setMagicBusy(true);
     try {
       const data = await api<{
@@ -208,19 +206,19 @@ function MakePageInner() {
       const modelHint = data.target?.model ? ` · ${data.target.model}` : "";
       toast(
         data.source === "dolphin"
-          ? `魔法指令已完成（Dolphin${modelHint}）`
-          : `魔法指令已完成${modelHint}`
+          ? t("magicDoneDolphin", { model: modelHint })
+          : t("magicDone", { model: modelHint })
       );
     } catch (e) {
-      toast(e instanceof Error ? e.message : "魔法指令失败", true);
+      toast(e instanceof Error ? e.message : t("magicFailed"), true);
     } finally {
       setMagicBusy(false);
     }
   }
 
   async function startGeneration() {
-    if (!isUndress && !prompt.trim()) return toast("请输入提示词", true);
-    if (needsImage && !imageBase64) return toast("请先上传人物图片", true);
+    if (!isUndress && !prompt.trim()) return toast(t("promptRequired"), true);
+    if (needsImage && !imageBase64) return toast(t("imageRequired"), true);
     if (phase !== "idle") return;
 
     setPhase("submitting");
@@ -245,13 +243,22 @@ function MakePageInner() {
           ...extraParams,
         }),
       });
-      toast(`生成任务已提交！ID: ${gen.id}，正在后台处理...`);
+      toast(t("submitted", { id: gen.id }));
       await refreshUser();
       setPhase("polling");
       void poll(gen.id);
     } catch (e) {
-      toast(`生成失败: ${e instanceof Error ? e.message : e}`, true);
-      if (e instanceof Error && e.message.includes("点数不足")) {
+      const errorMessage =
+        e instanceof ApiError && e.code === "INSUFFICIENT_CREDITS"
+          ? t("recharge")
+          : e instanceof Error
+            ? e.message
+            : String(e);
+      toast(t("generationFailed", { error: errorMessage }), true);
+      if (
+        (e instanceof ApiError && e.code === "INSUFFICIENT_CREDITS") ||
+        (e instanceof Error && e.message.includes("点数不足"))
+      ) {
         router.push("/pricing");
       }
       setPhase("idle");
@@ -287,7 +294,7 @@ function MakePageInner() {
             return;
           }
           if (data.status === "failed") {
-            toast(data.error ? `生成失败: ${data.error}` : "生成失败，点数已退回", true);
+            toast(data.error ? t("generationFailed", { error: data.error }) : t("failedRefunded"), true);
             await refreshUser();
             return;
           }
@@ -295,7 +302,7 @@ function MakePageInner() {
           // 网络抖动，继续轮询
         }
       }
-      toast("生成超时，请在「我的作品」中查看进度", true);
+      toast(t("timeout"), true);
     } finally {
       pollingRef.current = false;
       setPhase("idle");
@@ -306,10 +313,10 @@ function MakePageInner() {
     <div>
       <div className="flex items-end justify-between mb-6">
         <div>
-          <h1 className="text-4xl font-bold tracking-tighter">创作中心</h1>
+          <h1 className="text-4xl font-bold tracking-tighter">{t("title")}</h1>
           <p className="text-gray-400 mt-1">
-            AI 图片与视频生成
-            {!user?.is_vip ? " • 提示词将在提交前进行内容安全审查" : ""}
+            {t("subtitle")}
+            {!user?.is_vip ? ` • ${t("safetyNotice")}` : ""}
           </p>
         </div>
       </div>
@@ -328,9 +335,9 @@ function MakePageInner() {
               }`}
             >
               <i className={`fas ${m.icon}`} />
-              <span>{m.label}</span>
+              <span>{t.has(`modes.${m.key}`) ? t(`modes.${m.key}` as "modes.txt2img") : m.label}</span>
               {defaultCost !== undefined && (
-                <span className="text-[10px] px-1.5 py-px bg-white/10 rounded">{defaultCost}点</span>
+                <span className="text-[10px] px-1.5 py-px bg-white/10 rounded">{defaultCost}{t("creditsUnit")}</span>
               )}
             </button>
           );
@@ -342,16 +349,16 @@ function MakePageInner() {
           {isUndress ? (
             <>
               <div className="mb-5 rounded-2xl bg-rose-500/10 border border-rose-500/20 px-4 py-3 text-sm text-rose-100/90">
-                该旧版编辑模式已停止开放。请使用“图片生图”完成安全的人物与风格编辑。
+                {t("legacyDisabled")}
               </div>
               <div className="mb-5">
-                <label className="text-sm font-semibold text-gray-300 mb-2 block">对象类型</label>
+                <label className="text-sm font-semibold text-gray-300 mb-2 block">{t("objectType")}</label>
                 <div className="flex flex-wrap gap-2">
                   {(
                     [
-                      { key: "female", label: "女性" },
-                      { key: "male", label: "男性" },
-                      { key: "couple", label: "情侣" },
+                      { key: "female", label: t("female") },
+                      { key: "male", label: t("male") },
+                      { key: "couple", label: t("couple") },
                     ] as const
                   ).map((v) => (
                     <button
@@ -374,7 +381,7 @@ function MakePageInner() {
             <>
               <div className="mb-5">
                 <div className="flex items-center justify-between mb-2 gap-2 flex-wrap">
-                  <label className="text-sm font-semibold text-gray-300">提示词 (Prompt)</label>
+                  <label className="text-sm font-semibold text-gray-300">{t("prompt")}</label>
                   <div className="flex items-center gap-2">
                     {magicEnabled && (
                       <button
@@ -382,7 +389,7 @@ function MakePageInner() {
                         onClick={() => void runMagicPrompt()}
                         disabled={magicBusy || phase !== "idle"}
                         className="magic-prompt-btn inline-flex items-center gap-x-1.5 px-3.5 py-1.5 rounded-full text-sm font-medium text-black disabled:opacity-50 disabled:cursor-not-allowed transition-transform hover:scale-[1.02] active:scale-[0.98]"
-                        title="把简短描述扩写成更适合生图的详细提示词（Dolphin）"
+                        title={t("magicTitle")}
                       >
                         {magicBusy ? (
                           <i className="fas fa-spinner fa-spin text-[13px] text-[#5c4a7a]" />
@@ -397,17 +404,17 @@ function MakePageInner() {
                             <path d="M6.2 15.5l.45 1.4 1.4.45-1.4.45-.45 1.4-.45-1.4-1.4-.45 1.4-.45.45-1.4z" fill="currentColor" opacity="0.65" />
                           </svg>
                         )}
-                        <span>{magicBusy ? "施法中…" : "魔法指令"}</span>
+                        <span>{magicBusy ? t("casting") : t("magic")}</span>
                       </button>
                     )}
                     <button
                       type="button"
                       onClick={() =>
-                        setPrompt(EXAMPLE_PROMPTS[Math.floor(Math.random() * EXAMPLE_PROMPTS.length)])
+                        setPrompt(examplePrompts[Math.floor(Math.random() * examplePrompts.length)])
                       }
                       className="text-xs flex items-center gap-x-1 text-rose-400 hover:text-rose-300"
                     >
-                      <i className="fas fa-dice" /> <span>随机示例</span>
+                      <i className="fas fa-dice" /> <span>{t("random")}</span>
                     </button>
                   </div>
                 </div>
@@ -415,12 +422,12 @@ function MakePageInner() {
                   value={prompt}
                   onChange={(e) => setPrompt(e.target.value)}
                   className="prompt-box w-full bg-[#111] border border-white/10 focus:border-rose-500/60 rounded-2xl p-4 text-sm placeholder:text-gray-500 outline-none min-h-[120px]"
-                  placeholder="描述你想要的场景，例如：一座漂浮在云海上的未来城市，清晨金色光线，电影级构图..."
+                  placeholder={t("promptPlaceholder")}
                 />
               </div>
 
               <div className="mb-5">
-                <label className="text-sm font-semibold text-gray-300 mb-2 block">负面提示词 (Negative)</label>
+                <label className="text-sm font-semibold text-gray-300 mb-2 block">{t("negative")}</label>
                 <input
                   value={negative}
                   onChange={(e) => setNegative(e.target.value)}
@@ -433,14 +440,14 @@ function MakePageInner() {
           {needsImage && (
             <div className="mb-5">
               <label className="text-sm font-semibold text-gray-300 mb-2 block">
-                {isUndress ? "人物照片（必填）" : "参考图片"}
+                {isUndress ? t("personPhoto") : t("referenceImage")}
               </label>
               <label className="block border-2 border-dashed border-white/20 hover:border-rose-500/40 rounded-3xl p-8 text-center cursor-pointer transition-colors">
                 <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
                 {imageBase64 ? (
                   <div>
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={imageBase64} alt="预览" className="mx-auto max-h-48 rounded-2xl shadow-xl mb-3" />
+                    <img src={imageBase64} alt={t("preview")} className="mx-auto max-h-48 rounded-2xl shadow-xl mb-3" />
                     <button
                       onClick={(e) => {
                         e.preventDefault();
@@ -448,14 +455,14 @@ function MakePageInner() {
                       }}
                       className="text-xs px-4 py-1 bg-white/10 hover:bg-white/20 rounded-full"
                     >
-                      移除图片
+                      {t("removeImage")}
                     </button>
                   </div>
                 ) : (
                   <div>
                     <i className="fas fa-cloud-upload-alt text-4xl text-gray-500 mb-3" />
-                    <p className="text-sm">{isUndress ? "点击上传要处理的人物照片" : "点击上传参考图片"}</p>
-                    <p className="text-xs text-gray-500 mt-1">支持 JPG / PNG，最大 10MB</p>
+                    <p className="text-sm">{isUndress ? t("uploadPerson") : t("uploadReference")}</p>
+                    <p className="text-xs text-gray-500 mt-1">{t("uploadHint")}</p>
                   </div>
                 )}
               </label>
@@ -465,12 +472,12 @@ function MakePageInner() {
           {!isUndress && (
           <div className="mb-2">
             <div className="flex items-center justify-between mb-3">
-              <label className="text-sm font-semibold text-gray-300">高级设置</label>
+              <label className="text-sm font-semibold text-gray-300">{t("advanced")}</label>
               <button
                 onClick={() => setAdvancedOpen(!advancedOpen)}
                 className="text-xs text-gray-400 flex items-center gap-1"
               >
-                <span>{advancedOpen ? "收起" : "展开"}</span>
+                <span>{advancedOpen ? t("collapse") : t("expand")}</span>
                 <i className={`fas fa-chevron-${advancedOpen ? "up" : "down"} text-xs`} />
               </button>
             </div>
@@ -479,7 +486,7 @@ function MakePageInner() {
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 {modeProducts.length > 1 && (
                   <div className="md:col-span-2">
-                    <label className="text-xs text-gray-400 block mb-1">生成模型</label>
+                    <label className="text-xs text-gray-400 block mb-1">{t("model")}</label>
                     <select
                       value={selectedProduct?.zen_model ?? ""}
                       onChange={(e) => setZenModel(e.target.value)}
@@ -487,7 +494,7 @@ function MakePageInner() {
                     >
                       {modeProducts.map((p) => (
                         <option key={p.id} value={p.zen_model}>
-                          {p.label}（{p.credit_cost} 点）
+                          {p.label} ({p.credit_cost} {t("credits")})
                         </option>
                       ))}
                     </select>
@@ -536,15 +543,15 @@ function MakePageInner() {
                   })}
                 {!isUndress && (
                   <div>
-                    <label className="text-xs text-gray-400 block mb-1">生成数量</label>
+                    <label className="text-xs text-gray-400 block mb-1">{t("quantity")}</label>
                     <select
                       value={batch}
                       onChange={(e) => setBatch(Number(e.target.value))}
                       className="w-full bg-[#111] border border-white/10 rounded-xl px-3 py-2 text-sm"
                     >
-                      <option value={1}>1 张/段</option>
-                      <option value={2}>2 张/段</option>
-                      <option value={4}>4 张/段（按产品倍率加价）</option>
+                      <option value={1}>{t("oneItem")}</option>
+                      <option value={2}>{t("twoItems")}</option>
+                      <option value={4}>{t("fourItems")}</option>
                     </select>
                   </div>
                 )}
@@ -558,14 +565,14 @@ function MakePageInner() {
           <div className="flex-1">
             <div className="flex justify-between items-center mb-4">
               <div>
-                <div className="text-xs text-gray-400">预计消耗</div>
+                <div className="text-xs text-gray-400">{t("estimatedCost")}</div>
                 <div className="flex items-baseline">
                   <span className="text-5xl font-bold font-mono text-rose-400">{cost}</span>
-                  <span className="ml-2 text-lg text-gray-400">点数</span>
+                  <span className="ml-2 text-lg text-gray-400">{t("credits")}</span>
                 </div>
               </div>
               <div className="text-right">
-                <div className="text-xs text-gray-400">当前余额</div>
+                <div className="text-xs text-gray-400">{t("balance")}</div>
                 <div className="flex items-center justify-end gap-x-1">
                   <i className="fas fa-coins text-amber-400" />
                   <span className="font-mono text-2xl font-semibold stat-number">{user?.balance ?? "—"}</span>
@@ -575,31 +582,31 @@ function MakePageInner() {
 
             <div className="bg-black/40 rounded-2xl p-4 text-xs space-y-2 mb-6">
                 <div className="flex justify-between">
-                  <span className="text-gray-400">模型</span>
+                  <span className="text-gray-400">{t("modelLabel")}</span>
                   <span className="font-mono text-emerald-400 text-right max-w-[60%] truncate">
                     {selectedProduct?.zen_model ?? "—"}
                   </span>
                 </div>
                 {catalog?.user_vip.is_active && (catalog.user_vip.tier?.discount_bps ?? 0) > 0 && (
                   <div className="flex justify-between">
-                    <span className="text-gray-400">VIP 折扣</span>
+                    <span className="text-gray-400">{t("vipDiscount")}</span>
                     <span className="text-purple-300">
                       {catalog.user_vip.tier?.name} -{catalog.user_vip.tier?.discount_percent}%
                     </span>
                   </div>
                 )}
               <div className="flex justify-between">
-                <span className="text-gray-400">预计时间</span> <span>{isUndress ? "10-40 秒" : "8-90 秒"}</span>
+                <span className="text-gray-400">{t("estimatedTime")}</span> <span>{isUndress ? "10–40s" : "8–90s"}</span>
               </div>
               {!isUndress && (
                 <div className="flex justify-between">
-                  <span className="text-gray-400">宽高比</span> <span>{ratio}</span>
+                  <span className="text-gray-400">{t("ratio")}</span> <span>{ratio}</span>
                 </div>
               )}
               {isUndress && (
                 <div className="flex justify-between">
-                  <span className="text-gray-400">对象</span>
-                  <span>{undressVariant === "male" ? "男性" : undressVariant === "couple" ? "情侣" : "女性"}</span>
+                  <span className="text-gray-400">{t("object")}</span>
+                  <span>{undressVariant === "male" ? t("male") : undressVariant === "couple" ? t("couple") : t("female")}</span>
                 </div>
               )}
             </div>
@@ -613,12 +620,12 @@ function MakePageInner() {
             {phase === "idle" ? (
               <>
                 <i className={`fas ${isUndress ? "fa-shirt" : "fa-magic"}`} />{" "}
-                <span>{isUndress ? "旧版模式已停用" : "立即生成"}</span>
+                <span>{isUndress ? t("legacyStopped") : t("generate")}</span>
               </>
             ) : (
               <>
                 <i className="fas fa-spinner fa-spin" />
-                <span>{phase === "submitting" ? "提交中..." : "生成中..."}</span>
+                <span>{phase === "submitting" ? t("submitting") : t("generating")}</span>
               </>
             )}
           </button>
@@ -628,7 +635,7 @@ function MakePageInner() {
               onClick={() => router.push("/pricing")}
               className="text-xs text-gray-400 hover:text-rose-400 flex items-center justify-center gap-x-1 mx-auto"
             >
-              <i className="fas fa-coins fa-sm" /> <span>点数不足？立即充值</span>
+              <i className="fas fa-coins fa-sm" /> <span>{t("recharge")}</span>
             </button>
           </div>
         </div>
@@ -637,7 +644,7 @@ function MakePageInner() {
       {phase === "polling" && !result && (
         <div className="mt-8 glass rounded-3xl p-8 text-center">
           <div className="w-16 h-16 mx-auto mb-4 border-4 border-rose-500/30 border-t-rose-500 rounded-full animate-spin" />
-          <div className="text-sm mb-3">正在生成中… {progress}%</div>
+          <div className="text-sm mb-3">{t("progress", { progress })}</div>
           <div className="max-w-md mx-auto h-2 bg-white/10 rounded-full overflow-hidden">
             <div
               className="h-full bg-rose-500 rounded-full transition-all duration-500"
@@ -651,7 +658,7 @@ function MakePageInner() {
         <div className="mt-8">
           <div className="flex justify-between mb-3">
             <h3 className="font-semibold flex items-center gap-x-2">
-              <i className="fas fa-check-circle text-emerald-400" /> 生成完成
+              <i className="fas fa-check-circle text-emerald-400" /> {t("completed")}
               {result.isAdult && (
                 <span className="rounded-full bg-red-600 px-2 py-0.5 text-[10px] font-bold text-white">18+</span>
               )}
@@ -661,7 +668,7 @@ function MakePageInner() {
               onClick={() => setResult(null)}
               className="text-xs px-3 py-1 bg-white/5 rounded-full"
             >
-              关闭
+              {t("close")}
             </button>
           </div>
           <div className="glass rounded-3xl overflow-hidden">
@@ -674,13 +681,13 @@ function MakePageInner() {
                 rel="noopener"
                 className="flex-1 py-2.5 text-sm font-semibold bg-white/5 hover:bg-white/10 border border-white/10 rounded-2xl flex items-center justify-center gap-x-2"
               >
-                <i className="fas fa-download" /> <span>下载</span>
+                <i className="fas fa-download" /> <span>{t("download")}</span>
               </a>
               <a
                 href="/history"
                 className="flex-1 py-2.5 text-sm font-semibold bg-white/5 hover:bg-white/10 border border-white/10 rounded-2xl text-center leading-8"
               >
-                查看全部作品
+                {t("viewAll")}
               </a>
             </div>
           </div>

@@ -6,15 +6,13 @@ import { useEffect, useState } from "react";
 import { useApp } from "./AppContext";
 import { api } from "@/lib/client";
 import { BrandLogo } from "./BrandLogo";
-
-const NAV = [
-  { href: "/make", label: "创作中心" },
-  { href: "/history", label: "我的作品" },
-  { href: "/profile", label: "个人中心" },
-];
+import { LanguageSwitcher } from "./LanguageSwitcher";
+import { useTranslations } from "next-intl";
 
 export function Header() {
   const pathname = usePathname();
+  const t = useTranslations("Header");
+  const common = useTranslations("Common");
   const router = useRouter();
   const { user, toast } = useApp();
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -40,17 +38,22 @@ export function Header() {
 
   const isMod = user?.role === "moderator" || user?.role === "admin";
   const isAdmin = user?.role === "admin";
+  const nav = [
+    { href: "/make", label: t("create") },
+    { href: "/history", label: t("history") },
+    { href: "/profile", label: t("profile") },
+  ];
   const navItems = [
-    ...NAV.slice(0, 1),
-    ...(plaything ? [{ href: "/plaything", label: "玩物专区" }] : []),
-    ...NAV.slice(1),
-    ...(isMod ? [{ href: "/mod", label: "审核台" }] : []),
-    ...(isAdmin ? [{ href: "/admin", label: "管理端" }] : []),
+    ...nav.slice(0, 1),
+    ...(plaything ? [{ href: "/plaything", label: t("plaything") }] : []),
+    ...nav.slice(1),
+    ...(isMod ? [{ href: "/mod", label: t("moderation") }] : []),
+    ...(isAdmin ? [{ href: "/admin", label: t("admin") }] : []),
   ];
 
   async function logout() {
     await api("/api/auth/logout", { method: "POST" }).catch(() => {});
-    toast("已退出登录");
+    toast(t("loggedOut"));
     router.push("/login");
     router.refresh();
   }
@@ -75,6 +78,9 @@ export function Header() {
         </nav>
 
         <div className="flex items-center gap-x-3">
+          <div className="hidden lg:block">
+            <LanguageSwitcher compact />
+          </div>
           <div
             onClick={() => router.push("/pricing")}
             className="credit-display flex items-center gap-x-2 px-4 h-9 rounded-2xl cursor-pointer hover:border-rose-500/50 transition-colors"
@@ -83,7 +89,7 @@ export function Header() {
               <i className="fas fa-coins text-amber-400" />
               <span className="font-mono font-semibold text-lg stat-number">{user?.balance ?? "—"}</span>
             </div>
-            <span className="text-xs text-gray-400">点数</span>
+            <span className="text-xs text-gray-400">{common("credits")}</span>
           </div>
 
           <Link href="/profile" className="flex items-center gap-x-2 cursor-pointer">
@@ -91,8 +97,8 @@ export function Header() {
               {user?.username.slice(0, 2) ?? "?"}
             </div>
             <div className="hidden md:block">
-              <div className="text-sm font-medium">{user?.username ?? "未登录"}</div>
-              <div className="text-[10px] text-emerald-400 -mt-0.5">{user ? "已登录" : ""}</div>
+              <div className="text-sm font-medium">{user?.username ?? t("notLoggedIn")}</div>
+              <div className="text-[10px] text-emerald-400 -mt-0.5">{user ? t("loggedIn") : ""}</div>
             </div>
           </Link>
 
@@ -101,7 +107,7 @@ export function Header() {
             className="hidden md:flex items-center gap-x-2 px-4 h-9 text-sm font-semibold bg-white/5 hover:bg-white/10 border border-white/10 rounded-2xl transition-all active:scale-[0.985]"
           >
             <i className="fas fa-wallet" />
-            <span>充值</span>
+            <span>{t("recharge")}</span>
           </button>
 
           {user && (
@@ -109,7 +115,7 @@ export function Header() {
               onClick={logout}
               className="hidden md:block px-3 h-9 text-xs text-gray-400 hover:text-white border border-white/10 rounded-2xl"
             >
-              退出
+              {t("logout")}
             </button>
           )}
 
@@ -147,8 +153,11 @@ export function Header() {
             }}
             className="mt-auto py-4 bg-white text-black font-bold rounded-3xl"
           >
-            充值点数
+            {t("rechargeCredits")}
           </button>
+          <div className="pt-4">
+            <LanguageSwitcher />
+          </div>
         </div>
       )}
     </header>

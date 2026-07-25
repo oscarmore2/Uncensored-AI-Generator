@@ -115,6 +115,7 @@ Railway 会注入 `PORT`，`npm start` 会自动监听。
 | `TELEGRAM_BOT_TOKEN` / `TELEGRAM_CHAT_ID` | 充值、注册、失败退款等通知 |
 | `ZEN_CREDIT_RATIO` / `ZEN_MONTHLY_BUDGET` | 管理端成本估算 |
 | `ZEN_WEBHOOK_SECRET` | 预留 Zen 回调校验 |
+| `GOOGLE_SITE_VERIFICATION` | Google Search Console HTML meta 验证值，仅填写 `content` 内容 |
 
 ## 4. 首次部署
 
@@ -150,10 +151,14 @@ Railway 会注入 `PORT`，`npm start` 会自动监听。
 - [ ] 配置 Zen 后可提交生成任务
 - [ ] Stripe（及 Cryptomus，若启用）测试支付 + Webhook 入账
 - [ ] 可选：OSS 镜像、Telegram 通知、`/admin/audit` 有记录
+- [ ] `robots.txt`、`sitemap.xml`、Manifest 和网站图标均返回 200
+- [ ] Search Console 已验证，并提交 `{APP_URL}/sitemap.xml`
 
 ```bash
 curl -sS "$APP_URL/api/public/works" | head
 ```
+
+SEO 与 Google 收录的完整设置见 [`SEO_GOOGLE.md`](SEO_GOOGLE.md)。
 
 ## 7. 自定义域名（可选）
 

@@ -6,6 +6,8 @@ import { api, ApiError } from "@/lib/client";
 import { TurnstileWidget } from "@/components/TurnstileWidget";
 import { BrandLogo } from "@/components/BrandLogo";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
+import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 
 /** 防 open redirect：只允许站内相对路径 */
 function safeNextPath(raw: string | null): string {
@@ -17,6 +19,7 @@ function safeNextPath(raw: string | null): string {
 }
 
 function LoginForm() {
+  const t = useTranslations("Login");
   const router = useRouter();
   const params = useSearchParams();
   const [mode, setMode] = useState<"login" | "register">(
@@ -50,7 +53,7 @@ function LoginForm() {
     e.preventDefault();
     if (busy) return;
     if (!turnstileToken) {
-      setError("请先完成人机验证");
+      setError(t("captchaRequired"));
       return;
     }
     setBusy(true);
@@ -69,7 +72,21 @@ function LoginForm() {
       router.push(safeNextPath(params.get("next")));
       router.refresh();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "网络错误，请重试");
+      const errorKeys: Record<string, "rateLimited" | "credentialsRequired" | "invalidCredentials" | "accountDisabled" | "invalidRegistration" | "usernameUnavailable"> = {
+        RATE_LIMITED: "rateLimited",
+        CREDENTIALS_REQUIRED: "credentialsRequired",
+        INVALID_CREDENTIALS: "invalidCredentials",
+        ACCOUNT_DISABLED: "accountDisabled",
+        INVALID_REGISTRATION: "invalidRegistration",
+        USERNAME_UNAVAILABLE: "usernameUnavailable",
+      };
+      setError(
+        err instanceof ApiError && err.code && errorKeys[err.code]
+          ? t(errorKeys[err.code])
+          : err instanceof ApiError
+            ? err.message
+            : t("networkError")
+      );
       setTurnstileToken(null);
       setTurnstileReset((n) => n + 1);
     } finally {
@@ -82,6 +99,9 @@ function LoginForm() {
       <div className="max-w-md w-full glass rounded-3xl p-8 modal-pop">
         <div className="flex justify-center mb-6">
           <BrandLogo />
+        </div>
+        <div className="mb-5 flex justify-center">
+          <LanguageSwitcher compact />
         </div>
 
         <div className="flex mb-6 bg-black/40 rounded-2xl p-1">
@@ -99,14 +119,14 @@ function LoginForm() {
                 mode === m ? "bg-rose-600 text-white" : "text-gray-400 hover:text-white"
               }`}
             >
-              {m === "login" ? "登录" : "注册"}
+              {m === "login" ? t("login") : t("register")}
             </button>
           ))}
         </div>
 
         <form onSubmit={submit} className="space-y-4">
           <div>
-            <label className="text-sm text-gray-300">用户名</label>
+            <label className="text-sm text-gray-300">{t("username")}</label>
             <input
               value={username}
               onChange={(e) => setUsername(e.target.value)}
@@ -116,7 +136,7 @@ function LoginForm() {
             />
           </div>
           <div>
-            <label className="text-sm text-gray-300">密码</label>
+            <label className="text-sm text-gray-300">{t("password")}</label>
             <input
               type="password"
               value={password}
@@ -126,7 +146,7 @@ function LoginForm() {
               minLength={mode === "register" ? 8 : 1}
               className="w-full mt-1 bg-[#111] border border-white/10 focus:border-rose-500 rounded-2xl px-4 py-3 outline-none"
             />
-            {mode === "register" && <p className="text-[10px] text-gray-500 mt-1">至少 8 个字符</p>}
+            {mode === "register" && <p className="text-[10px] text-gray-500 mt-1">{t("passwordHint")}</p>}
           </div>
 
           {siteKey ? (
@@ -136,7 +156,7 @@ function LoginForm() {
               resetKey={`${mode}-${turnstileReset}`}
             />
           ) : (
-            <p className="text-[10px] text-gray-500">加载人机验证…</p>
+            <p className="text-[10px] text-gray-500">{t("captchaLoading")}</p>
           )}
 
           {mode === "register" && (
@@ -149,10 +169,10 @@ function LoginForm() {
                 required
               />
               <span>
-                我已阅读并同意
-                <Link href="/terms" target="_blank" className="mx-1 text-violet-300 underline">用户条款</Link>
-                与
-                <Link href="/content-policy" target="_blank" className="mx-1 text-violet-300 underline">内容使用条款</Link>
+                {t("agreePrefix")}
+                <Link href="/terms" target="_blank" className="mx-1 text-violet-300 underline">{t("terms")}</Link>
+                {t("and")}
+                <Link href="/content-policy" target="_blank" className="mx-1 text-violet-300 underline">{t("contentPolicy")}</Link>
               </span>
             </label>
           )}
@@ -164,16 +184,16 @@ function LoginForm() {
             disabled={busy || !turnstileToken || !siteKey || (mode === "register" && !accepted)}
             className="w-full py-3.5 bg-white text-black font-bold rounded-2xl hover:bg-gray-100 disabled:opacity-50"
           >
-            {busy ? "处理中..." : mode === "login" ? "登录" : "注册并登录"}
+            {busy ? t("processing") : mode === "login" ? t("login") : t("registerAndLogin")}
           </button>
         </form>
 
         <p className="text-center text-xs leading-5 text-gray-500 mt-4">
-          点击“注册”或“登录”，代表你已知悉
-          <Link href="/terms" className="mx-1 text-gray-300 hover:text-white">用户条款</Link>
-          及
-          <Link href="/content-policy" className="mx-1 text-gray-300 hover:text-white">内容使用条款</Link>
-          的内容。
+          {t("noticePrefix")}
+          <Link href="/terms" className="mx-1 text-gray-300 hover:text-white">{t("terms")}</Link>
+          {t("noticeMiddle")}
+          <Link href="/content-policy" className="mx-1 text-gray-300 hover:text-white">{t("contentPolicy")}</Link>
+          {t("noticeSuffix")}
         </p>
       </div>
     </div>

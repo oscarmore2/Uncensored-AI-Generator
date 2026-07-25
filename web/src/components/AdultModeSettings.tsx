@@ -4,8 +4,10 @@ import Link from "next/link";
 import { useState } from "react";
 import { api, type ApiUser } from "@/lib/client";
 import { useApp } from "./AppContext";
+import { useTranslations } from "next-intl";
 
 export function AdultModeSettings() {
+  const t = useTranslations("AdultMode");
   const { user, refreshUser, toast } = useApp();
   const [gateOpen, setGateOpen] = useState(false);
   const [birthDate, setBirthDate] = useState("");
@@ -23,9 +25,9 @@ export function AdultModeSettings() {
         body: JSON.stringify({ enabled: false }),
       });
       await refreshUser();
-      toast("成人模式已关闭");
+      toast(t("disabled"));
     } catch (error) {
-      toast(error instanceof Error ? error.message : "设置失败", true);
+      toast(error instanceof Error ? error.message : t("settingFailed"), true);
     } finally {
       setBusy(false);
     }
@@ -45,9 +47,9 @@ export function AdultModeSettings() {
       });
       await refreshUser();
       setGateOpen(false);
-      toast("已通过成年验证，成人模式已开启");
+      toast(t("enabled"));
     } catch (error) {
-      toast(error instanceof Error ? error.message : "成年验证失败", true);
+      toast(error instanceof Error ? error.message : t("verificationFailed"), true);
     } finally {
       setBusy(false);
     }
@@ -60,7 +62,7 @@ export function AdultModeSettings() {
           <div>
             <div className="flex items-center gap-2">
               <i className="fas fa-shield-halved text-violet-300" />
-              <h3 className="font-semibold">内容显示设置</h3>
+              <h3 className="font-semibold">{t("title")}</h3>
               {user.adult_mode_enabled && (
                 <span className="rounded-full bg-red-500/15 px-2 py-0.5 text-[10px] font-bold text-red-300">
                   18+
@@ -68,8 +70,7 @@ export function AdultModeSettings() {
               )}
             </div>
             <p className="mt-2 max-w-xl text-sm leading-6 text-gray-400">
-              成人模式仅限已通过 18 岁验证的 VIP。开启后可提交敏感提示词，并在探索页看到带有
-              18+ 标记的作品；成人媒体默认保持模糊。
+              {t("description")}
             </p>
           </div>
           {user.is_vip ? (
@@ -83,14 +84,14 @@ export function AdultModeSettings() {
                   : "bg-violet-500 text-white hover:bg-violet-400"
               }`}
             >
-              {user.adult_mode_enabled ? "关闭成人模式" : "开启成人模式"}
+              {user.adult_mode_enabled ? t("disable") : t("enable")}
             </button>
           ) : (
             <Link
               href="/pricing?tab=vip"
               className="shrink-0 rounded-2xl bg-amber-400 px-5 py-2.5 text-sm font-bold text-black hover:bg-amber-300"
             >
-              升级 VIP
+              {t("upgrade")}
             </Link>
           )}
         </div>
@@ -107,19 +108,19 @@ export function AdultModeSettings() {
             <div className="mb-5 flex items-start justify-between">
               <div>
                 <div className="mb-3 inline-flex rounded-2xl bg-red-500/15 px-3 py-1 text-xs font-bold text-red-300">
-                  18+ AGE GATE
+                  {t("gate")}
                 </div>
-                <h2 id="adult-gate-title" className="text-2xl font-bold">成年内容确认</h2>
+                <h2 id="adult-gate-title" className="text-2xl font-bold">{t("gateTitle")}</h2>
               </div>
               <button type="button" onClick={() => setGateOpen(false)} className="text-2xl text-gray-500 hover:text-white">
                 &times;
               </button>
             </div>
             <p className="mb-5 text-sm leading-6 text-gray-400">
-              成人模式可能展示裸露、性主题或其他仅适合成年人的 AI 内容。请输入出生日期完成年龄验证。
+              {t("gateDescription")}
             </p>
             <label className="text-sm text-gray-300">
-              出生日期
+              {t("birthDate")}
               <input
                 type="date"
                 value={birthDate}
@@ -134,7 +135,7 @@ export function AdultModeSettings() {
                 onChange={(event) => setConfirmed(event.target.checked)}
                 className="mt-1 h-4 w-4 accent-red-500"
               />
-              <span>我确认本人已满 18 岁，并同意仅在私密、合法且不侵害他人权利的情况下使用成人模式。</span>
+              <span>{t("confirmation")}</span>
             </label>
             <button
               type="button"
@@ -142,7 +143,7 @@ export function AdultModeSettings() {
               onClick={() => void enable()}
               className="mt-6 w-full rounded-2xl bg-red-500 py-3 font-bold text-white hover:bg-red-400 disabled:opacity-40"
             >
-              {busy ? "验证中…" : "确认已满 18 岁并开启"}
+              {busy ? t("verifying") : t("confirm")}
             </button>
           </div>
         </div>

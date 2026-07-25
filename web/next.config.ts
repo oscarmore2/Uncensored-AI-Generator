@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import createNextIntlPlugin from "next-intl/plugin";
 
 const securityHeaders = [
   { key: "X-Frame-Options", value: "DENY" },
@@ -30,6 +31,20 @@ const securityHeaders = [
   },
 ];
 
+const privateRouteHeaders = [
+  "/api/:path*",
+  "/admin/:path*",
+  "/mod/:path*",
+  "/make/:path*",
+  "/history/:path*",
+  "/profile/:path*",
+  "/plaything/:path*",
+  "/login",
+].map((source) => ({
+  source,
+  headers: [{ key: "X-Robots-Tag", value: "noindex, nofollow, noarchive" }],
+}));
+
 const nextConfig: NextConfig = {
   poweredByHeader: false,
   async headers() {
@@ -38,8 +53,11 @@ const nextConfig: NextConfig = {
         source: "/(.*)",
         headers: securityHeaders,
       },
+      ...privateRouteHeaders,
     ];
   },
 };
 
-export default nextConfig;
+const withNextIntl = createNextIntlPlugin("./src/i18n/request.ts");
+
+export default withNextIntl(nextConfig);

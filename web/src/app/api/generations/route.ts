@@ -77,7 +77,10 @@ export async function POST(req: Request) {
     data: { balance: { decrement: cost } },
   });
   if (charged.count === 0) {
-    return NextResponse.json({ error: "点数不足，请先充值" }, { status: 400 });
+    return NextResponse.json(
+      { error: "点数不足，请先充值", code: "INSUFFICIENT_CREDITS" },
+      { status: 400 }
+    );
   }
 
   const record = await db.generation.create({

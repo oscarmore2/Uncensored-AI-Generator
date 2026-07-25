@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { requireRole } from "@/lib/auth";
@@ -9,6 +10,10 @@ const NAV = [
   { href: "/mod/users", label: "用户作品", icon: "fa-users" },
   { href: "/mod/public", label: "公共库", icon: "fa-globe" },
 ];
+
+export const metadata: Metadata = {
+  robots: { index: false, follow: false, nocache: true },
+};
 
 export default async function ModLayout({ children }: { children: React.ReactNode }) {
   // middleware 已按 JWT role 拦截，这里再按数据库 role 校验一次（防止改库后旧 JWT 越权）

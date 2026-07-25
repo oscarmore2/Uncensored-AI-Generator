@@ -3,6 +3,7 @@
 import { EmptyState } from "./ImageAlbum";
 import type { PlaythingGen } from "./types";
 import { MediaExpiryBadge } from "@/components/MediaExpiryBadge";
+import { useTranslations } from "next-intl";
 
 export function AudioLibrary({
   items,
@@ -13,12 +14,13 @@ export function AudioLibrary({
   selectedId: number | null;
   onSelect: (id: number) => void;
 }) {
+  const t = useTranslations("Plaything");
   const succeeded = items.filter((g) => g.status === "succeeded" && g.result_urls?.length);
   const selected = succeeded.find((g) => g.id === selectedId) ?? succeeded[0] ?? null;
   const url = selected?.result_urls?.[0] ?? null;
 
   if (!items.length) {
-    return <EmptyState title="还没有音频" hint="选择音频模型并生成后，将在此播放" />;
+    return <EmptyState title={t("noAudio")} hint={t("audioHint")} />;
   }
 
   return (
@@ -40,7 +42,7 @@ export function AudioLibrary({
             <audio key={url} src={url} controls className="w-full" />
           </>
         ) : (
-          <p className="text-sm text-gray-500">选择一条音频开始播放</p>
+          <p className="text-sm text-gray-500">{t("selectAudio")}</p>
         )}
       </div>
       <ul className="space-y-2">

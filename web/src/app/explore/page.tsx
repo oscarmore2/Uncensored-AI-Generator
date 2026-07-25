@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { db } from "@/lib/db";
 import { GuestHeader } from "@/components/GuestHeader";
@@ -5,17 +6,28 @@ import { ExploreGallery, type ExploreWork } from "@/components/ExploreGallery";
 import { getCurrentUser } from "@/lib/auth";
 import { hasAdultAccess } from "@/lib/adult-access";
 import { publicWorkOut } from "@/lib/serialize";
+import { getTranslations } from "next-intl/server";
 
 export const dynamic = "force-dynamic";
 
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("Explore");
+  return {
+    title: t("metaTitle"),
+    description: t("metaDescription"),
+    alternates: { canonical: "/explore" },
+    openGraph: {
+      type: "website",
+      title: t("metaTitle"),
+      description: t("metaDescription"),
+      url: "/explore",
+      images: ["/opengraph-image"],
+    },
+  };
+}
+
 const PAGE_SIZE = 24;
-const MODE_LABELS: Record<string, string> = {
-  txt2img: "文生图",
-  txt2vid: "文生视频",
-  img2img: "图生图",
-  img2vid: "图生视频",
-  undress: "图像编辑",
-};
+const MODES = ["txt2img", "txt2vid", "img2img", "img2vid", "undress"] as const;
 
 export default async function ExplorePage({
   searchParams,
@@ -23,8 +35,9 @@ export default async function ExplorePage({
   searchParams: Promise<{ page?: string; mode?: string }>;
 }) {
   const sp = await searchParams;
+  const t = await getTranslations("Explore");
   const page = Math.max(1, Number(sp.page) || 1);
-  const mode = sp.mode && sp.mode in MODE_LABELS ? sp.mode : undefined;
+  const mode = sp.mode && MODES.includes(sp.mode as (typeof MODES)[number]) ? sp.mode : undefined;
   const user = await getCurrentUser();
   const adultAccess = hasAdultAccess(user);
 
@@ -50,8 +63,8 @@ export default async function ExplorePage({
       <div className="max-w-7xl mx-auto px-6 pt-10 pb-16">
         <div className="flex flex-wrap items-end justify-between gap-4 mb-8">
           <div>
-            <h1 className="text-4xl font-bold tracking-tighter">探索作品</h1>
-            <p className="text-gray-400 mt-1">社区公开作品，点开即可查看生成参数</p>
+            <h1 className="text-4xl font-bold tracking-tighter">{t("title")}</h1>
+            <p className="text-gray-400 mt-1">{t("subtitle")}</p>
           </div>
           <div className="flex gap-2">
             <Link
@@ -60,9 +73,9 @@ export default async function ExplorePage({
                 !mode ? "bg-rose-600 border-rose-600 text-white" : "border-white/10 text-gray-300 hover:bg-white/5"
               }`}
             >
-              全部
+              {t("all")}
             </Link>
-            {Object.entries(MODE_LABELS).map(([key, label]) => (
+            {MODES.map((key) => (
               <Link
                 key={key}
                 href={`/explore?mode=${key}`}
@@ -72,7 +85,7 @@ export default async function ExplorePage({
                     : "border-white/10 text-gray-300 hover:bg-white/5"
                 }`}
               >
-                {label}
+                {t(`modes.${key}`)}
               </Link>
             ))}
           </div>
@@ -81,7 +94,7 @@ export default async function ExplorePage({
         {works.length === 0 ? (
           <div className="glass rounded-3xl p-16 text-center text-gray-400">
             <i className="fas fa-images text-4xl mb-4 block text-gray-600" />
-            暂无公开作品，稍后再来看看
+            {t("empty")}
           </div>
         ) : (
           <ExploreGallery
@@ -100,7 +113,7 @@ export default async function ExplorePage({
                 href={`/explore?page=${page - 1}${mode ? `&mode=${mode}` : ""}`}
                 className="px-5 py-2 border border-white/10 rounded-2xl hover:bg-white/5"
               >
-                上一页
+                {t("previous")}
               </Link>
             )}
             <span className="px-5 py-2 text-gray-400">
@@ -111,7 +124,7 @@ export default async function ExplorePage({
                 href={`/explore?page=${page + 1}${mode ? `&mode=${mode}` : ""}`}
                 className="px-5 py-2 border border-white/10 rounded-2xl hover:bg-white/5"
               >
-                下一页
+                {t("next")}
               </Link>
             )}
           </div>
