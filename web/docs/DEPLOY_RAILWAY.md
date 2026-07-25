@@ -94,6 +94,7 @@ Railway 会注入 `PORT`，`npm start` 会自动监听。
 | `ZEN_API_KEY` | AI 生成 API（或在 `/admin/zen` 配置多账户） |
 | `STRIPE_SECRET_KEY` / `STRIPE_WEBHOOK_SECRET` | 或在 `/admin/stripe` 配置 |
 | `NOWPAYMENTS_API_KEY` / `NOWPAYMENTS_IPN_SECRET` | 可选，NOWPayments 托管加密支付与 IPN 验签 |
+| `RESEND_API_KEY` / `EMAIL_FROM` | 邮箱注册验证；`EMAIL_FROM` 必须来自 Resend 已验证域名 |
 | `SEED_ADMIN_USERNAME` / `SEED_ADMIN_PASSWORD` | 首个管理员（密码 ≥ 8 位），首次登录自动创建/提升 |
 | `CREDIT_PACKAGES` / `VIP_PRICE` | 有默认值，可按需覆盖 |
 
@@ -116,6 +117,27 @@ Railway 会注入 `PORT`，`npm start` 会自动监听。
 | `ZEN_CREDIT_RATIO` / `ZEN_MONTHLY_BUDGET` | 管理端成本估算 |
 | `ZEN_WEBHOOK_SECRET` | 预留 Zen 回调校验 |
 | `GOOGLE_SITE_VERIFICATION` | Google Search Console HTML meta 验证值，仅填写 `content` 内容 |
+| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | Google 登录；不配置则前端自动隐藏入口 |
+| `FACEBOOK_APP_ID` / `FACEBOOK_APP_SECRET` | Facebook 登录；不配置则前端自动隐藏入口 |
+| `FACEBOOK_GRAPH_VERSION` | Graph API 版本，默认 `v25.0`，升级时显式修改 |
+| `IPINFO_TOKEN` | 可选；注册时补充国家级 IP 地理推测，Core/Plus 可返回地区与城市 |
+| `IPINFO_API_BASE` | 默认 `https://api.ipinfo.io` |
+
+### 登录与邮箱验证配置
+
+1. 在 Resend 验证发信域名，创建 API Key，并将 `EMAIL_FROM` 设置为该域名下的发件地址。
+2. 在 Google Cloud Console 创建 Web OAuth 客户端，配置授权域名、同意屏幕及精确回调：
+   `{APP_URL}/api/auth/oauth/google/callback`。
+3. 在 Meta for Developers 创建应用并启用 Facebook Login，配置精确回调：
+   `{APP_URL}/api/auth/oauth/facebook/callback`，上线前将应用切换到 Live 并完成平台要求。
+4. 自定义域名或 `APP_URL` 发生变化时，必须同步更新两个平台的回调地址并重新部署。
+
+密码注册账户在邮箱验证成功前不能登录。Google 使用已验证邮箱时可与同邮箱账户安全绑定；
+Facebook 不会仅凭同邮箱自动合并既有账户，以避免账户接管。
+
+注册所在地识别会优先使用 Cloudflare、Vercel 等平台可信请求头；配置 `IPINFO_TOKEN`
+后可补充查询。该结果只是出口 IP 的粗略推测，VPN、代理、Tor、移动网络或企业网关
+会导致偏差，无法用于恢复用户的真实地址，也不采集 GPS 坐标。
 
 ## 4. 首次部署
 
@@ -147,6 +169,8 @@ Railway 会注入 `PORT`，`npm start` 会自动监听。
 
 - [ ] 首页 `/` 可访问
 - [ ] 种子管理员可登录并进入 `/admin`
+- [ ] 邮箱注册可收到验证邮件，链接仅可使用一次，验证后自动登录
+- [ ] Google / Facebook 登录回调与生产域名完全一致
 - [ ] `/admin/settings` 显示 `DEMO_MODE=false`
 - [ ] 配置 Zen 后可提交生成任务
 - [ ] Stripe（及 NOWPayments，若启用）测试支付 + Webhook 入账

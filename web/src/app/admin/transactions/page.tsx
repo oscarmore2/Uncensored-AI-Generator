@@ -24,6 +24,7 @@ interface ListResp {
 }
 
 const TYPE_LABELS: Record<string, string> = {
+  signup_bonus: "注册赠送",
   recharge: "充值",
   refund: "退款",
   vip: "VIP",
@@ -31,6 +32,7 @@ const TYPE_LABELS: Record<string, string> = {
 };
 
 const TYPE_COLORS: Record<string, string> = {
+  signup_bonus: "bg-sky-500/15 text-sky-300",
   recharge: "bg-emerald-500/15 text-emerald-300",
   refund: "bg-amber-500/15 text-amber-300",
   vip: "bg-purple-500/15 text-purple-300",
@@ -50,7 +52,9 @@ export default function AdminTransactionsPage() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const uid = params.get("user_id");
+    const initialType = params.get("type");
     if (uid) setUserId(uid);
+    if (initialType && initialType in TYPE_LABELS) setType(initialType);
   }, []);
 
   const buildParams = useCallback(() => {

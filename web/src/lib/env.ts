@@ -66,6 +66,18 @@ const envSchema = z.object({
   TURNSTILE_SECRET: z.string().default(""),
   // Google Search Console HTML meta tag 的 content 值（不是整段 meta 标签）
   GOOGLE_SITE_VERIFICATION: z.string().default(""),
+  // OAuth 登录
+  GOOGLE_CLIENT_ID: z.string().default(""),
+  GOOGLE_CLIENT_SECRET: z.string().default(""),
+  FACEBOOK_APP_ID: z.string().default(""),
+  FACEBOOK_APP_SECRET: z.string().default(""),
+  FACEBOOK_GRAPH_VERSION: z.string().regex(/^v\d+\.\d+$/).default("v25.0"),
+  // 邮箱验证（Resend REST API）
+  RESEND_API_KEY: z.string().default(""),
+  EMAIL_FROM: z.string().default(""),
+  // 注册所在地推测：优先平台 Geo headers；配置后以 IPinfo 补充国家/地区
+  IPINFO_TOKEN: z.string().default(""),
+  IPINFO_API_BASE: z.string().url().default("https://api.ipinfo.io"),
   MEDIA_CLEANUP_SECRET: z.string().default(""),
   MEDIA_CLEANUP_BATCH_SIZE: z.coerce.number().int().min(1).max(500).default(100),
 });

@@ -19,6 +19,9 @@ cp .env.example .env
 # DATABASE_URL 默认指向本地 postgresql://localhost:5432/avclubs
 # 选填：ZEN_API_KEY / STRIPE_* （Demo 模式下可留空）
 # 选填：HF_TOKEN（魔法指令走 Dolphin-Mistral-24B-Venice；未配置则本地扩写）
+# 邮箱注册：生产环境配置 RESEND_API_KEY / EMAIL_FROM
+# 第三方登录：按需配置 GOOGLE_CLIENT_* / FACEBOOK_APP_*
+# 注册国家/地区推测：可选配置 IPINFO_TOKEN；VPN 下只能识别出口位置
 
 npx prisma db push   # 初始化数据库表
 npm run dev          # http://localhost:3000
@@ -77,8 +80,12 @@ Demo 模式（`DEMO_MODE=true`）下：
 
 | 方法 | 路径 | 说明 |
 |------|------|------|
-| POST | `/api/auth/register` | 注册并建立会话 |
-| POST | `/api/auth/login` | 登录并建立会话 |
+| POST | `/api/auth/register` | 邮箱注册并发送验证邮件（验证成功后建立会话） |
+| GET | `/api/auth/verify-email` | 消费一次性邮箱验证链接并建立会话 |
+| POST | `/api/auth/resend-verification` | 重发邮箱验证邮件 |
+| POST | `/api/auth/login` | 用户名或邮箱 + 密码登录 |
+| GET | `/api/auth/oauth/{google|facebook}` | 发起第三方登录 |
+| GET | `/api/auth/oauth/{google|facebook}/callback` | 第三方登录回调 |
 | POST | `/api/auth/logout` | 清除会话 |
 | GET | `/api/me` | 当前用户信息 |
 | POST | `/api/prompts/magic` | 【登录】魔法指令：需已配置 HF（管理端或 env） |
@@ -113,6 +120,7 @@ Demo 模式（`DEMO_MODE=true`）下：
 | POST | `/api/mod/public-works/import` | 【mod】Zen/外部内容采集导入 |
 | GET | `/api/admin/stats` | 【admin】看板：总量+分渠道收入+生成管道+审核队列+近 30 天序列+Zen 估算 |
 | GET/PATCH | `/api/admin/users` / `[id]` | 【admin】用户列表；详情；改角色/调余额/VIP/封禁 |
+| GET | `/api/admin/users/{id}/media` | 【admin】按基础创作/玩物生成/上传素材分页查看用户媒体 |
 | GET | `/api/admin/transactions` | 【admin】流水（type/method/用户/日期筛选） |
 | GET | `/api/admin/transactions/export` | 【admin】流水 CSV 导出（最多 5000 行） |
 | GET | `/api/admin/crypto-payments` | 【admin】加密支付订单（入账状态筛选） |

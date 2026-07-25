@@ -19,10 +19,10 @@ export async function generateMetadata(): Promise<Metadata> {
 export default async function TermsPage() {
   if ((await getLocale()) === "en") {
     return (
-      <LegalPage title="玩玩可物 Terms of Service" updated="July 25, 2026">
+      <LegalPage title="玩玩可物 Terms of Service" updated="July 26, 2026">
         <p>By registering, signing in, accessing, or using 玩玩可物, you agree to these Terms and our Content Policy. If you do not agree, do not use the service.</p>
         <h2>1. Accounts and eligibility</h2>
-        <p>Provide accurate and lawful information and protect your credentials. You may not sell, rent, or share accounts, or bypass access controls and safety limits. Adult mode is limited to verified users aged 18 or older with active VIP membership.</p>
+        <p>Provide an email address you control, complete verification when required, and protect your credentials. If you use Google or Facebook sign-in, you authorize us to receive the account information needed to create or access your account. At registration, we may infer a coarse country, region, or city from the network address and request metadata for fraud prevention, security, legal compliance, and service analytics. This is an estimate, may be wrong because of VPNs, proxies, mobile networks, or provider databases, and is not proof of nationality, residence, or physical presence. To the extent permitted by law, we do not guarantee its accuracy and are not responsible for decisions made solely from that estimate. You may not sell, rent, or share accounts, or bypass access controls and safety limits. Adult mode is limited to verified users aged 18 or older with active VIP membership.</p>
         <h2>2. Service</h2>
         <p>We provide AI image, video, media generation, editing, storage, and display tools. AI output is probabilistic, and we do not guarantee accuracy, uniqueness, continuous availability, or fitness for a particular purpose.</p>
         <h2>3. Credits, subscriptions, and refunds</h2>
@@ -45,7 +45,7 @@ export default async function TermsPage() {
     );
   }
   return (
-    <LegalPage title="玩玩可物用户条款" updated="2026 年 7 月 25 日">
+    <LegalPage title="玩玩可物用户条款" updated="2026 年 7 月 26 日">
       <p>
         欢迎使用玩玩可物。你注册、登录、访问或使用本平台，即表示你已阅读、理解并同意本条款及
         《内容使用条款》。如你不同意，请停止使用服务。
@@ -53,7 +53,11 @@ export default async function TermsPage() {
 
       <h2>1. 账户与资格</h2>
       <p>
-        你应提供真实、合法的信息，并妥善保管账户凭据。账户下发生的活动原则上视为你的行为。发现未经授权的
+        你应提供由本人控制的邮箱，按要求完成验证，并妥善保管账户凭据。选择 Google 或 Facebook 登录即表示
+        你授权平台接收创建或访问账户所需的第三方账户资料。注册时，平台可根据网络地址、服务商请求头及可选
+        地理数据服务粗略推测国家、地区或城市，用于反欺诈、安全、法律合规和服务分析。该结果可能因 VPN、代理、
+        移动网络、IP 分配或第三方数据库误差而不准确，不构成对国籍、住所或实际所在位置的证明；在法律允许范围
+        内，平台不保证推测结果准确，也不对仅依据该推测结果作出的决定承担责任。账户下发生的活动原则上视为你的行为。发现未经授权的
         使用时，请立即联系我们。你不得出售、出租、共享账户，亦不得绕过访问控制、限额或安全措施。成人模式
         仅限已满 18 岁、完成年龄验证且持有有效 VIP 的用户；你不得代未成年人开启或向其展示相关内容。
       </p>

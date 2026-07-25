@@ -8,6 +8,14 @@ import { stripeConfigured } from "@/lib/stripe";
 import { ossConfigured } from "@/lib/oss";
 import { hfConfigured } from "@/lib/hf";
 import { ensurePricingSeeded } from "@/lib/pricing-seed";
+import { z } from "zod";
+import { assertSameOrigin } from "@/lib/csrf";
+import {
+  getSignupInitialCredits,
+  MAX_SIGNUP_INITIAL_CREDITS,
+  setSignupInitialCredits,
+} from "@/lib/signup-settings";
+import { logAdminAction } from "@/lib/admin-audit";
 
 /** 只读配置快照（脱敏，不返回 secret 明文） */
 export async function GET() {
@@ -29,6 +37,7 @@ export async function GET() {
     packageCount,
     tierCount,
     planCount,
+    signupInitialCredits,
   ] = await Promise.all([
     db.zenAccount.findFirst({ where: { isActive: true }, select: { id: true, label: true } }),
     db.stripeAccount.findFirst({ where: { isActive: true }, select: { id: true, label: true } }),
@@ -45,11 +54,13 @@ export async function GET() {
     db.creditPackage.count({ where: { isActive: true } }),
     db.vipTier.count({ where: { isActive: true } }),
     db.vipPlan.count({ where: { isActive: true } }),
+    getSignupInitialCredits(),
   ]);
 
   return NextResponse.json({
     app_url: env.APP_URL,
     demo_mode: env.DEMO_MODE,
+    signup_initial_credits: signupInitialCredits,
     vip_price_cents: env.VIP_PRICE,
     credit_packages: env.CREDIT_PACKAGES,
     zen: {
@@ -101,5 +112,41 @@ export async function GET() {
       nowpayments: `${env.APP_URL}/api/payments/crypto/webhook`,
       zen: `${env.APP_URL}/api/zen/webhook`,
     },
+  });
+}
+
+const patchSchema = z.object({
+  signup_initial_credits: z
+    .number()
+    .int()
+    .min(0)
+    .max(MAX_SIGNUP_INITIAL_CREDITS),
+});
+
+export async function PATCH(req: Request) {
+  const admin = await requireRole("admin");
+  if (!admin) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  const originCheck = assertSameOrigin(req);
+  if (!originCheck.ok) {
+    return NextResponse.json({ error: originCheck.error }, { status: originCheck.status });
+  }
+  const parsed = patchSchema.safeParse(await req.json().catch(() => null));
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: `注册初始点数须为 0–${MAX_SIGNUP_INITIAL_CREDITS} 的整数` },
+      { status: 400 }
+    );
+  }
+  const previous = await getSignupInitialCredits();
+  await setSignupInitialCredits(parsed.data.signup_initial_credits);
+  await logAdminAction(
+    admin.id,
+    "system_signup_credits",
+    { type: "app_setting", id: "signup_initial_credits" },
+    { previous, next: parsed.data.signup_initial_credits }
+  );
+  return NextResponse.json({
+    ok: true,
+    signup_initial_credits: parsed.data.signup_initial_credits,
   });
 }

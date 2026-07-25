@@ -12,7 +12,14 @@ export async function GET(req: Request) {
   const limit = Math.min(100, Math.max(1, Number(url.searchParams.get("limit")) || 30));
   const q = url.searchParams.get("q")?.trim();
 
-  const where = q ? { username: { contains: q } } : {};
+  const where = q
+    ? {
+        OR: [
+          { username: { contains: q, mode: "insensitive" as const } },
+          { email: { contains: q, mode: "insensitive" as const } },
+        ],
+      }
+    : {};
 
   const [total, users] = await Promise.all([
     db.user.count({ where }),
@@ -21,6 +28,9 @@ export async function GET(req: Request) {
       select: {
         id: true,
         username: true,
+        email: true,
+        registrationCountryCode: true,
+        registrationRegion: true,
         role: true,
         balance: true,
         isVip: true,
@@ -45,6 +55,9 @@ export async function GET(req: Request) {
     users: users.map((u) => ({
       id: u.id,
       username: u.username,
+      email: u.email,
+      registration_country_code: u.registrationCountryCode,
+      registration_region: u.registrationRegion,
       role: u.role,
       balance: u.balance,
       is_vip: u.isVip,

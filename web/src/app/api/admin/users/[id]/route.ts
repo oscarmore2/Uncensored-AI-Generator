@@ -30,6 +30,14 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
     select: {
       id: true,
       username: true,
+      email: true,
+      emailVerifiedAt: true,
+      registrationCountryCode: true,
+      registrationCountry: true,
+      registrationRegion: true,
+      registrationCity: true,
+      registrationGeoSource: true,
+      registrationGeoCapturedAt: true,
       role: true,
       balance: true,
       isVip: true,
@@ -39,12 +47,19 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
       vipTier: { select: { id: true, code: true, name: true, discountBps: true, playthingAccess: true } },
       disabledAt: true,
       createdAt: true,
-      _count: { select: { generations: true } },
+      _count: {
+        select: {
+          generations: true,
+          waveSpeedGenerations: true,
+          mediaAssets: true,
+        },
+      },
     },
   });
   if (!user) return NextResponse.json({ error: "用户不存在" }, { status: 404 });
 
-  const [rechargeAgg, recentTx, recentGens, recentCrypto] = await Promise.all([
+  const [rechargeAgg, recentTx, recentRecharges, recentGens, recentCrypto] =
+    await Promise.all([
     db.transaction.aggregate({
       where: { userId, type: "recharge" },
       _sum: { priceCents: true, amount: true },
@@ -59,6 +74,19 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
         amount: true,
         priceCents: true,
         method: true,
+        createdAt: true,
+      },
+    }),
+    db.transaction.findMany({
+      where: { userId, type: "recharge" },
+      orderBy: { createdAt: "desc" },
+      take: 20,
+      select: {
+        id: true,
+        amount: true,
+        priceCents: true,
+        method: true,
+        stripePaymentId: true,
         createdAt: true,
       },
     }),
@@ -94,6 +122,16 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
     user: {
       id: user.id,
       username: user.username,
+      email: user.email,
+      email_verified_at: user.emailVerifiedAt,
+      registration_geo: {
+        country_code: user.registrationCountryCode,
+        country: user.registrationCountry,
+        region: user.registrationRegion,
+        city: user.registrationCity,
+        source: user.registrationGeoSource,
+        captured_at: user.registrationGeoCapturedAt,
+      },
       role: user.role,
       balance: user.balance,
       is_vip: user.isVip,
@@ -111,6 +149,8 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
       disabled_at: user.disabledAt,
       created_at: user.createdAt,
       generation_count: user._count.generations,
+      wavespeed_generation_count: user._count.waveSpeedGenerations,
+      upload_count: user._count.mediaAssets,
       total_recharge_cents: rechargeAgg._sum.priceCents ?? 0,
       total_recharge_credits: rechargeAgg._sum.amount ?? 0,
     },
@@ -120,6 +160,14 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
       amount: t.amount,
       price_cents: t.priceCents,
       method: t.method,
+      created_at: t.createdAt,
+    })),
+    recent_recharges: recentRecharges.map((t) => ({
+      id: t.id,
+      amount: t.amount,
+      price_cents: t.priceCents,
+      method: t.method,
+      payment_id: t.stripePaymentId,
       created_at: t.createdAt,
     })),
     recent_generations: recentGens.map((g) => ({

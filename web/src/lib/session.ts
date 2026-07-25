@@ -4,7 +4,17 @@ import { SignJWT, jwtVerify } from "jose";
 import { env } from "./env";
 
 export const SESSION_COOKIE = "avclubs_session";
-const SESSION_TTL_SECONDS = 2 * 60 * 60; // 2h
+export const SESSION_TTL_SECONDS = 2 * 60 * 60; // 2h
+
+export function sessionCookieOptions() {
+  return {
+    httpOnly: true,
+    sameSite: "lax" as const,
+    secure: process.env.NODE_ENV === "production",
+    path: "/",
+    maxAge: SESSION_TTL_SECONDS,
+  };
+}
 
 const secret = new TextEncoder().encode(env.AUTH_SECRET);
 
@@ -40,13 +50,7 @@ export async function verifySession(token: string): Promise<SessionPayload | nul
 export async function createSessionCookie(userId: number, username: string, role = "user") {
   const token = await signSession({ sub: String(userId), username, role });
   const store = await cookies();
-  store.set(SESSION_COOKIE, token, {
-    httpOnly: true,
-    sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
-    path: "/",
-    maxAge: SESSION_TTL_SECONDS,
-  });
+  store.set(SESSION_COOKIE, token, sessionCookieOptions());
 }
 
 export async function clearSessionCookie() {

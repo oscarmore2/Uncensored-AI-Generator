@@ -4,6 +4,10 @@
 export interface ApiUser {
   id: number;
   username: string;
+  email: string | null;
+  email_verified: boolean;
+  display_name: string | null;
+  avatar_url: string | null;
   role: string;
   balance: number;
   is_vip: boolean;

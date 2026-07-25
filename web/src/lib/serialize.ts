@@ -11,6 +11,10 @@ export function userOut(
   return {
     id: user.id,
     username: user.username,
+    email: user.email,
+    email_verified: Boolean(user.emailVerifiedAt),
+    display_name: user.displayName,
+    avatar_url: user.avatarUrl,
     role: user.role,
     balance: user.balance,
     is_vip: vipActive,

@@ -7,6 +7,9 @@ import { api, ApiError } from "@/lib/client";
 interface AdminUser {
   id: number;
   username: string;
+  email: string | null;
+  registration_country_code: string | null;
+  registration_region: string | null;
   role: string;
   balance: number;
   is_vip: boolean;
@@ -92,7 +95,7 @@ export default function AdminUsersPage() {
           setQ(e.target.value);
           setPage(1);
         }}
-        placeholder="搜索用户名..."
+        placeholder="搜索用户名或邮箱..."
         className="w-full max-w-sm mb-5 bg-[#111] border border-white/10 focus:border-rose-500/60 rounded-2xl px-4 py-2.5 text-sm outline-none"
       />
 
@@ -104,6 +107,7 @@ export default function AdminUsersPage() {
             <tr className="text-left text-xs text-gray-400 border-b border-white/10">
               <th className="px-4 py-3">ID</th>
               <th className="px-4 py-3">用户名</th>
+              <th className="px-4 py-3">注册地</th>
               <th className="px-4 py-3">角色</th>
               <th className="px-4 py-3">余额</th>
               <th className="px-4 py-3">累计充值</th>
@@ -121,6 +125,10 @@ export default function AdminUsersPage() {
                   <Link href={`/admin/users/${u.id}`} className="hover:text-rose-300">
                     {u.username}
                   </Link>
+                  {u.email && <div className="mt-0.5 text-[10px] font-normal text-gray-600">{u.email}</div>}
+                </td>
+                <td className="px-4 py-3 text-xs text-gray-400">
+                  {[u.registration_country_code, u.registration_region].filter(Boolean).join(" · ") || "—"}
                 </td>
                 <td className="px-4 py-3">
                   <select
@@ -171,7 +179,7 @@ export default function AdminUsersPage() {
             ))}
             {data && data.users.length === 0 && (
               <tr>
-                <td colSpan={9} className="px-4 py-10 text-center text-gray-500">
+                <td colSpan={10} className="px-4 py-10 text-center text-gray-500">
                   没有匹配的用户
                 </td>
               </tr>

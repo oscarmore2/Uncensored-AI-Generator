@@ -15,7 +15,8 @@ export async function hashPassword(password: string): Promise<string> {
   return bcrypt.hash(password, 12);
 }
 
-export async function verifyPassword(password: string, hashed: string): Promise<boolean> {
+export async function verifyPassword(password: string, hashed: string | null): Promise<boolean> {
+  if (!hashed) return false;
   return bcrypt.compare(password, hashed);
 }
 

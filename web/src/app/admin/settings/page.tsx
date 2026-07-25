@@ -6,6 +6,7 @@ import { api, ApiError } from "@/lib/client";
 interface Settings {
   app_url: string;
   demo_mode: boolean;
+  signup_initial_credits: number;
   vip_price_cents: number;
   credit_packages: Record<string, number>;
   zen: {
@@ -50,12 +51,43 @@ interface Settings {
 export default function AdminSettingsPage() {
   const [settings, setSettings] = useState<Settings | null>(null);
   const [error, setError] = useState("");
+  const [signupCredits, setSignupCredits] = useState(20);
+  const [saving, setSaving] = useState(false);
+  const [message, setMessage] = useState("");
 
   useEffect(() => {
     api<Settings>("/api/admin/settings")
-      .then(setSettings)
+      .then((value) => {
+        setSettings(value);
+        setSignupCredits(value.signup_initial_credits);
+      })
       .catch((e) => setError(e instanceof ApiError ? e.message : "加载失败"));
   }, []);
+
+  async function saveSignupCredits() {
+    if (!Number.isInteger(signupCredits) || signupCredits < 0 || signupCredits > 100_000) {
+      setMessage("注册初始点数须为 0–100000 的整数");
+      return;
+    }
+    setSaving(true);
+    setMessage("");
+    try {
+      const result = await api<{ signup_initial_credits: number }>("/api/admin/settings", {
+        method: "PATCH",
+        body: JSON.stringify({ signup_initial_credits: signupCredits }),
+      });
+      setSettings((current) =>
+        current
+          ? { ...current, signup_initial_credits: result.signup_initial_credits }
+          : current
+      );
+      setMessage("注册初始点数已保存，仅影响之后注册的新用户");
+    } catch (reason) {
+      setMessage(reason instanceof ApiError ? reason.message : "保存失败");
+    } finally {
+      setSaving(false);
+    }
+  }
 
   if (error) return <p className="text-red-400">{error}</p>;
   if (!settings) return <p className="text-gray-500">加载中...</p>;
@@ -122,7 +154,35 @@ export default function AdminSettingsPage() {
   return (
     <div>
       <h1 className="text-3xl font-bold tracking-tighter mb-1">系统配置</h1>
-      <p className="text-gray-400 text-sm mb-6">只读快照 · 密钥等敏感信息已脱敏</p>
+      <p className="text-gray-400 text-sm mb-6">运营配置与运行快照 · 密钥等敏感信息已脱敏</p>
+
+      <div className="glass rounded-3xl p-5 mb-8">
+        <div className="text-sm font-semibold mb-1">新用户注册初始点数</div>
+        <p className="mb-4 text-xs text-gray-500">
+          适用于邮箱、Google 与 Facebook 首次注册；修改后不追溯已有用户。
+        </p>
+        <div className="flex flex-wrap items-center gap-3">
+          <input
+            type="number"
+            min={0}
+            max={100000}
+            step={1}
+            value={signupCredits}
+            onChange={(event) => setSignupCredits(Math.trunc(Number(event.target.value) || 0))}
+            className="w-40 rounded-xl border border-white/10 bg-[#111] px-3 py-2"
+          />
+          <span className="text-sm text-gray-400">点</span>
+          <button
+            type="button"
+            disabled={saving}
+            onClick={() => void saveSignupCredits()}
+            className="rounded-xl bg-white px-4 py-2 text-sm font-semibold text-black disabled:opacity-50"
+          >
+            {saving ? "保存中…" : "保存"}
+          </button>
+        </div>
+        {message && <p className="mt-3 text-xs text-amber-300">{message}</p>}
+      </div>
 
       <div className="glass rounded-3xl p-5 mb-8">
         <div className="text-sm font-semibold mb-4">运行参数</div>

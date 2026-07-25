@@ -11,7 +11,7 @@ import { z } from "zod";
 import { LEGAL_VERSION } from "@/lib/legal";
 
 const loginSchema = z.object({
-  username: z.string().min(1).max(64),
+  username: z.string().min(1).max(254),
   password: z.string().min(1).max(128),
   turnstile_token: z.string().min(1).max(2048).optional(),
   "cf-turnstile-response": z.string().min(1).max(2048).optional(),
@@ -40,16 +40,24 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: captcha.error }, { status: captcha.status });
   }
 
-  const { username, password } = parsed.data;
-  if (["demo_user", "mod_user", "admin_user", process.env.SEED_ADMIN_USERNAME].includes(username)) {
+  const { username: identifier, password } = parsed.data;
+  if (["demo_user", "mod_user", "admin_user", process.env.SEED_ADMIN_USERNAME].includes(identifier)) {
     await ensureSeedUsers();
   }
-  const user = await db.user.findUnique({ where: { username } });
+  const user = identifier.includes("@")
+    ? await db.user.findUnique({ where: { email: identifier.trim().toLowerCase() } })
+    : await db.user.findUnique({ where: { username: identifier } });
   if (!user || !(await verifyPassword(password, user.hashedPassword))) {
     return NextResponse.json({ error: "用户名或密码错误", code: "INVALID_CREDENTIALS" }, { status: 401 });
   }
   if (user.disabledAt) {
     return NextResponse.json({ error: "账号已被封禁，如有疑问请联系客服", code: "ACCOUNT_DISABLED" }, { status: 403 });
+  }
+  if (user.email && !user.emailVerifiedAt) {
+    return NextResponse.json(
+      { error: "请先完成邮箱验证", code: "EMAIL_NOT_VERIFIED" },
+      { status: 403 }
+    );
   }
 
   if (parsed.data.accepted_terms && user.termsVersion !== LEGAL_VERSION) {

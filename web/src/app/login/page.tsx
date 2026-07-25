@@ -26,6 +26,7 @@ function LoginForm() {
     params.get("mode") === "register" ? "register" : "login"
   );
   const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -33,6 +34,10 @@ function LoginForm() {
   const [turnstileReset, setTurnstileReset] = useState(0);
   const [siteKey, setSiteKey] = useState<string | null>(null);
   const [accepted, setAccepted] = useState(false);
+  const [providers, setProviders] = useState({ google: false, facebook: false });
+  const [verificationEmail, setVerificationEmail] = useState("");
+  const [devVerificationUrl, setDevVerificationUrl] = useState("");
+  const [resendMessage, setResendMessage] = useState("");
 
   useEffect(() => {
     let cancelled = false;
@@ -44,6 +49,46 @@ function LoginForm() {
       .catch(() => {
         /* widget stays hidden until key loads */
       });
+    fetch("/api/auth/oauth/providers")
+      .then((r) => r.json())
+      .then((data: { google?: boolean; facebook?: boolean }) => {
+        if (!cancelled) {
+          setProviders({
+            google: Boolean(data.google),
+            facebook: Boolean(data.facebook),
+          });
+        }
+      })
+      .catch(() => {
+        /* social buttons stay hidden */
+      });
+    const oauthError = params.get("oauth_error");
+    const verifyError = params.get("verify_error");
+    const oauthErrorKeys = new Set([
+      "invalid_state",
+      "not_configured",
+      "verified_email_required",
+      "email_already_registered",
+      "account_disabled",
+      "access_denied",
+      "provider_failed",
+    ]);
+    if (oauthError) {
+      const key = oauthErrorKeys.has(oauthError) ? oauthError : "provider_failed";
+      setError(
+        t(
+          `oauthErrors.${key}` as
+            | "oauthErrors.invalid_state"
+            | "oauthErrors.not_configured"
+            | "oauthErrors.verified_email_required"
+            | "oauthErrors.email_already_registered"
+            | "oauthErrors.account_disabled"
+            | "oauthErrors.access_denied"
+            | "oauthErrors.provider_failed"
+        )
+      );
+    }
+    else if (verifyError) setError(t("verificationInvalid"));
     return () => {
       cancelled = true;
     };
@@ -59,26 +104,52 @@ function LoginForm() {
     setBusy(true);
     setError("");
     try {
-      await api(`/api/auth/${mode}`, {
+      const result = await api<{
+        verification_required?: boolean;
+        email?: string;
+        devVerificationUrl?: string;
+      }>(`/api/auth/${mode}`, {
         method: "POST",
         body: JSON.stringify({
           username: username.trim(),
+          ...(mode === "register" ? { email: email.trim() } : {}),
           password,
           "cf-turnstile-response": turnstileToken,
           turnstile_token: turnstileToken,
           accepted_terms: mode === "login" || accepted,
         }),
       });
+      if (mode === "register" && result.verification_required) {
+        setVerificationEmail(result.email ?? email.trim());
+        setDevVerificationUrl(result.devVerificationUrl ?? "");
+        return;
+      }
       router.push(safeNextPath(params.get("next")));
       router.refresh();
     } catch (err) {
-      const errorKeys: Record<string, "rateLimited" | "credentialsRequired" | "invalidCredentials" | "accountDisabled" | "invalidRegistration" | "usernameUnavailable"> = {
+      if (
+        err instanceof ApiError &&
+        ["EMAIL_ALREADY_PENDING", "EMAIL_SEND_FAILED"].includes(err.code ?? "")
+      ) {
+        setVerificationEmail(email.trim());
+      }
+      if (
+        err instanceof ApiError &&
+        err.code === "EMAIL_NOT_VERIFIED" &&
+        username.includes("@")
+      ) {
+        setVerificationEmail(username.trim().toLowerCase());
+      }
+      const errorKeys: Record<string, "rateLimited" | "credentialsRequired" | "invalidCredentials" | "accountDisabled" | "invalidRegistration" | "identityUnavailable" | "emailNotVerified" | "emailServiceUnavailable"> = {
         RATE_LIMITED: "rateLimited",
         CREDENTIALS_REQUIRED: "credentialsRequired",
         INVALID_CREDENTIALS: "invalidCredentials",
         ACCOUNT_DISABLED: "accountDisabled",
         INVALID_REGISTRATION: "invalidRegistration",
-        USERNAME_UNAVAILABLE: "usernameUnavailable",
+        USERNAME_UNAVAILABLE: "identityUnavailable",
+        IDENTITY_UNAVAILABLE: "identityUnavailable",
+        EMAIL_NOT_VERIFIED: "emailNotVerified",
+        EMAIL_SERVICE_UNAVAILABLE: "emailServiceUnavailable",
       };
       setError(
         err instanceof ApiError && err.code && errorKeys[err.code]
@@ -94,6 +165,27 @@ function LoginForm() {
     }
   }
 
+  async function resendVerification() {
+    if (!verificationEmail || busy) return;
+    setBusy(true);
+    setResendMessage("");
+    try {
+      const result = await api<{ message: string; dev_verification_url?: string }>(
+        "/api/auth/resend-verification",
+        {
+          method: "POST",
+          body: JSON.stringify({ email: verificationEmail }),
+        }
+      );
+      setResendMessage(t("verificationSent"));
+      if (result.dev_verification_url) setDevVerificationUrl(result.dev_verification_url);
+    } catch (reason) {
+      setResendMessage(reason instanceof ApiError ? reason.message : t("networkError"));
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
     <div className="min-h-screen flex items-center justify-center p-4">
       <div className="max-w-md w-full glass rounded-3xl p-8 modal-pop">
@@ -104,6 +196,41 @@ function LoginForm() {
           <LanguageSwitcher compact />
         </div>
 
+        {verificationEmail ? (
+          <div className="rounded-3xl border border-emerald-400/20 bg-emerald-400/10 p-6 text-center">
+            <i className="fas fa-envelope-circle-check text-3xl text-emerald-300" />
+            <h1 className="mt-3 text-xl font-bold">{t("checkEmailTitle")}</h1>
+            <p className="mt-2 text-sm leading-6 text-gray-300">
+              {t("checkEmailBody", { email: verificationEmail })}
+            </p>
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => void resendVerification()}
+              className="mt-5 rounded-2xl border border-white/15 px-5 py-2.5 text-sm font-semibold hover:bg-white/5 disabled:opacity-50"
+            >
+              {busy ? t("processing") : t("resendVerification")}
+            </button>
+            {resendMessage && <p className="mt-3 text-xs text-gray-400">{resendMessage}</p>}
+            {devVerificationUrl && (
+              <a href={devVerificationUrl} className="mt-3 block text-xs text-violet-300 underline">
+                {t("demoVerifyLink")}
+              </a>
+            )}
+            <button
+              type="button"
+              onClick={() => {
+                setVerificationEmail("");
+                setMode("login");
+                setError("");
+              }}
+              className="mt-4 block w-full text-xs text-gray-500 hover:text-gray-300"
+            >
+              {t("backToLogin")}
+            </button>
+          </div>
+        ) : (
+          <>
         <div className="flex mb-6 bg-black/40 rounded-2xl p-1">
           {(["login", "register"] as const).map((m) => (
             <button
@@ -124,9 +251,39 @@ function LoginForm() {
           ))}
         </div>
 
+        {(providers.google || providers.facebook) && (
+          <div className="mb-5 grid gap-3">
+            {providers.google && (
+              <a
+                href={`/api/auth/oauth/google?next=${encodeURIComponent(safeNextPath(params.get("next")))}`}
+                className="flex items-center justify-center gap-3 rounded-2xl border border-white/15 bg-white px-4 py-3 font-semibold text-black hover:bg-gray-100"
+              >
+                <span className="text-lg font-black text-blue-600">G</span>
+                {t("continueGoogle")}
+              </a>
+            )}
+            {providers.facebook && (
+              <a
+                href={`/api/auth/oauth/facebook?next=${encodeURIComponent(safeNextPath(params.get("next")))}`}
+                className="flex items-center justify-center gap-3 rounded-2xl bg-[#1877F2] px-4 py-3 font-semibold text-white hover:bg-[#166fe5]"
+              >
+                <i className="fab fa-facebook text-lg" />
+                {t("continueFacebook")}
+              </a>
+            )}
+            <div className="flex items-center gap-3 text-[10px] uppercase tracking-widest text-gray-600">
+              <span className="h-px flex-1 bg-white/10" />
+              {t("orPassword")}
+              <span className="h-px flex-1 bg-white/10" />
+            </div>
+          </div>
+        )}
+
         <form onSubmit={submit} className="space-y-4">
           <div>
-            <label className="text-sm text-gray-300">{t("username")}</label>
+            <label className="text-sm text-gray-300">
+              {mode === "login" ? t("usernameOrEmail") : t("username")}
+            </label>
             <input
               value={username}
               onChange={(e) => setUsername(e.target.value)}
@@ -135,6 +292,21 @@ function LoginForm() {
               className="w-full mt-1 bg-[#111] border border-white/10 focus:border-rose-500 rounded-2xl px-4 py-3 outline-none"
             />
           </div>
+          {mode === "register" && (
+            <div>
+              <label className="text-sm text-gray-300">{t("email")}</label>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                autoComplete="email"
+                required
+                maxLength={254}
+                className="w-full mt-1 bg-[#111] border border-white/10 focus:border-rose-500 rounded-2xl px-4 py-3 outline-none"
+              />
+              <p className="mt-1 text-[10px] text-gray-500">{t("emailHint")}</p>
+            </div>
+          )}
           <div>
             <label className="text-sm text-gray-300">{t("password")}</label>
             <input
@@ -195,6 +367,11 @@ function LoginForm() {
           <Link href="/content-policy" className="mx-1 text-gray-300 hover:text-white">{t("contentPolicy")}</Link>
           {t("noticeSuffix")}
         </p>
+        <p className="mt-2 text-center text-[10px] leading-4 text-gray-600">
+          {t("geoNotice")}
+        </p>
+          </>
+        )}
       </div>
     </div>
   );
