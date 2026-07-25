@@ -41,9 +41,8 @@ export async function GET() {
     genStatusCounts,
     uncreditedCryptoCount,
     featuredGenIds,
-    cryptoByMerchant,
+    nowPaymentsRevenue,
     stripeByAccount,
-    cryptomusMerchants,
     stripeAccounts,
   ] = await Promise.all([
     db.user.count(),
@@ -80,13 +79,12 @@ export async function GET() {
       by: ["status"],
       _count: { id: true },
     }),
-    db.cryptoPayment.count({ where: { credited: false } }),
+    db.nowPayment.count({ where: { credited: false } }),
     db.publicWork.findMany({
       where: { sourceGenerationId: { not: null } },
       select: { sourceGenerationId: true },
     }),
-    db.cryptoPayment.groupBy({
-      by: ["merchantRefId"],
+    db.nowPayment.aggregate({
       where: { credited: true },
       _sum: { amountUsdCents: true },
       _count: { id: true },
@@ -97,7 +95,6 @@ export async function GET() {
       _sum: { priceCents: true },
       _count: { id: true },
     }),
-    db.cryptomusMerchant.findMany({ select: { id: true, label: true } }),
     db.stripeAccount.findMany({ select: { id: true, label: true } }),
   ]);
 
@@ -131,15 +128,12 @@ export async function GET() {
     };
   }
 
-  const merchantLabel = new Map(cryptomusMerchants.map((m) => [m.id, m.label]));
   const stripeLabel = new Map(stripeAccounts.map((a) => [a.id, a.label]));
 
-  const revenue_by_cryptomus_merchant = cryptoByMerchant.map((row) => ({
-    merchant_id: row.merchantRefId,
-    label: row.merchantRefId ? (merchantLabel.get(row.merchantRefId) ?? `#${row.merchantRefId}`) : "env/未知",
-    cents: row._sum.amountUsdCents ?? 0,
-    count: row._count.id,
-  }));
+  const revenue_by_nowpayments = {
+    cents: nowPaymentsRevenue._sum.amountUsdCents ?? 0,
+    count: nowPaymentsRevenue._count.id,
+  };
 
   const revenue_by_stripe_account = stripeByAccount.map((row) => ({
     account_id: row.stripeAccountRefId,
@@ -154,7 +148,7 @@ export async function GET() {
     revenue_cents: number;
     generations: number;
     revenue_stripe: number;
-    revenue_cryptomus: number;
+    revenue_nowpayments: number;
     revenue_demo: number;
   }[] = [];
   const indexByDate = new Map<string, number>();
@@ -168,7 +162,7 @@ export async function GET() {
       revenue_cents: 0,
       generations: 0,
       revenue_stripe: 0,
-      revenue_cryptomus: 0,
+      revenue_nowpayments: 0,
       revenue_demo: 0,
     });
   }
@@ -183,7 +177,7 @@ export async function GET() {
       const cents = t.priceCents ?? 0;
       series[i].revenue_cents += cents;
       if (t.method === "stripe") series[i].revenue_stripe += cents;
-      else if (t.method === "cryptomus") series[i].revenue_cryptomus += cents;
+      else if (t.method?.startsWith("nowpayments")) series[i].revenue_nowpayments += cents;
       else if (t.method === "demo") series[i].revenue_demo += cents;
     }
   }
@@ -219,7 +213,7 @@ export async function GET() {
     revenue_by_method,
     generations_by_status: generationsByStatus,
     mod_queue: { pending_review: pendingReview },
-    revenue_by_cryptomus_merchant,
+    revenue_by_nowpayments,
     revenue_by_stripe_account,
     series,
     zen: {

@@ -20,7 +20,7 @@ interface Stats {
   revenue_by_method: Record<string, { cents: number; count: number }>;
   generations_by_status: Record<string, number>;
   mod_queue: { pending_review: number };
-  revenue_by_cryptomus_merchant: { merchant_id: number | null; label: string; cents: number; count: number }[];
+  revenue_by_nowpayments: { cents: number; count: number };
   revenue_by_stripe_account: { account_id: number | null; label: string; cents: number; count: number }[];
   series: {
     date: string;
@@ -28,7 +28,7 @@ interface Stats {
     revenue_cents: number;
     generations: number;
     revenue_stripe: number;
-    revenue_cryptomus: number;
+    revenue_nowpayments: number;
     revenue_demo: number;
   }[];
   zen: {
@@ -43,7 +43,8 @@ interface Stats {
 
 const METHOD_LABELS: Record<string, string> = {
   stripe: "Stripe",
-  cryptomus: "Cryptomus",
+  nowpayments: "NOWPayments",
+  legacy_crypto: "旧加密支付",
   demo: "Demo",
   unknown: "未知",
 };
@@ -207,7 +208,7 @@ export default function AdminDashboardPage() {
         <BarChart title="每日生成" data={stats.series.map((s) => ({ date: s.date, value: s.generations }))} />
       </div>
 
-      {(stats.revenue_by_stripe_account.length > 0 || stats.revenue_by_cryptomus_merchant.length > 0) && (
+      {(stats.revenue_by_stripe_account.length > 0 || stats.revenue_by_nowpayments.count > 0) && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
           {stats.revenue_by_stripe_account.length > 0 && (
             <div className="glass rounded-3xl p-5">
@@ -224,18 +225,15 @@ export default function AdminDashboardPage() {
               </div>
             </div>
           )}
-          {stats.revenue_by_cryptomus_merchant.length > 0 && (
+          {stats.revenue_by_nowpayments.count > 0 && (
             <div className="glass rounded-3xl p-5">
-              <div className="text-sm font-semibold mb-3">Cryptomus 商户收入</div>
-              <div className="space-y-2">
-                {stats.revenue_by_cryptomus_merchant.map((row) => (
-                  <div key={String(row.merchant_id)} className="flex justify-between text-xs">
-                    <span className="text-gray-300">{row.label}</span>
-                    <span className="font-mono text-gray-400">
-                      ${(row.cents / 100).toFixed(2)} · {row.count} 笔
-                    </span>
-                  </div>
-                ))}
+              <div className="text-sm font-semibold mb-3">NOWPayments 收入</div>
+              <div className="flex justify-between text-xs">
+                <span className="text-gray-300">托管加密收银台</span>
+                <span className="font-mono text-gray-400">
+                  ${(stats.revenue_by_nowpayments.cents / 100).toFixed(2)} ·{" "}
+                  {stats.revenue_by_nowpayments.count} 笔
+                </span>
               </div>
             </div>
           )}

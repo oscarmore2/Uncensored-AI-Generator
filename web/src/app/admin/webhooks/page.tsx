@@ -52,7 +52,7 @@ export default function AdminWebhooksPage() {
   return (
     <div>
       <h1 className="text-3xl font-bold tracking-tighter mb-1">Webhook 日志</h1>
-      <p className="text-gray-400 text-sm mb-6">Stripe / Cryptomus 回调事件追踪</p>
+      <p className="text-gray-400 text-sm mb-6">Stripe / NOWPayments 回调事件追踪</p>
 
       <select
         value={provider}
@@ -64,7 +64,7 @@ export default function AdminWebhooksPage() {
       >
         <option value="">全部</option>
         <option value="stripe">Stripe</option>
-        <option value="cryptomus">Cryptomus</option>
+        <option value="nowpayments">NOWPayments</option>
       </select>
 
       {error && <p className="mb-4 text-sm text-red-400">{error}</p>}

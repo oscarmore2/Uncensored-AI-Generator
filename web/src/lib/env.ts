@@ -16,8 +16,9 @@ const envSchema = z.object({
   ZEN_PROXY_SECRET: z.string().default(""),
   STRIPE_SECRET_KEY: z.string().default(""),
   STRIPE_WEBHOOK_SECRET: z.string().default(""),
-  CRYPTOMUS_MERCHANT_ID: z.string().default(""),
-  CRYPTOMUS_PAYMENT_API_KEY: z.string().default(""),
+  NOWPAYMENTS_API_KEY: z.string().default(""),
+  NOWPAYMENTS_IPN_SECRET: z.string().default(""),
+  NOWPAYMENTS_BASE_URL: z.string().url().default("https://api.nowpayments.io/v1"),
   CREDIT_PACKAGES: z
     .string()
     .default('{"100": 2900, "500": 12900, "1200": 29900, "3000": 69900}')

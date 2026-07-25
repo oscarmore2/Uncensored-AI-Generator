@@ -10,7 +10,7 @@ const NAV = [
   { href: "/admin/mods", label: "审核员", icon: "fa-user-shield" },
   { href: "/admin/transactions", label: "交易流水", icon: "fa-receipt" },
   { href: "/admin/crypto", label: "加密订单", icon: "fa-coins" },
-  { href: "/admin/cryptomus", label: "Cryptomus", icon: "fa-key" },
+  { href: "/admin/nowpayments", label: "NOWPayments", icon: "fa-key" },
   { href: "/admin/stripe", label: "Stripe", icon: "fa-credit-card" },
   { href: "/admin/zen", label: "Zen 账户", icon: "fa-wand-magic-sparkles" },
   { href: "/admin/hf", label: "Hugging Face", icon: "fa-brain" },

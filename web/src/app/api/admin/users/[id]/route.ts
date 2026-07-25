@@ -74,7 +74,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
         createdAt: true,
       },
     }),
-    db.cryptoPayment.findMany({
+    db.nowPayment.findMany({
       where: { userId },
       orderBy: { createdAt: "desc" },
       take: 10,

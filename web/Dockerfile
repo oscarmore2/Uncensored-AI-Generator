@@ -35,5 +35,5 @@ EXPOSE 3000
 ENV PORT=3000
 ENV HOSTNAME=0.0.0.0
 
-# package.json "start" already runs: prisma db push && next start
+# package.json "start" runs the idempotent legacy cleanup, schema sync, then Next.js.
 CMD ["npm", "start"]

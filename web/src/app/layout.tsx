@@ -63,7 +63,6 @@ export async function generateMetadata(): Promise<Metadata> {
     verification: env.GOOGLE_SITE_VERIFICATION
       ? { google: env.GOOGLE_SITE_VERIFICATION }
       : undefined,
-    other: { cryptomus: "1b319f11" },
   };
 }
 

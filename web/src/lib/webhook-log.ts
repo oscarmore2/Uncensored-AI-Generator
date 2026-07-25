@@ -2,7 +2,7 @@ import "server-only";
 import { db } from "./db";
 
 export async function logWebhookEvent(params: {
-  provider: "stripe" | "cryptomus";
+  provider: "stripe" | "nowpayments";
   eventType?: string | null;
   externalId?: string | null;
   status: "ok" | "ignored" | "error";

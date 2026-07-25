@@ -13,9 +13,12 @@ interface CryptoOrder {
   amount_usd_cents: number;
   status: string;
   credited: boolean;
+  invoice_id: string | null;
+  payment_id: string | null;
   txid: string | null;
   network: string | null;
   payer_currency: string | null;
+  actually_paid: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -28,11 +31,14 @@ interface ListResp {
 }
 
 const STATUS_COLORS: Record<string, string> = {
-  paid: "bg-emerald-500/15 text-emerald-300",
-  paid_over: "bg-emerald-500/15 text-emerald-300",
-  wrong_amount: "bg-red-500/15 text-red-300",
-  cancel: "bg-gray-500/20 text-gray-400",
-  fail: "bg-red-500/15 text-red-300",
+  finished: "bg-emerald-500/15 text-emerald-300",
+  confirmed: "bg-cyan-500/15 text-cyan-300",
+  confirming: "bg-cyan-500/15 text-cyan-300",
+  partially_paid: "bg-amber-500/15 text-amber-300",
+  amount_mismatch: "bg-red-500/15 text-red-300",
+  expired: "bg-gray-500/20 text-gray-400",
+  failed: "bg-red-500/15 text-red-300",
+  refunded: "bg-purple-500/15 text-purple-300",
   create_failed: "bg-red-500/15 text-red-300",
 };
 
@@ -100,7 +106,7 @@ export default function AdminCryptoPage() {
   return (
     <div>
       <h1 className="text-3xl font-bold tracking-tighter mb-1">加密订单</h1>
-      <p className="text-gray-400 text-sm mb-6">Cryptomus 支付订单 · 排查未到账 / wrong_amount · 支持人工入账</p>
+      <p className="text-gray-400 text-sm mb-6">NOWPayments 支付订单 · IPN 状态与金额核对 · 支持人工入账</p>
 
       <div className="flex gap-3 mb-5">
         <select

@@ -46,13 +46,13 @@ Demo 模式（`DEMO_MODE=true`）下：
 |------|------|
 | `user` | 创作、历史、充值 |
 | `moderator` | user 权限 + 审核台 `/mod`（软删/恢复/曝光/公共库管理/采集导入） |
-| `admin` | moderator 权限 + 管理端 `/admin`（看板/用户/审核员启停/流水/加密订单/Cryptomus 多商户） |
+| `admin` | moderator 权限 + 管理端 `/admin`（看板/用户/审核员启停/流水/加密订单/NOWPayments 状态） |
 
 页面分区：
 - **游客可访问**：`/`（落地页）、`/explore`（公共作品墙）、`/explore/[id]`（参数详情 + 引流 CTA）、`/login`
 - **登录后**：`/make` `/history` `/profile`；详情页 CTA 会把 prompt/negative/mode 带进创作中心
 - **审核员/管理员**：`/mod`（队列概览）、`/mod/generations`（审核+批量软删+曝光）、`/mod/users`（按用户管理作品）、`/mod/public`(公共库上下架/排序/删除/导入)
-- **仅管理员**：`/admin`（数据看板：分渠道收入/生成管道/审核队列摘要）、`/admin/users`（列表+`/admin/users/[id]` 详情：改角色/调余额/VIP/封禁）、`/admin/mods`（启停审核员/升降角色）、`/admin/transactions`（日期筛选+CSV 导出）、`/admin/crypto`（加密订单+人工入账）、`/admin/cryptomus`（多 Merchant 增删激活）、`/admin/stripe`（多 Stripe 账户增删激活）、`/admin/zen`（Zen 多账户 / 余额 / 任务映射）、`/admin/oss`（对象存储 S3 兼容）、`/admin/audit`（审计日志）、`/admin/webhooks`（Webhook 事件日志）、`/admin/settings`（只读配置快照）
+- **仅管理员**：`/admin`（数据看板：分渠道收入/生成管道/审核队列摘要）、`/admin/users`（列表+`/admin/users/[id]` 详情：改角色/调余额/VIP/封禁）、`/admin/mods`（启停审核员/升降角色）、`/admin/transactions`（日期筛选+CSV 导出）、`/admin/crypto`（加密订单+人工入账）、`/admin/nowpayments`（支付配置状态）、`/admin/stripe`（多 Stripe 账户增删激活）、`/admin/zen`（Zen 多账户 / 余额 / 任务映射）、`/admin/oss`（对象存储 S3 兼容）、`/admin/audit`（审计日志）、`/admin/webhooks`（Webhook 事件日志）、`/admin/settings`（只读配置快照）
 
 封禁说明：被封禁用户（`disabledAt` 非空）无法登录，已登录会话的所有受保护 API 立即失效；admin 不能封禁或降级自己。余额调整会写入 `admin_adjust` 类型流水，可在交易流水页审计。审核员「停用」即封禁登录；「撤销角色」则降为普通 `user`。
 
@@ -96,8 +96,8 @@ Demo 模式（`DEMO_MODE=true`）下：
 | POST | `/api/payments/create-checkout` | 充值（Demo 直接到账 / Stripe Checkout） |
 | POST | `/api/payments/webhook` | Stripe Webhook |
 | POST | `/api/payments/subscribe-vip` | VIP 订阅 |
-| POST | `/api/payments/crypto/create` | 创建 Cryptomus 加密支付订单（USDT/USDC） |
-| POST | `/api/payments/crypto/webhook` | Cryptomus Webhook（MD5 验签 + 幂等入账） |
+| POST | `/api/payments/crypto/create` | 创建 NOWPayments 托管加密支付发票 |
+| POST | `/api/payments/crypto/webhook` | NOWPayments IPN（HMAC-SHA512 验签 + 幂等入账） |
 | GET | `/api/payments/crypto/status` | 查询加密支付到账状态（前端轮询） |
 | GET | `/api/public/works` | 【游客】公共作品列表（分页/按 mode 筛选） |
 | GET | `/api/public/works/{id}` | 【游客】公共作品详情 |
@@ -119,11 +119,9 @@ Demo 模式（`DEMO_MODE=true`）下：
 | PATCH | `/api/admin/crypto-payments/[id]/credit` | 【admin】人工确认加密订单入账 |
 | GET | `/api/admin/audit-logs` | 【admin】管理端审计日志 |
 | GET | `/api/admin/settings` | 【admin】只读配置快照（脱敏） |
-| GET | `/api/admin/webhook-logs` | 【admin】Stripe/Cryptomus Webhook 事件日志 |
+| GET | `/api/admin/webhook-logs` | 【admin】Stripe/NOWPayments Webhook 事件日志 |
 | GET/POST | `/api/admin/mods` | 【admin】审核员列表；提升用户为审核员 |
 | PATCH | `/api/admin/mods/[id]` | 【admin】启停审核员 / 撤销角色 |
-| GET/POST | `/api/admin/cryptomus-merchants` | 【admin】Cryptomus 商户列表/新增 |
-| PATCH/DELETE | `/api/admin/cryptomus-merchants/[id]` | 【admin】激活/停用/换 Key/删除 |
 | GET/POST | `/api/admin/stripe-accounts` | 【admin】Stripe 账户列表/新增 |
 | PATCH/DELETE | `/api/admin/stripe-accounts/[id]` | 【admin】激活/停用/换 Key/删除 |
 | GET/POST/PATCH | `/api/admin/zen-accounts` | 【admin】Zen 账户列表/新增/批量同步余额 |
@@ -133,32 +131,23 @@ Demo 模式（`DEMO_MODE=true`）下：
 | POST | `/api/admin/oss-accounts/[id]/test` | 【admin】测试 OSS 桶连通性 |
 | POST | `/api/zen/webhook` | 【预留】按 zen_job_id 更新任务状态（Zen 官方暂无 webhook） |
 
-## 加密货币支付（Cryptomus）
+## 加密货币支付（NOWPayments）
 
-流程：用户选套餐 → `crypto/create` 用**当前激活商户**调 Cryptomus 创建发票（USD 计价，限 USDT/USDC）→ 新窗口打开托管收银台 → 用户转账、链上确认 → Cryptomus 回调 `crypto/webhook` → 验签后幂等加点 → 前端轮询 `crypto/status` 自动刷新余额。
+流程：用户选套餐 → `crypto/create` 调用 `POST /v1/invoice` 创建 USD 计价的托管发票 → 用户在 NOWPayments 收银台选择币种并付款 → NOWPayments 向 `crypto/webhook` 发送 IPN → 验签、核对订单金额并在 `finished` 状态幂等加点 → 前端轮询 `crypto/status` 刷新余额。
 
-### 多商户管理（推荐）
+环境变量：
 
-管理员在 `/admin/cryptomus` 可维护多组 **Merchant ID ↔ Payment API Key**：
-
-1. 添加商户（备注名 + Merchant ID + Payment API Key），可选立即激活
-2. 同一时间仅一个商户 `isActive=true`；激活某商户时自动停用其他
-3. API Key 使用 `AUTH_SECRET` 做 AES-256-GCM 加密存库，列表仅显示掩码
-4. 创建订单时写入 `CryptoPayment.merchantRefId`；Webhook 验签会尝试**所有**已存商户的 Key（含未激活）以及 `.env` 兜底，切换激活商户后旧订单仍可入账
-5. 无激活 DB 商户时回退 `.env` 的 `CRYPTOMUS_MERCHANT_ID` / `CRYPTOMUS_PAYMENT_API_KEY`
-
-### 环境变量兜底（可选）
-
-1. 在 [app.cryptomus.com](https://app.cryptomus.com) 拿到 Merchant ID 和 Payment API Key，可先填 `.env`，也可只在管理端配置
-2. `APP_URL` 必须是公网可达地址（本地联调可用 ngrok 等隧道），否则收不到 Webhook
-3. 本地可运行 `node scripts/test-crypto-webhook.mjs` 验证验签与幂等入账逻辑（若脚本仍读 env Key）
+- `NOWPAYMENTS_API_KEY`：Store Settings 中创建的 API Key。
+- `NOWPAYMENTS_IPN_SECRET`：Store Settings 中创建、只显示一次的 IPN Secret。
+- `NOWPAYMENTS_BASE_URL`：默认 `https://api.nowpayments.io/v1`。
+- `APP_URL`：必须是公网 HTTPS 地址，IPN 为 `{APP_URL}/api/payments/crypto/webhook`。
 
 实现要点：
 
-- 签名算法：`md5(base64(json_body) + PAYMENT_API_KEY)`；Webhook 验签时需按 PHP `json_encode` 风格把 `/` 转义为 `\/`（`src/lib/cryptomus.ts`）
-- 验签使用常数时间比较；Webhook 路由在 middleware 白名单中（无会话，仅验签）
-- 入账幂等：`CryptoPayment.credited` 原子置位，Cryptomus 重发 Webhook 不会重复加点
-- `paid` 与 `paid_over`（多付）视为成功；`wrong_amount`（少付）不入账，状态留档可人工处理
+- API 请求用 `x-api-key`；IPN 将递归按 key 排序后的 JSON 用 IPN Secret 做 HMAC-SHA512，并与 `x-nowpayments-sig` 常数时间比较。
+- 只有签名有效、内部 `order_id` 存在、USD 金额一致且 `payment_status=finished` 时自动入账。
+- `NowPayment.credited` 通过原子条件更新占位，重复 IPN 不会重复加点。
+- `partially_paid`、`expired`、`failed`、`refunded` 与金额不一致均不自动入账，可在 `/admin/crypto` 核查。
 
 ## Stripe 银行卡支付
 
@@ -183,9 +172,9 @@ Webhook 配置：Stripe Dashboard → Developers → Webhooks → 端点 `https:
 
 ### 运维增强
 
-- **人工入账**：`/admin/crypto` 对未入账订单可调用 `PATCH /api/admin/crypto-payments/[id]/credit`（支持 `credits_override` 处理 `wrong_amount`）
+- **人工入账**：`/admin/crypto` 对未入账订单可调用 `PATCH /api/admin/crypto-payments/[id]/credit`（支持 `credits_override`）
 - **审计日志**：敏感管理操作写入 `AdminAuditLog`，可在 `/admin/audit` 查看
-- **Webhook 日志**：Stripe/Cryptomus 回调写入 `WebhookEventLog`，可在 `/admin/webhooks` 排查
+- **Webhook 日志**：Stripe/NOWPayments 回调写入 `WebhookEventLog`，可在 `/admin/webhooks` 排查
 - **细粒度权限**：当前仍仅 `admin` 可访问 `/admin`；未来可扩展 `finance` 等角色（见 schema 注释）
 
 ## 对象存储 OSS（S3 兼容）
@@ -243,7 +232,7 @@ Zen 公开 API 提供 `GET /balance`（真实余额）与生成状态 `progress`
 
 1. 用 [@BotFather](https://t.me/BotFather) 创建 Bot，拿到 `TELEGRAM_BOT_TOKEN`
 2. 把 Bot 拉进接收通知的群（或直接私聊 Bot 发一条消息），通过 `https://api.telegram.org/bot<token>/getUpdates` 拿到 `chat.id`，填入 `TELEGRAM_CHAT_ID`
-3. 配置后自动推送：充值成功（Stripe/Cryptomus）、新用户注册、生成失败退款、Zen 预算告警（同一告警 24h 内只发一次）；未配置时静默跳过，不影响任何流程
+3. 配置后自动推送：充值成功（Stripe/NOWPayments）、新用户注册、生成失败退款、Zen 预算告警（同一告警 24h 内只发一次）；未配置时静默跳过，不影响任何流程
 
 ## 生产部署
 
@@ -251,10 +240,10 @@ Zen 公开 API 提供 `GET /balance`（真实余额）与生成状态 `progress`
 
 摘要：
 
-1. `.env` / Railway Variables：`DEMO_MODE=false`，强 `AUTH_SECRET`、`APP_URL`；Zen / Stripe / Cryptomus / OSS 按需配置（勿把真实密钥提交进仓库）
-2. 数据库：PostgreSQL，`DATABASE_URL`（建议 `?sslmode=require`），部署时执行 `npx prisma db push`（Railway Release Command）
+1. `.env` / Railway Variables：`DEMO_MODE=false`，强 `AUTH_SECRET`、`APP_URL`；Zen / Stripe / NOWPayments / OSS 按需配置（勿把真实密钥提交进仓库）
+2. 数据库：PostgreSQL，`DATABASE_URL`（建议 `?sslmode=require`），部署时执行 `npm run db:deploy`（Railway Release Command）
 3. 构建运行：`npm run build && npm start`（Root Directory = `web`）
-4. Stripe / Cryptomus Webhook 指到 `{APP_URL}/api/payments/webhook` 与 `{APP_URL}/api/payments/crypto/webhook`
+4. Stripe / NOWPayments Webhook 指到 `{APP_URL}/api/payments/webhook` 与 `{APP_URL}/api/payments/crypto/webhook`
 5. 多实例部署时把进程内限流换成 Redis 等共享存储
 
 ## 技术栈

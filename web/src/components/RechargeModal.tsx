@@ -94,7 +94,7 @@ export function RechargeModal() {
           setRechargeOpen(false);
           return;
         }
-        if (["cancel", "fail", "system_fail", "create_failed"].includes(data.status)) {
+        if (["expired", "failed", "refunded", "create_failed", "amount_mismatch"].includes(data.status)) {
           toast("加密支付未完成（已取消或失败）", true);
           setCryptoWaiting(false);
           return;
@@ -261,7 +261,7 @@ export function RechargeModal() {
           )}
         </button>
         <p className="text-center text-[10px] mt-3 text-gray-500">
-          加密支付经 Cryptomus 结算 • 支付确认后点数自动到账
+          加密支付由 NOWPayments 处理 • 最终确认后点数自动到账
         </p>
       </div>
     </div>

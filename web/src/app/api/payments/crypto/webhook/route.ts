@@ -1,44 +1,41 @@
 import { NextResponse } from "next/server";
-import { verifyWebhookSignature, settleCryptoPayment, cryptomusHasWebhookKeys } from "@/lib/cryptomus";
+import {
+  nowPaymentsConfigured,
+  settleNowPayment,
+  verifyNowPaymentsIpn,
+} from "@/lib/nowpayments";
 import { logWebhookEvent } from "@/lib/webhook-log";
 
-const CRYPTOMUS_IPS = new Set(["91.227.144.54"]);
-
 export async function POST(req: Request) {
-  if (!(await cryptomusHasWebhookKeys())) {
+  if (!nowPaymentsConfigured()) {
     return NextResponse.json({ error: "Not configured" }, { status: 503 });
   }
 
   const { rateLimit, clientIp } = await import("@/lib/rate-limit");
-  if (!rateLimit(`cryptomus-webhook:${clientIp(req)}`, 120, 60_000)) {
+  if (!rateLimit(`nowpayments-webhook:${clientIp(req)}`, 120, 60_000)) {
     return NextResponse.json({ error: "Too many requests" }, { status: 429 });
   }
 
   const rawBody = await req.text();
-  const { valid, payload } = await verifyWebhookSignature(rawBody);
+  const { valid, payload } = verifyNowPaymentsIpn(
+    rawBody,
+    req.headers.get("x-nowpayments-sig")
+  );
   if (!valid || !payload) {
-    await logWebhookEvent({ provider: "cryptomus", status: "error", detail: "invalid signature" });
+    await logWebhookEvent({
+      provider: "nowpayments",
+      status: "error",
+      detail: "invalid IPN signature",
+    });
     return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
   }
 
-  const fwd = req.headers.get("x-forwarded-for")?.split(",")[0].trim();
-  if (fwd && !CRYPTOMUS_IPS.has(fwd)) {
-    console.warn(`[cryptomus] webhook from unexpected IP: ${fwd} (signature was valid)`);
-    await logWebhookEvent({
-      provider: "cryptomus",
-      eventType: typeof payload.status === "string" ? payload.status : undefined,
-      externalId: typeof payload.order_id === "string" ? payload.order_id : undefined,
-      status: "ignored",
-      detail: { reason: "unexpected_ip", ip: fwd },
-    });
-    // 签名已通过则仍入账（官方可能经 CDN）；异常 IP 记审计便于排查
-  }
-
   const orderId = typeof payload.order_id === "string" ? payload.order_id : null;
-  const status = typeof payload.status === "string" ? payload.status : null;
+  const status =
+    typeof payload.payment_status === "string" ? payload.payment_status : null;
   if (!orderId || !status) {
     await logWebhookEvent({
-      provider: "cryptomus",
+      provider: "nowpayments",
       eventType: status ?? undefined,
       externalId: orderId ?? undefined,
       status: "error",
@@ -48,16 +45,42 @@ export async function POST(req: Request) {
   }
 
   try {
-    const credited = await settleCryptoPayment({
+    const credited = await settleNowPayment({
       orderId,
+      invoiceId:
+        typeof payload.invoice_id === "string" || typeof payload.invoice_id === "number"
+          ? String(payload.invoice_id)
+          : null,
+      paymentId:
+        typeof payload.payment_id === "string" || typeof payload.payment_id === "number"
+          ? String(payload.payment_id)
+          : null,
       status,
-      txid: typeof payload.txid === "string" ? payload.txid : null,
+      priceAmount:
+        typeof payload.price_amount === "number"
+          ? payload.price_amount
+          : typeof payload.price_amount === "string"
+            ? Number(payload.price_amount)
+            : null,
+      priceCurrency:
+        typeof payload.price_currency === "string" ? payload.price_currency : null,
+      actuallyPaid:
+        typeof payload.actually_paid === "string" || typeof payload.actually_paid === "number"
+          ? String(payload.actually_paid)
+          : null,
+      payCurrency:
+        typeof payload.pay_currency === "string" ? payload.pay_currency : null,
       network: typeof payload.network === "string" ? payload.network : null,
-      payerCurrency: typeof payload.payer_currency === "string" ? payload.payer_currency : null,
+      txHash:
+        typeof payload.payin_hash === "string"
+          ? payload.payin_hash
+          : typeof payload.outcome_hash === "string"
+            ? payload.outcome_hash
+            : null,
     });
 
     await logWebhookEvent({
-      provider: "cryptomus",
+      provider: "nowpayments",
       eventType: status,
       externalId: orderId,
       status: credited ? "ok" : "ignored",
@@ -65,17 +88,17 @@ export async function POST(req: Request) {
     });
 
     if (credited) {
-      console.log(`[cryptomus] order ${orderId} credited (status=${status})`);
+      console.log(`[nowpayments] order ${orderId} credited (status=${status})`);
     }
-  } catch (err) {
+  } catch (error) {
     await logWebhookEvent({
-      provider: "cryptomus",
+      provider: "nowpayments",
       eventType: status,
       externalId: orderId,
       status: "error",
-      detail: String(err),
+      detail: String(error),
     });
-    throw err;
+    throw error;
   }
 
   return NextResponse.json({ ok: true });

@@ -113,7 +113,8 @@ export default function AdminTransactionsPage() {
         >
           <option value="">全部渠道</option>
           <option value="stripe">Stripe</option>
-          <option value="cryptomus">Cryptomus</option>
+          <option value="nowpayments">NOWPayments</option>
+          <option value="legacy_crypto">旧加密支付</option>
           <option value="demo">Demo</option>
           <option value="admin">Admin</option>
         </select>

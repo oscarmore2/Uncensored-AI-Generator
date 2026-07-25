@@ -10,7 +10,7 @@ export async function GET(req: Request) {
   const orderId = new URL(req.url).searchParams.get("order_id");
   if (!orderId) return NextResponse.json({ error: "Missing order_id" }, { status: 400 });
 
-  const payment = await db.cryptoPayment.findFirst({
+  const payment = await db.nowPayment.findFirst({
     where: { orderId, userId: user.id },
   });
   if (!payment) return NextResponse.json({ error: "Not found" }, { status: 404 });

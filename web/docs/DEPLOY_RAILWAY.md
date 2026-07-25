@@ -9,7 +9,7 @@
 - 用户注册登录、点数余额、AI 生成任务
 - 公共作品展示（Explore）、创作中心（Make）
 - 内容审核台（Moderator）、运营管理台（Admin）
-- 多渠道充值（Stripe / Cryptomus）、VIP 订阅
+- 多渠道充值（Stripe / NOWPayments）、VIP 订阅
 - 对象存储（S3 兼容）、Webhook 与审计日志
 
 ## 架构
@@ -20,7 +20,7 @@
 | 数据库 | Railway PostgreSQL | 通过 `DATABASE_URL` 注入 |
 | 媒体存储 | 外部对象存储（R2 / S3 等） | 可选；env 或 `/admin/oss` 配置 |
 | 日志 | Railway Logs | 平台内置 |
-| 第三方 API | Zen / Stripe / Cryptomus / Telegram | Webhook 回调至公网 `APP_URL` |
+| 第三方 API | Zen / Stripe / NOWPayments / Telegram | Webhook 回调至公网 `APP_URL` |
 
 无需单独部署 Serverless / 函数计算：支付与可选 Webhook 由 Next.js API Routes 在同一服务内处理。
 
@@ -44,7 +44,7 @@
 openssl rand -hex 32   # AUTH_SECRET，至少 32 字符
 ```
 
-- 按需准备：Zen Creator、Stripe、Cryptomus、对象存储、Telegram Bot
+- 按需准备：Zen Creator、Stripe、NOWPayments、对象存储、Telegram Bot
 
 ## 1. 创建 Railway 项目
 
@@ -68,7 +68,7 @@ Web 服务 **Settings → Deploy**：
 |--------|-----|
 | Build Command | `npm run build` |
 | Start Command | `npm start` |
-| Release Command | `npx prisma db push` |
+| Release Command | `npm run db:deploy` |
 
 `postinstall` 已包含 `prisma generate`。Release Command 在每次部署前同步表结构。
 
@@ -93,7 +93,7 @@ Railway 会注入 `PORT`，`npm start` 会自动监听。
 |------|------|
 | `ZEN_API_KEY` | AI 生成 API（或在 `/admin/zen` 配置多账户） |
 | `STRIPE_SECRET_KEY` / `STRIPE_WEBHOOK_SECRET` | 或在 `/admin/stripe` 配置 |
-| `CRYPTOMUS_*` | 可选，加密货币充值 |
+| `NOWPAYMENTS_API_KEY` / `NOWPAYMENTS_IPN_SECRET` | 可选，NOWPayments 托管加密支付与 IPN 验签 |
 | `SEED_ADMIN_USERNAME` / `SEED_ADMIN_PASSWORD` | 首个管理员（密码 ≥ 8 位），首次登录自动创建/提升 |
 | `CREDIT_PACKAGES` / `VIP_PRICE` | 有默认值，可按需覆盖 |
 
@@ -138,7 +138,7 @@ Railway 会注入 `PORT`，`npm start` 会自动监听。
 | 服务 | 回调地址 | 常见事件 |
 |------|----------|----------|
 | Stripe | `{APP_URL}/api/payments/webhook` | `checkout.session.completed`、`customer.subscription.deleted` |
-| Cryptomus | `{APP_URL}/api/payments/crypto/webhook` | 支付状态回调 |
+| NOWPayments | `{APP_URL}/api/payments/crypto/webhook` | IPN 支付状态回调 |
 | Zen（预留） | `{APP_URL}/api/zen/webhook` | 若后续自建中转 |
 
 签名密钥写入 env 或管理端对应账户配置。可在 `/admin/webhooks` 查看投递记录。
@@ -149,7 +149,7 @@ Railway 会注入 `PORT`，`npm start` 会自动监听。
 - [ ] 种子管理员可登录并进入 `/admin`
 - [ ] `/admin/settings` 显示 `DEMO_MODE=false`
 - [ ] 配置 Zen 后可提交生成任务
-- [ ] Stripe（及 Cryptomus，若启用）测试支付 + Webhook 入账
+- [ ] Stripe（及 NOWPayments，若启用）测试支付 + Webhook 入账
 - [ ] 可选：OSS 镜像、Telegram 通知、`/admin/audit` 有记录
 - [ ] `robots.txt`、`sitemap.xml`、Manifest 和网站图标均返回 200
 - [ ] Search Console 已验证，并提交 `{APP_URL}/sitemap.xml`
@@ -171,7 +171,7 @@ SEO 与 Google 收录的完整设置见 [`SEO_GOOGLE.md`](SEO_GOOGLE.md)。
 
 - **日志**：Railway 服务日志；应用内 `/admin/audit`（管理操作）、`/admin/webhooks`（回调）。
 - **扩缩容**：建议先 **单实例** 运行；进程内限流不跨实例共享，水平扩展前需 Redis 等共享存储。
-- **Schema 变更**：保持 Release Command 为 `npx prisma db push`，或改用 `prisma migrate deploy`。
+- **Schema 变更**：保持 Release Command 为 `npm run db:deploy`；若改用正式迁移，再切换为 `prisma migrate deploy`。
 - **费用粗估**（小流量）：Web + Postgres 约数十 USD/月；对象存储通常较低。
 
 ## 9. 提交 GitHub 前检查
@@ -188,7 +188,7 @@ SEO 与 Google 收录的完整设置见 [`SEO_GOOGLE.md`](SEO_GOOGLE.md)。
 3. 配置 build / start / release 命令
 4. 填写 `AUTH_SECRET`、临时 `APP_URL`、`DEMO_MODE=false`、`ZEN_API_KEY`、`SEED_ADMIN_*`
 5. 生成域名 → 更新 `APP_URL`
-6. 登录 `/admin`，配置 Stripe / Cryptomus / Zen / OSS
+6. 登录 `/admin`，检查 Stripe / NOWPayments / Zen / OSS 配置
 7. 配置 Webhook → 完成一笔测试支付
 
 ## 常见错误

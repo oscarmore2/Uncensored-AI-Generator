@@ -20,8 +20,8 @@ export async function GET(req: Request) {
   };
 
   const [total, payments] = await Promise.all([
-    db.cryptoPayment.count({ where }),
-    db.cryptoPayment.findMany({
+    db.nowPayment.count({ where }),
+    db.nowPayment.findMany({
       where,
       include: { user: { select: { username: true } } },
       orderBy: { createdAt: "desc" },
@@ -43,9 +43,12 @@ export async function GET(req: Request) {
       amount_usd_cents: p.amountUsdCents,
       status: p.status,
       credited: p.credited,
-      txid: p.txid,
+      invoice_id: p.invoiceId,
+      payment_id: p.paymentId,
+      txid: p.txHash,
       network: p.network,
-      payer_currency: p.payerCurrency,
+      payer_currency: p.payCurrency,
+      actually_paid: p.actuallyPaid,
       created_at: p.createdAt,
       updated_at: p.updatedAt,
     })),

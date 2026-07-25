@@ -5,9 +5,10 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "prisma db push && next start",
+    "start": "npm run db:deploy && next start",
     "postinstall": "prisma generate",
     "db:push": "prisma db push",
+    "db:deploy": "node scripts/remove-cryptomus-data.mjs && prisma db push",
     "cleanup:media": "node scripts/media-cleanup.mjs"
   },
   "dependencies": {

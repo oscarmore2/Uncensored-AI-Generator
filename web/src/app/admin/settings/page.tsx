@@ -22,10 +22,11 @@ interface Settings {
     active_account: { id: number; label: string } | null;
     env_webhook_configured: boolean;
   };
-  cryptomus: {
-    env_configured: boolean;
-    db_merchants: number;
-    active_merchant: { id: number; label: string } | null;
+  nowpayments: {
+    configured: boolean;
+    api_key_configured: boolean;
+    ipn_secret_configured: boolean;
+    base_url: string;
   };
   hf: {
     configured: boolean;
@@ -43,7 +44,7 @@ interface Settings {
     active_vip_plans: number;
   };
   telegram_configured: boolean;
-  webhooks: { stripe: string; cryptomus: string; zen: string };
+  webhooks: { stripe: string; nowpayments: string; zen: string };
 }
 
 export default function AdminSettingsPage() {
@@ -95,12 +96,11 @@ export default function AdminSettingsPage() {
     },
     { label: "Stripe Webhook (env)", value: settings.stripe.env_webhook_configured ? "已配置" : "未配置" },
     {
-      label: "Cryptomus 激活商户",
-      value: settings.cryptomus.active_merchant
-        ? `${settings.cryptomus.active_merchant.label} (#${settings.cryptomus.active_merchant.id})`
-        : settings.cryptomus.env_configured
-          ? "env 兜底"
-          : "未配置",
+      label: "NOWPayments",
+      value: settings.nowpayments.configured
+        ? "API Key 与 IPN Secret 已配置"
+        : "未完整配置",
+      warn: !settings.nowpayments.configured,
     },
     {
       label: "Hugging Face / 魔法指令",
@@ -144,8 +144,8 @@ export default function AdminSettingsPage() {
             <span className="text-gray-300">{settings.webhooks.stripe}</span>
           </div>
           <div>
-            <span className="text-gray-500">Cryptomus: </span>
-            <span className="text-gray-300">{settings.webhooks.cryptomus}</span>
+            <span className="text-gray-500">NOWPayments: </span>
+            <span className="text-gray-300">{settings.webhooks.nowpayments}</span>
           </div>
           <div>
             <span className="text-gray-500">Zen (预留): </span>

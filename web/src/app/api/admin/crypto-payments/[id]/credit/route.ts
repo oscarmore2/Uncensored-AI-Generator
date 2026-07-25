@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { requireRole } from "@/lib/auth";
-import { creditCryptoPayment } from "@/lib/cryptomus";
+import { creditNowPayment } from "@/lib/nowpayments";
 import { logAdminAction } from "@/lib/admin-audit";
 
 const bodySchema = z.object({
@@ -27,12 +27,12 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
     return NextResponse.json({ error: parsed.error.issues[0]?.message ?? "参数无效" }, { status: 400 });
   }
 
-  const payment = await db.cryptoPayment.findUnique({ where: { id: paymentId } });
+  const payment = await db.nowPayment.findUnique({ where: { id: paymentId } });
   if (!payment) return NextResponse.json({ error: "订单不存在" }, { status: 404 });
   if (payment.credited) return NextResponse.json({ error: "订单已入账" }, { status: 400 });
 
   const credits = parsed.data.credits_override ?? payment.credits;
-  const ok = await creditCryptoPayment(payment, {
+  const ok = await creditNowPayment(payment, {
     creditsOverride: credits,
     methodSuffix: "manual",
     skipTelegram: false,
@@ -50,7 +50,7 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
     note: parsed.data.note,
   });
 
-  const updated = await db.cryptoPayment.findUnique({ where: { id: paymentId } });
+  const updated = await db.nowPayment.findUnique({ where: { id: paymentId } });
   return NextResponse.json({
     ok: true,
     payment: {

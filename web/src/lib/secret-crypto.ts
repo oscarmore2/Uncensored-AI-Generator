@@ -2,7 +2,7 @@ import "server-only";
 import crypto from "crypto";
 import { env } from "./env";
 
-/** 用 AUTH_SECRET 派生 AES-256 密钥，加密敏感配置（如 Cryptomus API Key） */
+/** 用 AUTH_SECRET 派生 AES-256 密钥，加密管理端保存的第三方 API 密钥。 */
 function deriveKey(): Buffer {
   return crypto.createHash("sha256").update(env.AUTH_SECRET).digest();
 }

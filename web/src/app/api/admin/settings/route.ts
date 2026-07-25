@@ -3,7 +3,7 @@ import { db } from "@/lib/db";
 import { env } from "@/lib/env";
 import { requireRole } from "@/lib/auth";
 import { telegramConfigured } from "@/lib/telegram";
-import { cryptomusConfigured } from "@/lib/cryptomus";
+import { nowPaymentsConfigured } from "@/lib/nowpayments";
 import { stripeConfigured } from "@/lib/stripe";
 import { ossConfigured } from "@/lib/oss";
 import { hfConfigured } from "@/lib/hf";
@@ -19,12 +19,10 @@ export async function GET() {
   const [
     zenActive,
     stripeActive,
-    cryptomusActive,
     ossActive,
     hfActive,
     zenCount,
     stripeCount,
-    cryptomusCount,
     ossCount,
     hfCount,
     productCount,
@@ -34,7 +32,6 @@ export async function GET() {
   ] = await Promise.all([
     db.zenAccount.findFirst({ where: { isActive: true }, select: { id: true, label: true } }),
     db.stripeAccount.findFirst({ where: { isActive: true }, select: { id: true, label: true } }),
-    db.cryptomusMerchant.findFirst({ where: { isActive: true }, select: { id: true, label: true } }),
     db.ossAccount.findFirst({
       where: { isActive: true },
       select: { id: true, label: true, bucket: true },
@@ -42,7 +39,6 @@ export async function GET() {
     db.hfAccount.findFirst({ where: { isActive: true }, select: { id: true, label: true } }),
     db.zenAccount.count(),
     db.stripeAccount.count(),
-    db.cryptomusMerchant.count(),
     db.ossAccount.count(),
     db.hfAccount.count(),
     db.generationProduct.count({ where: { isActive: true } }),
@@ -70,12 +66,11 @@ export async function GET() {
       active_account: stripeActive ? { id: stripeActive.id, label: stripeActive.label } : null,
       env_webhook_configured: Boolean(env.STRIPE_WEBHOOK_SECRET),
     },
-    cryptomus: {
-      env_configured: await cryptomusConfigured(),
-      db_merchants: cryptomusCount,
-      active_merchant: cryptomusActive
-        ? { id: cryptomusActive.id, label: cryptomusActive.label }
-        : null,
+    nowpayments: {
+      configured: nowPaymentsConfigured(),
+      api_key_configured: Boolean(env.NOWPAYMENTS_API_KEY),
+      ipn_secret_configured: Boolean(env.NOWPAYMENTS_IPN_SECRET),
+      base_url: env.NOWPAYMENTS_BASE_URL,
     },
     oss: {
       env_configured: await ossConfigured(),
@@ -103,7 +98,7 @@ export async function GET() {
     telegram_configured: telegramConfigured(),
     webhooks: {
       stripe: `${env.APP_URL}/api/payments/webhook`,
-      cryptomus: `${env.APP_URL}/api/payments/crypto/webhook`,
+      nowpayments: `${env.APP_URL}/api/payments/crypto/webhook`,
       zen: `${env.APP_URL}/api/zen/webhook`,
     },
   });
