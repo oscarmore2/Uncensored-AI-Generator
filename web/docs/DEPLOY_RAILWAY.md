@@ -248,6 +248,16 @@ SEO 与 Google 收录的完整设置见 [`SEO_GOOGLE.md`](SEO_GOOGLE.md)。
 - 检查 `DATABASE_URL` 是否 Reference 到 Postgres
 - 查看 Deploy Logs 中 `prisma db push` 是否报错
 
+### `User.email` 唯一约束触发 `--accept-data-loss`
+
+新版邮箱登录需要给既有 `User` 表增加可空邮箱和唯一索引。`db:deploy` 会先运行
+`scripts/prepare-user-email-index.mjs`：安全增加可空字段、检查忽略大小写及首尾空格后的
+重复邮箱，再建立 Prisma 预期的唯一索引，之后才执行普通 `prisma db push`。
+
+不要把部署命令长期改成 `prisma db push --accept-data-loss`，否则未来其他真正可能删除
+数据的 schema 变化也会被自动放行。如果预迁移报告重复邮箱，需要先在数据库中合并或
+更正对应账户后再部署。
+
 ## 相关文档
 
 - 本地开发与 API 概览：[README.md](../README.md)

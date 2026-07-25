@@ -8,7 +8,7 @@
     "start": "npm run db:deploy && next start",
     "postinstall": "prisma generate",
     "db:push": "prisma db push",
-    "db:deploy": "node scripts/remove-cryptomus-data.mjs && prisma db push",
+    "db:deploy": "node scripts/remove-cryptomus-data.mjs && node scripts/prepare-user-email-index.mjs && prisma db push",
     "cleanup:media": "node scripts/media-cleanup.mjs"
   },
   "dependencies": {
