@@ -2,33 +2,30 @@ import "server-only";
 import { getActiveHfCredentials } from "./hf";
 import {
   PROMPT_FORMAT_RULES,
-  resolveZenGenerationTarget,
-  type ZenGenerationTarget,
-  type ZenPromptFormatId,
-} from "./zen-targets";
-import { formatIdForProduct, resolveGenerationProduct } from "./pricing";
+  resolvePromptTarget,
+  type PromptTarget,
+} from "./prompt-targets";
 
 export type MagicPromptInput = {
   prompt: string;
   mode?: string;
+  tier?: string;
+  spicy?: boolean;
   style?: string;
   ratio?: string;
-  quality?: string;
-  undress_variant?: string;
   negative_prompt?: string;
   allow_sensitive?: boolean;
-  zen_model?: string;
 };
 
 export type MagicPromptResult = {
   prompt: string;
   negative_prompt?: string;
   source: "local" | "dolphin";
+  /** 只回传模式与档位；模型信息绝不下发到生成端 */
   target?: {
     mode: string;
-    tool: string;
-    model: string;
-    prompt_field: string;
+    tier: string;
+    spicy: boolean;
   };
 };
 
@@ -53,39 +50,35 @@ export type MagicPromptTaskMetadata = {
   purpose: "optimize_generation_prompt";
   description: string;
   app_mode: string;
-  zen_tool: string;
-  zen_model: string;
+  tier: string;
+  spicy: boolean;
   prompt_field: string;
   supports_negative: boolean;
   format_id: string;
   style?: string;
   ratio?: string;
-  quality?: string;
-  undress_variant?: string;
 };
 
 function buildTaskMetadata(
   input: MagicPromptInput,
-  target: ZenGenerationTarget
+  target: PromptTarget
 ): MagicPromptTaskMetadata {
   return {
     purpose: "optimize_generation_prompt",
-    description: "Optimize the user's draft into a generation prompt for the target Zen model/tool.",
+    description: "Optimize the user's draft into a prompt for the target generation mode.",
     app_mode: target.mode,
-    zen_tool: target.tool,
-    zen_model: target.model,
+    tier: target.tier,
+    spicy: target.spicy,
     prompt_field: target.promptField,
     supports_negative: target.supportsNegative,
     format_id: target.formatId,
     ...(input.style ? { style: input.style } : {}),
     ...(input.ratio ? { ratio: input.ratio } : {}),
-    ...(input.quality ? { quality: input.quality } : {}),
-    ...(target.undressVariant ? { undress_variant: target.undressVariant } : {}),
   };
 }
 
-function buildSystemPrompt(target: ZenGenerationTarget, allowSensitive = false): string {
-  const rules = PROMPT_FORMAT_RULES[target.formatId].map((r) => `- ${r}`).join("\n");
+function buildSystemPrompt(target: PromptTarget, allowSensitive = false): string {
+  const rules = PROMPT_FORMAT_RULES[target.formatId].map((r: string) => `- ${r}`).join("\n");
   const outputHint = target.supportsNegative
     ? `输出格式：只输出一个 JSON 对象，不要 markdown，不要解释：
 {"positive_prompt":"...","negative_prompt":"..."}`
@@ -101,11 +94,10 @@ function buildSystemPrompt(target: ZenGenerationTarget, allowSensitive = false):
 
 当前目标：
 - app_mode: ${target.mode}
-- zen_tool: ${target.tool}
-- zen_model: ${target.model}
+- tier: ${target.tier}
 - prompt_field: ${target.promptField}
 
-该模型的格式规则：
+该模式的格式规则：
 ${rules}
 
 通用要求：
@@ -114,13 +106,14 @@ ${rules}
       ? "保留用户原始创作意图，不主动增删敏感细节"
       : "保留用户的安全创作意图；不得添加色情、成人、剥削或写实血腥内容"
   }
-2. 严格按上述目标模型格式写，不要混用其它模型的写法
+2. 严格按上述模式格式写，不要混用其它模式的写法
 3. 控制在约 60-220 字（视频可略短、偏动作）
 4. ${outputHint}`;
 }
 
 function buildUserMessage(input: MagicPromptInput, meta: MagicPromptTaskMetadata): string {
-  const rules = PROMPT_FORMAT_RULES[meta.format_id as keyof typeof PROMPT_FORMAT_RULES] ?? [];
+  const rules: string[] =
+    PROMPT_FORMAT_RULES[meta.format_id as keyof typeof PROMPT_FORMAT_RULES] ?? [];
   return [
     "## Task Metadata (do not ignore)",
     "```json",
@@ -133,7 +126,6 @@ function buildUserMessage(input: MagicPromptInput, meta: MagicPromptTaskMetadata
     "## Current User Selections",
     `- style: ${input.style ?? "realistic"}`,
     `- ratio: ${input.ratio ?? "1:1"}`,
-    `- quality: ${input.quality ?? "quality"}`,
     input.negative_prompt?.trim()
       ? `- existing_negative_prompt: ${input.negative_prompt.trim()}`
       : null,
@@ -157,7 +149,7 @@ function stripBoilerplate(text: string): string {
 
 function parseLlmPromptOutput(
   content: string,
-  target: ZenGenerationTarget
+  target: PromptTarget
 ): { prompt: string; negative_prompt?: string } {
   const cleaned = content.replace(/^```(?:json)?\s*|\s*```$/g, "").trim();
 
@@ -191,16 +183,11 @@ function parseLlmPromptOutput(
 
 function withTarget(
   result: Omit<MagicPromptResult, "target">,
-  target: ZenGenerationTarget
+  target: PromptTarget
 ): MagicPromptResult {
   return {
     ...result,
-    target: {
-      mode: target.mode,
-      tool: target.tool,
-      model: target.model,
-      prompt_field: target.promptField,
-    },
+    target: { mode: target.mode, tier: target.tier, spicy: target.spicy },
   };
 }
 
@@ -209,14 +196,15 @@ export function enhancePromptLocal(input: MagicPromptInput): MagicPromptResult {
   const raw = input.prompt.trim();
   if (!raw) throw new Error("请先输入提示词");
 
-  const target = resolveZenGenerationTarget(input.mode ?? "txt2img", {
-    undress_variant: input.undress_variant,
+  const target = resolvePromptTarget(input.mode ?? "txt2img", {
+    tier: input.tier,
+    spicy: input.spicy,
   });
   const core = stripBoilerplate(raw);
   const style = STYLE_HINTS[input.style ?? "realistic"] ?? STYLE_HINTS.realistic;
   const ratioHint = RATIO_HINTS[input.ratio ?? ""] ?? "";
 
-  if (target.formatId === "wan_t2v") {
+  if (target.formatId === "video_t2v") {
     const prompt = [
       core,
       "连贯动作推进",
@@ -229,7 +217,7 @@ export function enhancePromptLocal(input: MagicPromptInput): MagicPromptResult {
     return withTarget({ prompt, source: "local" }, target);
   }
 
-  if (target.formatId === "wan_i2v") {
+  if (target.formatId === "video_i2v") {
     const prompt = [
       "保持参考图人物与场景身份",
       core,
@@ -241,7 +229,7 @@ export function enhancePromptLocal(input: MagicPromptInput): MagicPromptResult {
     return withTarget({ prompt, source: "local" }, target);
   }
 
-  if (target.formatId === "sdxl_i2i") {
+  if (target.formatId === "image_i2i" || target.formatId === "image_edit") {
     const prompt = [
       "保留参考图人物身份与构图",
       core,
@@ -253,7 +241,7 @@ export function enhancePromptLocal(input: MagicPromptInput): MagicPromptResult {
     return withTarget({ prompt, source: "local" }, target);
   }
 
-  // sdxl_t2i / undress fallback
+  // image_t2i fallback
   const enriched =
     core.length >= 120
       ? [core, style, QUALITY_TAIL].filter(Boolean).join(", ")
@@ -282,7 +270,7 @@ export function enhancePromptLocal(input: MagicPromptInput): MagicPromptResult {
 
 async function enhancePromptDolphin(
   input: MagicPromptInput,
-  target: ZenGenerationTarget
+  target: PromptTarget
 ): Promise<MagicPromptResult | null> {
   const creds = await getActiveHfCredentials();
   if (!creds) return null;
@@ -333,8 +321,7 @@ async function enhancePromptDolphin(
 }
 
 /**
- * 需已配置 HF。按当前模式对应的 Zen tool/model 格式优化 prompt。
- * 调用失败时回退本地扩写。
+ * 需已配置 HF。按当前模式的写作规则优化 prompt；失败时回退本地扩写。
  */
 export async function enhancePrompt(input: MagicPromptInput): Promise<MagicPromptResult> {
   if (!input.prompt.trim()) {
@@ -346,26 +333,10 @@ export async function enhancePrompt(input: MagicPromptInput): Promise<MagicPromp
     throw new Error("魔法指令未启用：请在管理端配置 Hugging Face Token");
   }
 
-  const target = resolveZenGenerationTarget(input.mode ?? "txt2img", {
-    undress_variant: input.undress_variant,
+  const target = resolvePromptTarget(input.mode ?? "txt2img", {
+    tier: input.tier,
+    spicy: input.spicy,
   });
-
-  try {
-    const product = await resolveGenerationProduct({
-      mode: input.mode ?? "txt2img",
-      zenModel: input.zen_model,
-      variantKey: input.undress_variant,
-    });
-    target.model = product.zenModel;
-    target.tool = product.zenTool;
-    target.formatId = formatIdForProduct(product) as ZenPromptFormatId;
-  } catch {
-    // keep hardcoded target
-  }
-
-  if (target.promptField === "none") {
-    throw new Error("当前模式不使用文本提示词，无需魔法指令");
-  }
 
   try {
     const dolphin = await enhancePromptDolphin(input, target);

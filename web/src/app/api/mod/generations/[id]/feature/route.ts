@@ -48,7 +48,7 @@ export async function POST(_req: Request, ctx: { params: Promise<{ id: string }>
         thumbUrl: storedUrl,
         source: "user_feature",
         sourceGenerationId: gen.id,
-        sourceZenJobId: gen.zenJobId,
+        sourceJobId: gen.providerJobId,
         isAdult: gen.isAdult,
         featuredById: mod.id,
       },

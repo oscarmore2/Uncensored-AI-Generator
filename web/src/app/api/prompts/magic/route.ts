@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { GENERATION_MODES, GENERATION_TIERS } from "@/lib/generation-modes";
 import { getCurrentUser } from "@/lib/auth";
 import { rateLimit } from "@/lib/rate-limit";
 import { enhancePrompt } from "@/lib/magic-prompt";
@@ -8,16 +9,15 @@ import { hasAdultAccess } from "@/lib/adult-access";
 
 const bodySchema = z.object({
   prompt: z.string().min(1).max(2000),
-  mode: z.enum(["txt2img", "txt2vid", "img2img", "img2vid", "undress"]).optional(),
+  mode: z.enum(GENERATION_MODES).optional(),
+  tier: z.enum(GENERATION_TIERS).optional(),
+  spicy: z.boolean().optional(),
   style: z.string().max(40).optional(),
   ratio: z.string().max(20).optional(),
-  quality: z.string().max(40).optional(),
-  zen_model: z.string().max(80).optional(),
-  undress_variant: z.enum(["female", "male", "couple"]).optional(),
   negative_prompt: z.string().max(1000).optional(),
 });
 
-/** 魔法指令：按当前模式对应的 Zen 模型格式优化 prompt */
+/** 魔法指令：按当前模式的写作规则优化 prompt（不涉及任何上游模型信息） */
 export async function POST(req: Request) {
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

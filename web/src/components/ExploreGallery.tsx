@@ -173,9 +173,9 @@ export function ExploreGallery({
 
               <div className="mt-5 grid grid-cols-2 gap-3">
                 <div className="rounded-2xl border border-white/10 bg-white/[0.025] p-3">
-                  <div className="text-[10px] font-semibold text-gray-500">MODEL</div>
+                  <div className="text-[10px] font-semibold text-gray-500">TIER</div>
                   <div className="mt-1 truncate text-xs font-mono text-gray-200">
-                    {displayValue(selected.params.zen_model ?? selected.params.model, t("inlineMedia"))}
+                    {displayValue(selected.params.tier, t("inlineMedia"))}
                   </div>
                 </div>
                 <div className="rounded-2xl border border-white/10 bg-white/[0.025] p-3">

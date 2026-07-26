@@ -3,13 +3,11 @@ import { db } from "@/lib/db";
 import { requireRole } from "@/lib/auth";
 import { publicWorkModOut } from "@/lib/serialize";
 import { publicWorkImportSchema } from "@/lib/validators";
-import { fetchZenResultUrl } from "@/lib/zen";
 import { mirrorRemoteUrls } from "@/lib/oss";
 
 /**
- * 采集导入公共库（Zen 无公开浏览 API，走审核员表单）。
- * 若填了 source_zen_job_id 且配置了 ZEN_API_KEY，尝试自动拉取结果 URL；
- * 拉取失败则要求表单提供 media_url。
+ * 采集导入公共库：审核员填表提交，媒体统一镜像到对象存储。
+ * source_job_id 仅作溯源备注。
  */
 export async function POST(req: Request) {
   const mod = await requireRole("moderator", "admin");
@@ -22,15 +20,9 @@ export async function POST(req: Request) {
   }
   const data = parsed.data;
 
-  let mediaUrl = data.media_url ?? null;
-  if (!mediaUrl && data.source_zen_job_id) {
-    mediaUrl = await fetchZenResultUrl(data.source_zen_job_id);
-  }
+  const mediaUrl = data.media_url ?? null;
   if (!mediaUrl) {
-    return NextResponse.json(
-      { error: "请提供 media_url，或提供可拉取结果的 source_zen_job_id" },
-      { status: 400 }
-    );
+    return NextResponse.json({ error: "请提供 media_url" }, { status: 400 });
   }
 
   const [mirrored] = await mirrorRemoteUrls([mediaUrl], `public/import-${Date.now()}`);
@@ -45,8 +37,8 @@ export async function POST(req: Request) {
       params: JSON.stringify(data.params ?? {}),
       mediaUrl: storedUrl,
       thumbUrl: storedUrl,
-      source: "zen_import",
-      sourceZenJobId: data.source_zen_job_id ?? null,
+      source: "provider_import",
+      sourceJobId: data.source_job_id ?? null,
       isAdult: data.is_adult,
       featuredById: mod.id,
     },

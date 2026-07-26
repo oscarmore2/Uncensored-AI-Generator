@@ -12,7 +12,6 @@ const NAV = [
   { href: "/admin/crypto", label: "加密订单", icon: "fa-coins" },
   { href: "/admin/nowpayments", label: "NOWPayments", icon: "fa-key" },
   { href: "/admin/stripe", label: "Stripe", icon: "fa-credit-card" },
-  { href: "/admin/zen", label: "Zen 账户", icon: "fa-wand-magic-sparkles" },
   { href: "/admin/hf", label: "Hugging Face", icon: "fa-brain" },
   { href: "/admin/wavespeed", label: "WaveSpeed", icon: "fa-puzzle-piece" },
   { href: "/admin/wavespeed/models", label: "玩物模型", icon: "fa-store" },

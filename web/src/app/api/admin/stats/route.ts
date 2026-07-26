@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { env } from "@/lib/env";
+import { ZC_STARTER_USD_PER_CREDIT } from "@/lib/generation-catalog";
 import { requireRole } from "@/lib/auth";
 import { telegramConfigured, sendTelegramAlertOnce } from "@/lib/telegram";
 
@@ -14,7 +15,7 @@ function startOfDay(d: Date): Date {
 
 const GEN_STATUSES = ["pending", "queued", "processing", "succeeded", "partial", "failed"] as const;
 
-/** 管理端总览：总量卡片 + 近 30 天逐日序列 + Zen 消耗估算 */
+/** 管理端总览：总量卡片 + 近 30 天逐日序列 + WaveSpeed 成本 */
 export async function GET() {
   const admin = await requireRole("admin");
   if (!admin) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
@@ -187,13 +188,18 @@ export async function GET() {
   }
 
   const monthCredits = monthCostAgg._sum.cost ?? 0;
-  const zenEstimated = Math.round(monthCredits * env.ZEN_CREDIT_RATIO);
-  const zenBudget = env.ZEN_MONTHLY_BUDGET;
-  const zenUsageRatio = zenBudget > 0 ? zenEstimated / zenBudget : null;
-  if (zenBudget > 0 && zenUsageRatio !== null && zenUsageRatio >= 0.8) {
+  // 上游真实成本：WaveSpeed 报价接口回填的美元金额
+  const monthProviderCost = await db.generation.aggregate({
+    _sum: { providerCostUsd: true },
+    where: { createdAt: { gte: monthStart }, status: { in: ["succeeded", "partial"] } },
+  });
+  const providerCostUsd = Number((monthProviderCost._sum.providerCostUsd ?? 0).toFixed(4));
+  const budgetUsd = env.WAVESPEED_MONTHLY_BUDGET_USD;
+  const usageRatio = budgetUsd > 0 ? providerCostUsd / budgetUsd : null;
+  if (budgetUsd > 0 && usageRatio !== null && usageRatio >= 0.8) {
     sendTelegramAlertOnce(
-      `zen-budget-${now.getFullYear()}-${now.getMonth() + 1}`,
-      `📉 Zen 预算告警：本月估算已消耗 ${zenEstimated}/${zenBudget} credits（${Math.round(zenUsageRatio * 100)}%）`
+      `provider-budget-${now.getFullYear()}-${now.getMonth() + 1}`,
+      `📉 WaveSpeed 成本告警：本月已消耗 $${providerCostUsd.toFixed(2)}/$${budgetUsd.toFixed(2)}（${Math.round(usageRatio * 100)}%）`
     );
   }
 
@@ -216,12 +222,22 @@ export async function GET() {
     revenue_by_nowpayments,
     revenue_by_stripe_account,
     series,
-    zen: {
+    provider_cost: {
       month_credits: monthCredits,
-      estimated_zen_credits: zenEstimated,
-      ratio: env.ZEN_CREDIT_RATIO,
-      monthly_budget: zenBudget,
-      usage_ratio: zenUsageRatio,
+      month_cost_usd: providerCostUsd,
+      monthly_budget_usd: budgetUsd,
+      usage_ratio: usageRatio,
+      /** 站内点数收入（按 ZC Starter 单点价折算）与上游成本的毛利率 */
+      gross_margin_percent:
+        monthCredits > 0
+          ? Number(
+              (
+                ((monthCredits * ZC_STARTER_USD_PER_CREDIT - providerCostUsd) /
+                  (monthCredits * ZC_STARTER_USD_PER_CREDIT)) *
+                100
+              ).toFixed(1)
+            )
+          : null,
     },
     telegram_configured: telegramConfigured(),
   });

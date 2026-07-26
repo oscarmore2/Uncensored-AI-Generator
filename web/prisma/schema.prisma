@@ -8,41 +8,41 @@ datasource db {
 }
 
 model User {
-  id               Int       @id @default(autoincrement())
-  username         String    @unique
-  hashedPassword   String?
-  email            String?   @unique
-  emailVerifiedAt  DateTime?
-  displayName      String?
-  avatarUrl        String?
-  registrationCountryCode String?
-  registrationCountry     String?
-  registrationRegion      String?
-  registrationCity        String?
-  registrationGeoSource   String?
+  id                        Int       @id @default(autoincrement())
+  username                  String    @unique
+  hashedPassword            String?
+  email                     String?   @unique
+  emailVerifiedAt           DateTime?
+  displayName               String?
+  avatarUrl                 String?
+  registrationCountryCode   String?
+  registrationCountry       String?
+  registrationRegion        String?
+  registrationCity          String?
+  registrationGeoSource     String?
   registrationGeoCapturedAt DateTime?
-  role             String    @default("user") // user | moderator | admin
-  balance          Int       @default(20)
-  isVip            Boolean   @default(false)
-  vipExpiresAt     DateTime?
-  vipTierId        Int?
-  playthingAccess  Boolean   @default(false) // 玩物专区单独授权
-  disabledAt       DateTime? // 封禁时间；非空表示禁止登录且会话失效
-  acceptedTermsAt  DateTime?
-  termsVersion     String?
-  birthDate        DateTime?
-  ageVerifiedAt    DateTime?
-  adultModeEnabled Boolean   @default(false)
-  createdAt        DateTime  @default(now())
+  role                      String    @default("user") // user | moderator | admin
+  balance                   Int       @default(200)
+  isVip                     Boolean   @default(false)
+  vipExpiresAt              DateTime?
+  vipTierId                 Int?
+  playthingAccess           Boolean   @default(false) // 玩物专区单独授权
+  disabledAt                DateTime? // 封禁时间；非空表示禁止登录且会话失效
+  acceptedTermsAt           DateTime?
+  termsVersion              String?
+  birthDate                 DateTime?
+  ageVerifiedAt             DateTime?
+  adultModeEnabled          Boolean   @default(false)
+  createdAt                 DateTime  @default(now())
 
-  generations           Generation[]
-  transactions          Transaction[]
-  nowPayments           NowPayment[]
-  featuredWorks         PublicWork[]
-  vipTier               VipTier?               @relation(fields: [vipTierId], references: [id], onDelete: SetNull)
-  waveSpeedGenerations  WaveSpeedGeneration[]
-  mediaAssets           MediaAsset[]
-  oauthAccounts         OAuthAccount[]
+  generations             Generation[]
+  transactions            Transaction[]
+  nowPayments             NowPayment[]
+  featuredWorks           PublicWork[]
+  vipTier                 VipTier?                 @relation(fields: [vipTierId], references: [id], onDelete: SetNull)
+  waveSpeedGenerations    WaveSpeedGeneration[]
+  mediaAssets             MediaAsset[]
+  oauthAccounts           OAuthAccount[]
   emailVerificationTokens EmailVerificationToken[]
 
   @@index([registrationCountryCode, createdAt])
@@ -82,24 +82,26 @@ model EmailVerificationToken {
   @@index([userId, expiresAt])
 }
 
-/** NOWPayments 托管发票与 IPN 入账记录 */
+/**
+ * NOWPayments 托管发票与 IPN 入账记录
+ */
 model NowPayment {
-  id             Int      @id @default(autoincrement())
-  userId         Int
-  orderId        String   @unique
-  invoiceId      String?
-  paymentId      String?
-  credits        Int
-  amountUsdCents Int
-  status         String   @default("waiting")
-  payCurrency    String?
-  actuallyPaid   String?
-  network        String?
-  txHash         String?
-  credited       Boolean  @default(false)
+  id                   Int      @id @default(autoincrement())
+  userId               Int
+  orderId              String   @unique
+  invoiceId            String?
+  paymentId            String?
+  credits              Int
+  amountUsdCents       Int
+  status               String   @default("waiting")
+  payCurrency          String?
+  actuallyPaid         String?
+  network              String?
+  txHash               String?
+  credited             Boolean  @default(false)
   nowPaymentsAccountId Int?
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
 
   user               User                @relation(fields: [userId], references: [id])
   nowPaymentsAccount NowPaymentsAccount? @relation(fields: [nowPaymentsAccountId], references: [id], onDelete: SetNull)
@@ -109,7 +111,9 @@ model NowPayment {
   @@index([nowPaymentsAccountId, createdAt])
 }
 
-/** NOWPayments 收款配置：API Key 与 IPN Secret 加密保存；无激活配置时才回退 env */
+/**
+ * NOWPayments 收款配置：API Key 与 IPN Secret 加密保存；无激活配置时才回退 env
+ */
 model NowPaymentsAccount {
   id           Int      @id @default(autoincrement())
   label        String
@@ -125,53 +129,42 @@ model NowPaymentsAccount {
   @@index([isActive, createdAt])
 }
 
-/** Zen Creator 账户：API Key 加密存储；同一时间最多一个 isActive=true */
-model ZenAccount {
-  id                  Int       @id @default(autoincrement())
-  label               String // 管理端备注名
-  apiKeyEnc           String // zc_live_… AES-256-GCM 加密
-  isActive            Boolean   @default(false)
-  lastKnownBalance    Int? // 最近一次从 Zen GET /balance 同步的 credits
-  lastBalanceSyncedAt DateTime?
-  createdAt           DateTime  @default(now())
-  updatedAt           DateTime  @updatedAt
-
-  generations Generation[]
-}
-
 model Generation {
-  id             Int       @id @default(autoincrement())
-  userId         Int
-  mode           String
-  prompt         String
-  negativePrompt String?
-  params         String
-  zenJobId       String? // 对应 Zen Creator 的 generation_id（taskId）
-  zenAccountId   Int? // 创建该任务时使用的 ZenAccount
-  status         String    @default("pending") // pending|queued|processing|succeeded|partial|failed
-  progress       Int       @default(0) // 0-100，来自 Zen 轮询
-  zenError       String? // Zen 返回的失败原因
-  resultUrls     String?
-  cost           Int // 本站用户扣点
-  zenCreditsCost Int? // 估算或记录的 Zen 侧消耗（成功时按本站 cost×系数）
-  deletedAt      DateTime?
-  visibility     String    @default("private") // private | featured | hidden
-  isAdult        Boolean   @default(false)
-  safetyCategories String  @default("[]")
-  ownerVipAtCreation Boolean @default(false)
-  retentionAssigned  Boolean @default(false)
-  mediaExpiresAt DateTime?
-  mediaDeletedAt DateTime?
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @default(now()) @updatedAt
+  id                 Int       @id @default(autoincrement())
+  userId             Int
+  mode               String // txt2img | img2img | imgedit | txt2vid | img2vid
+  tier               String    @default("low") // low | mid | high
+  spicy              Boolean   @default(false) // Spicy 档（会员专属）
+  productId          Int? // 下单时命中的 GenerationProduct（软引用，产品可重建）
+  prompt             String
+  negativePrompt     String?
+  params             String
+  providerJobId      String?   @map("zenJobId") // 上游任务 ID（WaveSpeed prediction id）
+  wsAccountId        Int? // 创建该任务时使用的 WaveSpeedAccount
+  status             String    @default("pending") // pending|queued|processing|succeeded|partial|failed
+  progress           Int       @default(0) // 0-100，来自上游轮询
+  providerError      String?   @map("zenError") // 上游返回的失败原因
+  resultUrls         String?
+  cost               Int // 本站用户扣点
+  providerCostUsd    Float? // 上游实际计费（美元），估价失败时为空
+  deletedAt          DateTime?
+  visibility         String    @default("private") // private | featured | hidden
+  isAdult            Boolean   @default(false)
+  safetyCategories   String    @default("[]")
+  ownerVipAtCreation Boolean   @default(false)
+  retentionAssigned  Boolean   @default(false)
+  mediaExpiresAt     DateTime?
+  mediaDeletedAt     DateTime?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @default(now()) @updatedAt
 
-  user       User        @relation(fields: [userId], references: [id])
-  zenAccount ZenAccount? @relation(fields: [zenAccountId], references: [id], onDelete: SetNull)
+  user      User              @relation(fields: [userId], references: [id])
+  wsAccount WaveSpeedAccount? @relation(fields: [wsAccountId], references: [id], onDelete: SetNull)
 
   @@index([userId, createdAt])
   @@index([deletedAt, status, createdAt])
-  @@index([zenJobId])
-  @@index([zenAccountId, createdAt])
+  @@index([providerJobId])
+  @@index([wsAccountId, createdAt])
   @@index([mediaExpiresAt, mediaDeletedAt])
 }
 
@@ -184,9 +177,9 @@ model PublicWork {
   params             String   @default("{}")
   mediaUrl           String
   thumbUrl           String?
-  source             String // user_feature | zen_import
+  source             String // user_feature | provider_import
   sourceGenerationId Int?
-  sourceZenJobId     String?
+  sourceJobId        String?  @map("sourceZenJobId")
   sortOrder          Int      @default(0)
   isPublished        Boolean  @default(true)
   isAdult            Boolean  @default(false)
@@ -199,36 +192,40 @@ model PublicWork {
   @@index([isPublished, isAdult, sortOrder, createdAt])
 }
 
-/** 自动清理策略：按媒体类型、生成渠道和创建时会员状态区分 */
+/**
+ * 自动清理策略：按媒体类型、生成渠道和创建时会员状态区分
+ */
 model MediaCleanupPolicy {
   id            Int      @id @default(autoincrement())
-  mediaType     String   // upload | generated
-  channel       String   // all | zen | wavespeed
-  audience      String   // all | non_vip | vip
-  retentionDays Int?     // null = 永不过期
+  mediaType     String // upload | generated
+  channel       String // all | main | plaything
+  audience      String // all | non_vip | vip
+  retentionDays Int? // null = 永不过期
   updatedAt     DateTime @updatedAt
 
   @@unique([mediaType, channel, audience])
 }
 
-/** 上传接口产生的一次性输入媒体；生成结果由 Generation 表管理 */
+/**
+ * 上传接口产生的一次性输入媒体；生成结果由 Generation 表管理
+ */
 model MediaAsset {
-  id             Int       @id @default(autoincrement())
-  userId         Int
-  kind           String    // upload
-  channel        String    // wavespeed
-  url            String
-  objectKey      String?
-  contentType    String?
-  bytes          Int?
-  sourceId       Int?
-  retentionAssigned Boolean @default(false)
-  expiresAt      DateTime?
-  deletedAt      DateTime?
-  deleteAttempts Int       @default(0)
-  lastError      String?
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
+  id                Int       @id @default(autoincrement())
+  userId            Int
+  kind              String // upload
+  channel           String // wavespeed
+  url               String
+  objectKey         String?
+  contentType       String?
+  bytes             Int?
+  sourceId          Int?
+  retentionAssigned Boolean   @default(false)
+  expiresAt         DateTime?
+  deletedAt         DateTime?
+  deleteAttempts    Int       @default(0)
+  lastError         String?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -249,21 +246,25 @@ model MediaCleanupRun {
   completedAt DateTime?
 }
 
-/** Stripe 账户配置：Secret Key + Webhook Secret 成对；同一时间最多一个 isActive=true */
+/**
+ * Stripe 账户配置：Secret Key + Webhook Secret 成对；同一时间最多一个 isActive=true
+ */
 model StripeAccount {
-  id                Int      @id @default(autoincrement())
-  label             String // 管理端备注名
-  publishableKey    String? // pk_… 可公开，明文存储（选填）
-  secretKeyEnc      String // sk_… AES-256-GCM 加密
-  webhookSecretEnc  String // whsec_… AES-256-GCM 加密
-  isActive          Boolean  @default(false)
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  id               Int      @id @default(autoincrement())
+  label            String // 管理端备注名
+  publishableKey   String? // pk_… 可公开，明文存储（选填）
+  secretKeyEnc     String // sk_… AES-256-GCM 加密
+  webhookSecretEnc String // whsec_… AES-256-GCM 加密
+  isActive         Boolean  @default(false)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 
   transactions Transaction[]
 }
 
-/** 对象存储账户（S3 兼容 API）；同一时间最多一个 isActive=true */
+/**
+ * 对象存储账户（S3 兼容 API）；同一时间最多一个 isActive=true
+ */
 model OssAccount {
   id                 Int      @id @default(autoincrement())
   label              String
@@ -275,14 +276,16 @@ model OssAccount {
   secretAccessKeyEnc String
   publicBaseUrl      String?
   pathPrefix         String   @default("media")
-  mirrorZenResults   Boolean  @default(true)
+  mirrorResults      Boolean  @default(true) @map("mirrorZenResults")
   forcePathStyle     Boolean  @default(false)
   isActive           Boolean  @default(false)
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
 }
 
-/** Hugging Face Token：魔法指令（Dolphin）；同一时间最多一个 isActive=true */
+/**
+ * Hugging Face Token：魔法指令（Dolphin）；同一时间最多一个 isActive=true
+ */
 model HfAccount {
   id          Int      @id @default(autoincrement())
   label       String
@@ -294,44 +297,63 @@ model HfAccount {
   updatedAt   DateTime @updatedAt
 }
 
-/** 生成产品 SKU：mode + Zen 模型 + 变体 → 扣点 */
+/**
+ * 生成产品 SKU：模式 + 档位 + 是否 Spicy → 扣点与桥接模型。
+ * providerModelId 只在服务端使用，绝不出现在面向生成端的任何响应里。
+ */
 model GenerationProduct {
-  id                   Int      @id @default(autoincrement())
-  mode                 String // txt2img | txt2vid | img2img | img2vid | undress
-  zenTool              String
-  zenModel             String
-  variantKey           String   @default("") // undress: female|male|couple；其它为空串
-  label                String
-  creditCost           Int
-  batchFourMultiplier  Float    @default(1.5)
-  isActive             Boolean  @default(true)
-  isDefault            Boolean  @default(false)
-  sortOrder            Int      @default(0)
-  createdAt            DateTime @default(now())
-  updatedAt            DateTime @updatedAt
+  id                  Int      @id @default(autoincrement())
+  mode                String // txt2img | img2img | imgedit | txt2vid | img2vid
+  tier                String // low | mid | high（视频只用 low / high）
+  spicy               Boolean  @default(false) // Spicy 档：会员专属，走 uncensored 模型
+  provider            String   @default("wavespeed")
+  providerModelId     String   @default("") // WaveSpeed model_id；空串表示尚未绑定
+  label               String // 面向用户的档位名，不得含模型信息
+  description         String   @default("") // 档位说明（分辨率/时长/画质），同样不得含模型名
+  creditCost          Int
+  /**
+   * 计价溯源：ZenCreator 对标工具点数 × 10（细分倍数）× 倍率 = creditCost
+   */
+  refCredits          Int      @default(0) // ZenCreator 对标点数
+  refLabel            String   @default("") // 对标说明，如 "ZC Wan 2.7 1080p/5s"
+  priceMultiplierBps  Int      @default(13000) // 13000 = 130%，Spicy 默认 15000
+  batchFourMultiplier Float    @default(1.5)
+  unitSeconds         Int      @default(0) // 视频档位的计价基准秒数（0 = 非视频）
+  requiresVip         Boolean  @default(false) // Spicy 档为 true
+  defaultInputs       String? // JSON：固定注入上游的参数（分辨率、时长上限等）
+  isActive            Boolean  @default(true)
+  isDefault           Boolean  @default(false)
+  sortOrder           Int      @default(0)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
 
-  @@unique([mode, zenModel, variantKey])
+  @@unique([mode, tier, spicy])
   @@index([mode, isActive, sortOrder])
+  @@index([spicy, isActive])
 }
 
-/** 模式 UI 参数 → Zen input 字段映射 */
+/**
+ * 模式 UI 参数 → 上游 input 字段映射
+ */
 model ModeParamMapping {
-  id        Int      @id @default(autoincrement())
-  mode      String
-  uiKey     String // ratio | quality | style | duration | resolution …
-  zenPath   String // 相对 Zen input 的字段名
-  valueMap  String? // JSON object，空则原样传递
-  options   String? // JSON array [{value,label}]
-  enabled   Boolean  @default(true)
-  sortOrder Int      @default(0)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id           Int      @id @default(autoincrement())
+  mode         String
+  uiKey        String // ratio | quality | duration | resolution …
+  providerPath String   @map("zenPath") // 上游 input 的字段名；下划线开头为纯 UI 字段
+  valueMap     String? // JSON object，空则原样传递
+  options      String? // JSON array [{value,label}]
+  enabled      Boolean  @default(true)
+  sortOrder    Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
   @@unique([mode, uiKey])
   @@index([mode, enabled, sortOrder])
 }
 
-/** 充值套餐：点数 ↔ 美分 */
+/**
+ * 充值套餐：点数 ↔ 美分
+ */
 model CreditPackage {
   id         Int      @id @default(autoincrement())
   credits    Int
@@ -347,34 +369,38 @@ model CreditPackage {
   @@index([isActive, sortOrder])
 }
 
-/** VIP 等级：折扣率 discountBps（1000 = 10% off） */
+/**
+ * VIP 等级：折扣率 discountBps（1000 = 10% off）
+ */
 model VipTier {
-  id               Int       @id @default(autoincrement())
-  code             String    @unique
-  name             String
-  rank             Int       @default(0)
-  discountBps      Int       @default(0)
-  playthingAccess  Boolean   @default(false) // 该等级 VIP 可进玩物专区
-  isActive         Boolean   @default(true)
-  createdAt        DateTime  @default(now())
-  updatedAt        DateTime  @updatedAt
+  id              Int      @id @default(autoincrement())
+  code            String   @unique
+  name            String
+  rank            Int      @default(0)
+  discountBps     Int      @default(0)
+  playthingAccess Boolean  @default(false) // 该等级 VIP 可进玩物专区
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
   plans VipPlan[]
   users User[]
 }
 
-/** VIP 可售套餐：绑定等级 + 月费 + 赠点 */
+/**
+ * VIP 可售套餐：绑定等级 + 月费 + 赠点
+ */
 model VipPlan {
-  id            Int      @id @default(autoincrement())
-  tierId        Int
-  label         String
-  priceCents    Int
-  bonusCredits  Int      @default(0)
-  durationDays  Int      @default(30)
-  isActive      Boolean  @default(true)
-  sortOrder     Int      @default(0)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  id           Int      @id @default(autoincrement())
+  tierId       Int
+  label        String
+  priceCents   Int
+  bonusCredits Int      @default(0)
+  durationDays Int      @default(30)
+  isActive     Boolean  @default(true)
+  sortOrder    Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
   tier VipTier @relation(fields: [tierId], references: [id], onDelete: Restrict)
 
@@ -382,15 +408,15 @@ model VipPlan {
 }
 
 model Transaction {
-  id              Int      @id @default(autoincrement())
-  userId          Int
-  type            String
-  amount          Int
-  priceCents      Int?
-  stripePaymentId String?
-  method          String?
+  id                 Int      @id @default(autoincrement())
+  userId             Int
+  type               String
+  amount             Int
+  priceCents         Int?
+  stripePaymentId    String?
+  method             String?
   stripeAccountRefId Int? // 创建 Checkout 时使用的 StripeAccount.id
-  createdAt       DateTime @default(now())
+  createdAt          DateTime @default(now())
 
   user          User           @relation(fields: [userId], references: [id])
   stripeAccount StripeAccount? @relation(fields: [stripeAccountRefId], references: [id], onDelete: SetNull)
@@ -398,7 +424,9 @@ model Transaction {
   @@index([userId, createdAt])
 }
 
-/** 管理端操作审计：人工入账、VIP、余额、角色、封禁等 */
+/**
+ * 管理端操作审计：人工入账、VIP、余额、角色、封禁等
+ */
 model AdminAuditLog {
   id         Int      @id @default(autoincrement())
   adminId    Int
@@ -412,7 +440,9 @@ model AdminAuditLog {
   @@index([action])
 }
 
-/** 支付 Webhook 事件日志：Stripe / NOWPayments */
+/**
+ * 支付 Webhook 事件日志：Stripe / NOWPayments
+ */
 model WebhookEventLog {
   id         Int      @id @default(autoincrement())
   provider   String // stripe | nowpayments
@@ -425,7 +455,9 @@ model WebhookEventLog {
   @@index([provider, createdAt])
 }
 
-/** WaveSpeed API Key：同一时间最多一个 isActive=true */
+/**
+ * WaveSpeed API Key：同一时间最多一个 isActive=true
+ */
 model WaveSpeedAccount {
   id        Int      @id @default(autoincrement())
   label     String
@@ -434,23 +466,30 @@ model WaveSpeedAccount {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  generations WaveSpeedGeneration[]
+  generations     WaveSpeedGeneration[]
+  mainGenerations Generation[]
 }
 
-/** WaveSpeed 全库模型缓存（同步自 GET /models） */
+/**
+ * WaveSpeed 全库模型缓存（同步自 GET /models）
+ */
 model WaveSpeedCatalogModel {
-  id              Int       @id @default(autoincrement())
-  modelId         String    @unique
-  name            String
-  type            String    @default("")
-  description     String    @default("")
-  basePriceUsd    Float     @default(0)
+  id               Int      @id @default(autoincrement())
+  modelId          String   @unique
+  name             String
+  type             String   @default("")
+  description      String   @default("")
+  basePriceUsd     Float    @default(0)
   lastUnitPriceUsd Float?
-  thumbnailUrl    String?
-  apiSchema       String? // JSON
-  syncedAt        DateTime  @default(now())
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
+  thumbnailUrl     String?
+  /**
+   * 管理端手工贴的类型标签（JSON 字符串数组）。与同步下来的 type 分开存，同步不会覆盖。
+   */
+  tags             String   @default("[]")
+  apiSchema        String? // JSON
+  syncedAt         DateTime @default(now())
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 
   product WaveSpeedProduct?
 
@@ -458,20 +497,22 @@ model WaveSpeedCatalogModel {
   @@index([name])
 }
 
-/** 玩物专区上架 SKU（本站定价，不吃 VIP 折扣） */
+/**
+ * 玩物专区上架 SKU（本站定价，不吃 VIP 折扣）
+ */
 model WaveSpeedProduct {
-  id                   Int      @id @default(autoincrement())
-  modelId              String   @unique
-  catalogModelId       Int?     @unique
-  label                String
-  creditCost           Int
-  isActive             Boolean  @default(true)
-  isRecommended        Boolean  @default(false)
-  sortOrder            Int      @default(100)
-  paramSchemaOverride  String?
-  paramPolicy          String? // JSON：时长档位、媒体 MIME/尺寸约束等
-  createdAt            DateTime @default(now())
-  updatedAt            DateTime @updatedAt
+  id                  Int      @id @default(autoincrement())
+  modelId             String   @unique
+  catalogModelId      Int?     @unique
+  label               String
+  creditCost          Int
+  isActive            Boolean  @default(true)
+  isRecommended       Boolean  @default(false)
+  sortOrder           Int      @default(100)
+  paramSchemaOverride String?
+  paramPolicy         String? // JSON：时长档位、媒体 MIME/尺寸约束等
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
 
   catalogModel WaveSpeedCatalogModel? @relation(fields: [catalogModelId], references: [id], onDelete: SetNull)
   generations  WaveSpeedGeneration[]
@@ -479,28 +520,30 @@ model WaveSpeedProduct {
   @@index([isActive, isRecommended, sortOrder])
 }
 
-/** 玩物专区生成任务 */
+/**
+ * 玩物专区生成任务
+ */
 model WaveSpeedGeneration {
-  id           Int       @id @default(autoincrement())
-  userId       Int
-  productId    Int
-  prompt       String    @default("")
-  params       String    @default("{}")
-  externalId   String?
-  wsAccountId  Int?
-  status       String    @default("pending") // pending|processing|succeeded|failed
-  progress     Int       @default(0)
-  error        String?
-  resultUrls   String?
-  cost         Int
-  isAdult      Boolean   @default(false)
-  safetyCategories String @default("[]")
-  ownerVipAtCreation Boolean @default(false)
-  retentionAssigned  Boolean @default(false)
-  mediaExpiresAt DateTime?
-  mediaDeletedAt DateTime?
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
+  id                 Int       @id @default(autoincrement())
+  userId             Int
+  productId          Int
+  prompt             String    @default("")
+  params             String    @default("{}")
+  externalId         String?
+  wsAccountId        Int?
+  status             String    @default("pending") // pending|processing|succeeded|failed
+  progress           Int       @default(0)
+  error              String?
+  resultUrls         String?
+  cost               Int
+  isAdult            Boolean   @default(false)
+  safetyCategories   String    @default("[]")
+  ownerVipAtCreation Boolean   @default(false)
+  retentionAssigned  Boolean   @default(false)
+  mediaExpiresAt     DateTime?
+  mediaDeletedAt     DateTime?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
 
   user      User              @relation(fields: [userId], references: [id])
   product   WaveSpeedProduct  @relation(fields: [productId], references: [id])

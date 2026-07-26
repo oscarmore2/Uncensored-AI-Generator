@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { GENERATION_MODES, GENERATION_TIERS, MODE_META } from "./generation-modes";
 
 export const credentialsSchema = z.object({
   username: z
@@ -11,33 +12,28 @@ export const credentialsSchema = z.object({
 
 export const generationSchema = z
   .object({
-    mode: z.enum(["txt2img", "txt2vid", "img2img", "img2vid", "undress"]),
+    mode: z.enum(GENERATION_MODES),
+    tier: z.enum(GENERATION_TIERS).optional().default("low"),
+    spicy: z.boolean().optional().default(false),
     prompt: z.string().max(4000).optional().default(""),
     negative_prompt: z.string().max(2000).optional().default(""),
     ratio: z.string().max(10).optional().default("1:1"),
-    style: z.string().max(40).optional().default("realistic"),
-    quality: z.string().max(20).optional().default("quality"),
     duration: z.union([z.string().max(10), z.number()]).optional(),
-    resolution: z.string().max(20).optional(),
     seed: z.union([z.string().max(40), z.number().int()]).optional(),
-    zen_model: z.string().max(80).optional(),
     batch: z.union([z.literal(1), z.literal(2), z.literal(4)]).optional().default(1),
-    undress_variant: z.enum(["female", "male", "couple"]).optional().default("female"),
     // base64 参考图（约 10MB 上限）
     image_base64: z.string().max(14_000_000).nullable().optional(),
   })
   .superRefine((v, ctx) => {
-    if (v.mode === "undress") {
-      if (!v.image_base64) {
-        ctx.addIssue({ code: "custom", message: "旧版编辑模式需要上传一张人物图片", path: ["image_base64"] });
-      }
-      return;
-    }
-    if (!v.prompt?.trim()) {
+    const meta = MODE_META[v.mode];
+    if (meta.needsPrompt && !v.prompt?.trim()) {
       ctx.addIssue({ code: "custom", message: "请输入提示词", path: ["prompt"] });
     }
-    if ((v.mode === "img2img" || v.mode === "img2vid") && !v.image_base64) {
+    if (meta.needsImage && !v.image_base64) {
       ctx.addIssue({ code: "custom", message: "该模式需要上传参考图片", path: ["image_base64"] });
+    }
+    if (!meta.tiers.includes(v.tier)) {
+      ctx.addIssue({ code: "custom", message: "该模式不支持所选档位", path: ["tier"] });
     }
   });
 
@@ -52,10 +48,10 @@ export const bulkIdsSchema = z.object({
 export const publicWorkImportSchema = z.object({
   media_url: z.string().url().max(2000).optional(),
   prompt: z.string().min(1).max(4000),
-  mode: z.enum(["txt2img", "txt2vid", "img2img", "img2vid", "undress"]),
+  mode: z.enum(GENERATION_MODES),
   negative_prompt: z.string().max(2000).optional(),
   params: z.record(z.string(), z.unknown()).optional(),
-  source_zen_job_id: z.string().max(120).optional(),
+  source_job_id: z.string().max(120).optional(),
   title: z.string().max(200).optional(),
   is_adult: z.boolean().optional().default(false),
 });

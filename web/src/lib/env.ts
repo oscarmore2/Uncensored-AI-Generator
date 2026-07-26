@@ -10,26 +10,21 @@ const envSchema = z.object({
       "AUTH_SECRET must not be a known default value"
     ),
   APP_URL: z.string().url().default("http://localhost:3000"),
-  ZEN_API_KEY: z.string().default(""),
-  ZEN_BASE_URL: z.string().url().default("https://api.zencreator.pro/api/public/v1"),
-  // 可选：经 Cloudflare Worker 代理访问 Zen 时，与 Worker 的 PROXY_SECRET 一致
-  ZEN_PROXY_SECRET: z.string().default(""),
   STRIPE_SECRET_KEY: z.string().default(""),
   STRIPE_WEBHOOK_SECRET: z.string().default(""),
   NOWPAYMENTS_API_KEY: z.string().default(""),
   NOWPAYMENTS_IPN_SECRET: z.string().default(""),
   NOWPAYMENTS_BASE_URL: z.string().url().default("https://api.nowpayments.io/v1"),
+  // 与 ZenCreator 单点价对齐并细分 10 倍（$19.99/2000 = $0.009995/点）
   CREDIT_PACKAGES: z
     .string()
-    .default('{"100": 2900, "500": 12900, "1200": 29900, "3000": 69900}')
+    .default('{"2000": 1999, "5500": 4999, "12000": 9900, "63000": 49900}')
     .transform((s) => z.record(z.string(), z.number().int().positive()).parse(JSON.parse(s))),
   VIP_PRICE: z.coerce.number().int().positive().default(9900),
   TELEGRAM_BOT_TOKEN: z.string().default(""),
   TELEGRAM_CHAT_ID: z.string().default(""),
-  // Zen 消耗估算：本站 1 点数折合多少 Zen credits（Zen 无余额 API，只能估算）
-  ZEN_CREDIT_RATIO: z.coerce.number().positive().default(1),
-  // Zen 月度预算（credits），0 表示不设预算不告警
-  ZEN_MONTHLY_BUDGET: z.coerce.number().int().nonnegative().default(0),
+  // WaveSpeed 月度成本预算（美元），0 表示不设预算不告警
+  WAVESPEED_MONTHLY_BUDGET_USD: z.coerce.number().nonnegative().default(0),
   DEMO_MODE: z
     .string()
     .default("false")
@@ -43,7 +38,7 @@ const envSchema = z.object({
   OSS_SECRET_ACCESS_KEY: z.string().default(""),
   OSS_PUBLIC_BASE_URL: z.string().default(""), // CDN 自定义域名，如 https://cdn.example.com
   OSS_PATH_PREFIX: z.string().default("media"),
-  OSS_MIRROR_ZEN_RESULTS: z
+  OSS_MIRROR_RESULTS: z
     .string()
     .default("true")
     .transform((v) => v.toLowerCase() === "true"),
@@ -86,6 +81,10 @@ function loadEnv() {
   // 兼容常见 HF token 环境变量名
   if (!process.env.HF_TOKEN && process.env.HUGGINGFACE_API_KEY) {
     process.env.HF_TOKEN = process.env.HUGGINGFACE_API_KEY;
+  }
+  // 兼容 Zen 时代已部署环境里的旧变量名，避免 Railway 上改名即失效
+  if (!process.env.OSS_MIRROR_RESULTS && process.env.OSS_MIRROR_ZEN_RESULTS) {
+    process.env.OSS_MIRROR_RESULTS = process.env.OSS_MIRROR_ZEN_RESULTS;
   }
   const parsed = envSchema.safeParse(process.env);
   if (!parsed.success) {

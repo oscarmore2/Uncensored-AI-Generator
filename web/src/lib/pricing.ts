@@ -9,17 +9,34 @@ import type {
 } from "@prisma/client";
 import { db } from "./db";
 import { ensurePricingSeeded } from "./pricing-seed";
+import {
+  MODE_META,
+  durationMultiplier,
+  isGenerationMode,
+  isGenerationTier,
+  type GenerationTier,
+} from "./generation-modes";
+import { ZC_STARTER_USD_PER_CREDIT, effectiveMultiplierBps } from "./generation-catalog";
 
 export { ensurePricingSeeded } from "./pricing-seed";
 
 export type ProductRow = GenerationProduct;
 export type ParamMappingRow = ModeParamMapping;
 
+export class SpicyRequiresVipError extends Error {
+  code = "SPICY_REQUIRES_VIP" as const;
+  constructor() {
+    super("Spicy 档为会员专属，请先开通会员");
+  }
+}
+
 export type GenerationQuoteInput = {
   mode: string;
-  zenModel?: string | null;
-  variantKey?: string | null;
+  tier?: string | null;
+  spicy?: boolean;
   batch?: number;
+  /** 视频时长（秒）；按 ceil(duration / unitSeconds) 倍率计费 */
+  durationSeconds?: number | null;
   user?: Pick<User, "isVip" | "vipExpiresAt" | "vipTierId"> & {
     vipTier?: Pick<VipTier, "id" | "code" | "name" | "discountBps" | "isActive"> | null;
   };
@@ -29,6 +46,7 @@ export type GenerationQuote = {
   cost: number;
   baseCost: number;
   batch: number;
+  durationUnits: number;
   discountBps: number;
   product: GenerationProduct;
   tier: Pick<VipTier, "id" | "code" | "name" | "discountBps"> | null;
@@ -70,35 +88,37 @@ export function isVipActive(
   return user.vipExpiresAt.getTime() > Date.now();
 }
 
+/** 该模式下默认档位：优先 isDefault，其次最低档 */
+function fallbackTier(mode: string): GenerationTier {
+  const meta = isGenerationMode(mode) ? MODE_META[mode] : null;
+  return (meta?.tiers[0] ?? "low") as GenerationTier;
+}
+
 export async function resolveGenerationProduct(opts: {
   mode: string;
-  zenModel?: string | null;
-  variantKey?: string | null;
+  tier?: string | null;
+  spicy?: boolean;
 }): Promise<GenerationProduct> {
   await ensurePricingSeeded();
-  const variantKey =
-    opts.mode === "undress" ? (opts.variantKey?.trim() || "female") : (opts.variantKey ?? "");
+  const spicy = Boolean(opts.spicy);
+  const tier = isGenerationTier(opts.tier) ? opts.tier : fallbackTier(opts.mode);
 
-  if (opts.zenModel?.trim()) {
-    const exact = await db.generationProduct.findFirst({
-      where: {
-        mode: opts.mode,
-        zenModel: opts.zenModel.trim(),
-        variantKey,
-        isActive: true,
-      },
-    });
-    if (exact) return exact;
-  }
+  const exact = await db.generationProduct.findFirst({
+    where: { mode: opts.mode, tier, spicy, isActive: true },
+  });
+  if (exact) return exact;
 
-  const preferred = await db.generationProduct.findFirst({
-    where: { mode: opts.mode, variantKey, isActive: true },
+  // 档位被下架时退回同 spicy 属性下的默认档，避免整个模式不可用
+  const sameFlavor = await db.generationProduct.findFirst({
+    where: { mode: opts.mode, spicy, isActive: true },
     orderBy: [{ isDefault: "desc" }, { sortOrder: "asc" }, { id: "asc" }],
   });
-  if (preferred) return preferred;
+  if (sameFlavor) return sameFlavor;
+
+  if (spicy) throw new Error(`未配置可用的 Spicy 档位：${opts.mode}`);
 
   const anyMode = await db.generationProduct.findFirst({
-    where: { mode: opts.mode, isActive: true },
+    where: { mode: opts.mode, isActive: true, spicy: false },
     orderBy: [{ isDefault: "desc" }, { sortOrder: "asc" }, { id: "asc" }],
   });
   if (anyMode) return anyMode;
@@ -109,21 +129,29 @@ export async function resolveGenerationProduct(opts: {
 export async function resolveGenerationQuote(input: GenerationQuoteInput): Promise<GenerationQuote> {
   const product = await resolveGenerationProduct({
     mode: input.mode,
-    zenModel: input.zenModel,
-    variantKey: input.variantKey,
+    tier: input.tier,
+    spicy: input.spicy,
   });
 
-  const batch = input.mode === "undress" ? 1 : (input.batch ?? 1);
-  let cost = product.creditCost;
+  const vipActive = input.user ? isVipActive(input.user) : false;
+  if (product.requiresVip && !vipActive) throw new SpicyRequiresVipError();
+
+  const meta = isGenerationMode(product.mode) ? MODE_META[product.mode] : null;
+  const batch = meta?.supportsBatch ? (input.batch ?? 1) : 1;
+  const durationUnits =
+    product.unitSeconds > 0
+      ? durationMultiplier(Number(input.durationSeconds ?? product.unitSeconds), product.unitSeconds)
+      : 1;
+
   const baseCost = product.creditCost;
-  if (input.mode !== "undress" && batch === 4) {
-    cost = Math.floor(product.creditCost * product.batchFourMultiplier);
-  }
+  let cost = baseCost * durationUnits;
+  if (batch === 4) cost = Math.floor(cost * product.batchFourMultiplier);
+  else if (batch === 2) cost = cost * 2;
 
   let discountBps = 0;
   let tier: GenerationQuote["tier"] = null;
 
-  if (input.user && isVipActive(input.user)) {
+  if (input.user && vipActive) {
     let vipTier = input.user.vipTier ?? null;
     if (!vipTier && input.user.vipTierId) {
       vipTier = await db.vipTier.findFirst({
@@ -145,45 +173,14 @@ export async function resolveGenerationQuote(input: GenerationQuoteInput): Promi
     }
   }
 
-  return { cost, baseCost, batch, discountBps, product, tier };
+  return { cost: Math.max(1, cost), baseCost, batch, durationUnits, discountBps, product, tier };
 }
 
-/** UI 参数 → Zen input（不含 prompt / assets；model 强制来自产品） */
-export async function buildZenInputFromMappings(
-  mode: string,
-  uiParams: Record<string, unknown>,
-  product: GenerationProduct
-): Promise<Record<string, unknown>> {
-  await ensurePricingSeeded();
-  const mappings = await db.modeParamMapping.findMany({
-    where: { mode, enabled: true },
-    orderBy: [{ sortOrder: "asc" }, { id: "asc" }],
-  });
-
-  const input: Record<string, unknown> = {};
-
-  for (const m of mappings) {
-    if (m.zenPath.startsWith("_")) continue; // 仅 UI / 本地用，不传 Zen
-    const raw = uiParams[m.uiKey];
-    if (raw === undefined || raw === null || raw === "") continue;
-    const valueMap = parseJsonObject(m.valueMap);
-    let value: unknown = raw;
-    const key = String(raw);
-    if (Object.prototype.hasOwnProperty.call(valueMap, key)) {
-      value = valueMap[key];
-    }
-    input[m.zenPath] = value;
-  }
-
-  // 强制产品模型；旧版特殊编辑工具不带 model 字段时仍可写。
-  if (mode !== "undress") {
-    input.model = product.zenModel;
-  }
-
-  return input;
-}
-
-export async function listActiveCatalog() {
+/**
+ * 生成端可见目录。
+ * 刻意不返回 provider / providerModelId：生成端不得知道底层模型。
+ */
+export async function listActiveCatalog(opts?: { vipActive?: boolean }) {
   await ensurePricingSeeded();
   const [products, mappings, packages, plans] = await Promise.all([
     db.generationProduct.findMany({
@@ -206,15 +203,14 @@ export async function listActiveCatalog() {
   ]);
 
   return {
-    products: products.map(productOut),
+    // 未绑定模型的档位对用户隐藏，避免点了必然失败
+    products: products.filter((p) => p.providerModelId.trim() !== "").map(productOut),
     param_mappings: mappings.map(mappingOut),
     credit_packages: packages.map(packageOut),
     vip_plans: plans
       .filter((p) => p.tier.isActive)
-      .map((p) => ({
-        ...planOut(p),
-        tier: tierOut(p.tier),
-      })),
+      .map((p) => ({ ...planOut(p), tier: tierOut(p.tier) })),
+    vip_active: Boolean(opts?.vipActive),
   };
 }
 
@@ -240,19 +236,39 @@ export async function getVipPlanById(id: number): Promise<(VipPlan & { tier: Vip
   });
 }
 
+/** 生成端视图：不含任何上游模型信息 */
 export function productOut(p: GenerationProduct) {
   return {
     id: p.id,
     mode: p.mode,
-    zen_tool: p.zenTool,
-    zen_model: p.zenModel,
-    variant_key: p.variantKey,
+    tier: p.tier,
+    spicy: p.spicy,
     label: p.label,
+    description: p.description,
     credit_cost: p.creditCost,
     batch_four_multiplier: p.batchFourMultiplier,
-    is_active: p.isActive,
+    unit_seconds: p.unitSeconds,
+    requires_vip: p.requiresVip,
     is_default: p.isDefault,
     sort_order: p.sortOrder,
+  };
+}
+
+/** 管理端视图：包含桥接模型与计价溯源 */
+export function productAdminOut(p: GenerationProduct) {
+  return {
+    ...productOut(p),
+    provider: p.provider,
+    provider_model_id: p.providerModelId,
+    is_bound: p.providerModelId.trim() !== "",
+    is_active: p.isActive,
+    ref_credits: p.refCredits,
+    ref_label: p.refLabel,
+    price_multiplier_bps: p.priceMultiplierBps,
+    effective_multiplier_bps: effectiveMultiplierBps(p.refCredits, p.creditCost),
+    default_inputs: parseJsonObject(p.defaultInputs),
+    /** 该档位一次生成的站内售价（美元），用于对照上游成本算毛利 */
+    retail_usd: Number((p.creditCost * ZC_STARTER_USD_PER_CREDIT).toFixed(4)),
   };
 }
 
@@ -261,7 +277,7 @@ export function mappingOut(m: ModeParamMapping) {
     id: m.id,
     mode: m.mode,
     ui_key: m.uiKey,
-    zen_path: m.zenPath,
+    provider_path: m.providerPath,
     value_map: parseJsonObject(m.valueMap),
     options: parseJsonArray(m.options),
     enabled: m.enabled,
@@ -305,22 +321,4 @@ export function planOut(p: VipPlan) {
     is_active: p.isActive,
     sort_order: p.sortOrder,
   };
-}
-
-/** 推导 magic-prompt formatId（与 zen-targets 对齐） */
-export function formatIdForProduct(product: Pick<GenerationProduct, "mode" | "zenTool">): string {
-  switch (product.mode) {
-    case "txt2img":
-      return "sdxl_t2i";
-    case "img2img":
-      return "sdxl_i2i";
-    case "txt2vid":
-      return "wan_t2v";
-    case "img2vid":
-      return "wan_i2v";
-    case "undress":
-      return "undress";
-    default:
-      return "sdxl_t2i";
-  }
 }

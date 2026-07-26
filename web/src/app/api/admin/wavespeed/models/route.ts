@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import type { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
 import { requireRole } from "@/lib/auth";
+import { parseTags } from "@/lib/model-tags";
 
 function catalogOut(
   c: {
@@ -13,6 +14,7 @@ function catalogOut(
     basePriceUsd: number;
     lastUnitPriceUsd: number | null;
     thumbnailUrl: string | null;
+    tags: string;
     syncedAt: Date;
     updatedAt: Date;
   },
@@ -35,6 +37,7 @@ function catalogOut(
     base_price_usd: c.basePriceUsd,
     last_unit_price_usd: c.lastUnitPriceUsd,
     thumbnail_url: c.thumbnailUrl,
+    tags: parseTags(c.tags),
     synced_at: c.syncedAt,
     product: product
       ? {
@@ -65,6 +68,7 @@ export async function GET(req: Request) {
   const url = new URL(req.url);
   const q = (url.searchParams.get("q") || "").trim();
   const type = (url.searchParams.get("type") || "").trim();
+  const tag = (url.searchParams.get("tag") || "").trim();
   const shelved = url.searchParams.get("shelved"); // "1" | "0" | null
   const adult = url.searchParams.get("adult") === "1";
   const page = Math.max(1, Number(url.searchParams.get("page") || 1) || 1);
@@ -72,6 +76,8 @@ export async function GET(req: Request) {
 
   const and: Prisma.WaveSpeedCatalogModelWhereInput[] = [];
   if (type) and.push({ type });
+  // tags 存的是 JSON 数组字符串，按带引号的整词匹配避免 "高档" 命中 "高档次"
+  if (tag) and.push({ tags: { contains: `"${tag}"`, mode: "insensitive" } });
   if (q) {
     and.push({
       OR: [
@@ -98,7 +104,7 @@ export async function GET(req: Request) {
 
   const where: Prisma.WaveSpeedCatalogModelWhereInput = and.length ? { AND: and } : {};
 
-  const [total, rows, lastSync, types] = await Promise.all([
+  const [total, rows, lastSync, types, tagRows] = await Promise.all([
     db.waveSpeedCatalogModel.count({ where }),
     db.waveSpeedCatalogModel.findMany({
       where,
@@ -117,7 +123,17 @@ export async function GET(req: Request) {
       orderBy: { type: "asc" },
       take: 100,
     }),
+    // 已用过的标签，供筛选下拉与快捷输入
+    db.waveSpeedCatalogModel.findMany({
+      where: { NOT: { tags: "[]" } },
+      select: { tags: true },
+      take: 2000,
+    }),
   ]);
+
+  const allTags = Array.from(
+    new Set(tagRows.flatMap((r) => parseTags(r.tags)))
+  ).sort((a, b) => a.localeCompare(b, "zh-Hans-CN"));
 
   return NextResponse.json({
     total,
@@ -125,6 +141,7 @@ export async function GET(req: Request) {
     page_size: pageSize,
     last_synced_at: lastSync?.syncedAt ?? null,
     types: types.map((t) => t.type).filter(Boolean),
+    tags: allTags,
     models: rows.map((r) => catalogOut(r, r.product)),
   });
 }

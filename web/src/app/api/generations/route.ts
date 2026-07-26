@@ -2,8 +2,8 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
 import { generationSchema } from "@/lib/validators";
-import { processGeneration } from "@/lib/zen";
-import { isVipActive, resolveGenerationQuote } from "@/lib/pricing";
+import { processGeneration } from "@/lib/generation-runner";
+import { SpicyRequiresVipError, isVipActive, resolveGenerationQuote } from "@/lib/pricing";
 import { generationOut } from "@/lib/serialize";
 import { rateLimit } from "@/lib/rate-limit";
 import { hasAlwaysBlockedCategory, reviewPromptWithHarness } from "@/lib/content-safety";
@@ -25,9 +25,6 @@ export async function POST(req: Request) {
   }
 
   const gen = parsed.data;
-  if (gen.mode === "undress") {
-    return NextResponse.json({ error: "该旧版编辑模式已停止开放" }, { status: 410 });
-  }
   const adultAccess = hasAdultAccess(user);
   let isAdult = false;
   let safetyCategories: string[] = [];
@@ -60,17 +57,37 @@ export async function POST(req: Request) {
     safetyCategories = ["unclassified_adult_mode"];
   }
 
-  const quote = await resolveGenerationQuote({
-    mode: gen.mode,
-    zenModel: gen.zen_model,
-    variantKey: gen.undress_variant,
-    batch: gen.batch,
-    user,
-  });
+  let quote;
+  try {
+    quote = await resolveGenerationQuote({
+      mode: gen.mode,
+      tier: gen.tier,
+      spicy: gen.spicy,
+      batch: gen.batch,
+      durationSeconds: gen.duration != null ? Number(gen.duration) : null,
+      user,
+    });
+  } catch (error) {
+    if (error instanceof SpicyRequiresVipError) {
+      return NextResponse.json({ error: error.message, code: error.code }, { status: 403 });
+    }
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : "档位不可用" },
+      { status: 400 }
+    );
+  }
+
+  if (!quote.product.providerModelId.trim()) {
+    return NextResponse.json(
+      { error: "该档位暂未开放，请稍后再试", code: "TIER_UNAVAILABLE" },
+      { status: 503 }
+    );
+  }
+
   const cost = quote.cost;
   const prompt = gen.prompt.trim();
   const ownerVipAtCreation = isVipActive(user);
-  const mediaExpiresAt = await generatedMediaExpiry("zen", ownerVipAtCreation);
+  const mediaExpiresAt = await generatedMediaExpiry("main", ownerVipAtCreation);
 
   const charged = await db.user.updateMany({
     where: { id: user.id, balance: { gte: cost } },
@@ -87,19 +104,16 @@ export async function POST(req: Request) {
     data: {
       userId: user.id,
       mode: gen.mode,
+      tier: quote.product.tier,
+      spicy: quote.product.spicy,
+      productId: quote.product.id,
       prompt,
       negativePrompt: gen.negative_prompt,
       params: JSON.stringify({
         ratio: gen.ratio,
-        style: gen.style,
-        quality: gen.quality,
         duration: gen.duration,
-        resolution: gen.resolution,
         seed: gen.seed,
         batch: gen.batch,
-        undress_variant: gen.undress_variant,
-        zen_model: quote.product.zenModel,
-        product_id: quote.product.id,
         image_base64: gen.image_base64 ?? null,
       }),
       cost,

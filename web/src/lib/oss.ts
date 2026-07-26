@@ -12,7 +12,7 @@ export interface OssConfig {
   secretAccessKey: string;
   publicBaseUrl: string | null;
   pathPrefix: string;
-  mirrorZenResults: boolean;
+  mirrorResults: boolean;
   forcePathStyle: boolean;
   accountRefId: number | null;
   source: "db" | "env";
@@ -51,7 +51,7 @@ export async function getActiveOssConfig(): Promise<OssConfig | null> {
       secretAccessKey: decryptSecret(active.secretAccessKeyEnc),
       publicBaseUrl: active.publicBaseUrl?.replace(/\/+$/, "") || null,
       pathPrefix: active.pathPrefix.replace(/^\/+|\/+$/g, "") || "media",
-      mirrorZenResults: active.mirrorZenResults,
+      mirrorResults: active.mirrorResults,
       forcePathStyle: active.forcePathStyle ?? defaults.forcePathStyle,
       accountRefId: active.id,
       source: "db",
@@ -68,7 +68,7 @@ export async function getActiveOssConfig(): Promise<OssConfig | null> {
       secretAccessKey: env.OSS_SECRET_ACCESS_KEY,
       publicBaseUrl: env.OSS_PUBLIC_BASE_URL?.replace(/\/+$/, "") || null,
       pathPrefix: env.OSS_PATH_PREFIX.replace(/^\/+|\/+$/g, "") || "media",
-      mirrorZenResults: env.OSS_MIRROR_ZEN_RESULTS,
+      mirrorResults: env.OSS_MIRROR_RESULTS,
       forcePathStyle: env.OSS_FORCE_PATH_STYLE,
       accountRefId: null,
       source: "env",
@@ -242,8 +242,8 @@ export async function uploadFromUrl(remoteUrl: string, relativePath: string, con
 }
 
 /**
- * 将 Zen/外部 URL 列表镜像到 OSS。
- * 未配置 OSS 或 mirrorZenResults=false 时原样返回。
+ * 将上游/外部 URL 列表镜像到 OSS。
+ * 未配置 OSS 或 mirrorResults=false 时原样返回。
  */
 export async function mirrorRemoteUrls(
   urls: string[],
@@ -251,7 +251,7 @@ export async function mirrorRemoteUrls(
   config?: OssConfig
 ): Promise<string[]> {
   const cfg = config ?? (await getActiveOssConfig());
-  if (!cfg || !cfg.mirrorZenResults) return urls;
+  if (!cfg || !cfg.mirrorResults) return urls;
 
   const mirrored: string[] = [];
   for (let i = 0; i < urls.length; i++) {
@@ -295,7 +295,7 @@ export async function ossConfigFromAccountId(accountId: number): Promise<OssConf
     secretAccessKey: decryptSecret(account.secretAccessKeyEnc),
     publicBaseUrl: account.publicBaseUrl?.replace(/\/+$/, "") || null,
     pathPrefix: account.pathPrefix.replace(/^\/+|\/+$/g, "") || "media",
-    mirrorZenResults: account.mirrorZenResults,
+    mirrorResults: account.mirrorResults,
     forcePathStyle: account.forcePathStyle ?? defaults.forcePathStyle,
     accountRefId: account.id,
     source: "db",

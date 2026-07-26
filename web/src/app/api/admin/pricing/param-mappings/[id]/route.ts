@@ -8,7 +8,7 @@ import { mappingOut } from "@/lib/pricing";
 const patchSchema = z
   .object({
     ui_key: z.string().min(1).max(40).optional(),
-    zen_path: z.string().min(1).max(80).optional(),
+    provider_path: z.string().min(1).max(80).optional(),
     value_map: z.record(z.string(), z.unknown()).nullable().optional(),
     options: z
       .array(z.object({ value: z.string(), label: z.string() }))
@@ -39,7 +39,7 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
     where: { id },
     data: {
       ...(d.ui_key !== undefined ? { uiKey: d.ui_key } : {}),
-      ...(d.zen_path !== undefined ? { zenPath: d.zen_path } : {}),
+      ...(d.provider_path !== undefined ? { providerPath: d.provider_path } : {}),
       ...(d.value_map !== undefined
         ? { valueMap: d.value_map ? JSON.stringify(d.value_map) : null }
         : {}),

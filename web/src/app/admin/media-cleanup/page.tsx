@@ -27,18 +27,18 @@ type CleanupSettings = {
   policies: Policy[];
   pending: {
     uploads: number;
-    zen_generations: number;
-    wavespeed_generations: number;
+    main_generations: number;
+    plaything_generations: number;
   };
   runs: CleanupRun[];
 };
 
 const labels: Record<string, string> = {
   "upload:all:all": "所有用户上传物",
-  "generated:zen:non_vip": "基础创作 · 非 VIP",
-  "generated:zen:vip": "基础创作 · VIP",
-  "generated:wavespeed:non_vip": "玩物模型 · 非 VIP",
-  "generated:wavespeed:vip": "玩物模型 · VIP",
+  "generated:main:non_vip": "创作中心 · 非 VIP",
+  "generated:main:vip": "创作中心 · VIP",
+  "generated:plaything:non_vip": "玩物专区 · 非 VIP",
+  "generated:plaything:vip": "玩物专区 · VIP",
 };
 
 export default function MediaCleanupPage() {
@@ -122,8 +122,8 @@ export default function MediaCleanupPage() {
       <div className="grid grid-cols-3 gap-4">
         {[
           ["上传物", data?.pending.uploads ?? 0],
-          ["基础创作", data?.pending.zen_generations ?? 0],
-          ["玩物模型", data?.pending.wavespeed_generations ?? 0],
+          ["创作中心", data?.pending.main_generations ?? 0],
+          ["玩物专区", data?.pending.plaything_generations ?? 0],
         ].map(([label, value]) => (
           <div key={String(label)} className="glass rounded-2xl p-4">
             <div className="text-xs text-gray-500">{label} · 有到期策略</div>

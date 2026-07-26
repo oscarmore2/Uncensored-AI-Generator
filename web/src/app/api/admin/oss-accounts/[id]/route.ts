@@ -15,7 +15,7 @@ function accountOut(a: {
   secretAccessKeyEnc: string;
   publicBaseUrl: string | null;
   pathPrefix: string;
-  mirrorZenResults: boolean;
+  mirrorResults: boolean;
   forcePathStyle: boolean;
   isActive: boolean;
   createdAt: Date;
@@ -38,7 +38,7 @@ function accountOut(a: {
     secret_key_mask: secretMask,
     public_base_url: a.publicBaseUrl,
     path_prefix: a.pathPrefix,
-    mirror_zen_results: a.mirrorZenResults,
+    mirror_results: a.mirrorResults,
     force_path_style: a.forcePathStyle,
     is_active: a.isActive,
     created_at: a.createdAt,
@@ -57,7 +57,7 @@ const patchSchema = z
     secret_access_key: z.string().min(1).max(300).optional(),
     public_base_url: z.string().url().nullable().optional(),
     path_prefix: z.string().max(128).optional(),
-    mirror_zen_results: z.boolean().optional(),
+    mirror_results: z.boolean().optional(),
     force_path_style: z.boolean().optional(),
     activate: z.boolean().optional(),
   })
@@ -101,7 +101,7 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
           ? { publicBaseUrl: data.public_base_url?.trim() || null }
           : {}),
         ...(data.path_prefix !== undefined ? { pathPrefix: data.path_prefix.trim() || "media" } : {}),
-        ...(data.mirror_zen_results !== undefined ? { mirrorZenResults: data.mirror_zen_results } : {}),
+        ...(data.mirror_results !== undefined ? { mirrorResults: data.mirror_results } : {}),
         ...(data.force_path_style !== undefined ? { forcePathStyle: data.force_path_style } : {}),
         ...(data.activate === true ? { isActive: true } : {}),
         ...(data.activate === false ? { isActive: false } : {}),

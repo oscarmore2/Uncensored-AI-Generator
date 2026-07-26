@@ -31,12 +31,12 @@ interface Stats {
     revenue_nowpayments: number;
     revenue_demo: number;
   }[];
-  zen: {
+  provider_cost: {
     month_credits: number;
-    estimated_zen_credits: number;
-    ratio: number;
-    monthly_budget: number;
+    month_cost_usd: number;
+    monthly_budget_usd: number;
     usage_ratio: number | null;
+    gross_margin_percent: number | null;
   };
   telegram_configured: boolean;
 }
@@ -117,8 +117,8 @@ export default function AdminDashboardPage() {
     { label: "公共库已上架", value: t.public_works, sub: "游客可见" },
   ];
 
-  const zen = stats.zen;
-  const usagePct = zen.usage_ratio !== null ? Math.round(zen.usage_ratio * 100) : null;
+  const cost = stats.provider_cost;
+  const usagePct = cost.usage_ratio !== null ? Math.round(cost.usage_ratio * 100) : null;
 
   const methodEntries = Object.entries(stats.revenue_by_method).sort((a, b) => b[1].cents - a[1].cents);
 
@@ -243,19 +243,22 @@ export default function AdminDashboardPage() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="glass rounded-3xl p-5">
           <div className="flex items-center justify-between mb-3">
-            <div className="text-sm font-semibold">Zen 消耗估算（本月）</div>
+            <div className="text-sm font-semibold">WaveSpeed 成本（本月）</div>
             {usagePct !== null && usagePct >= 80 && (
               <span className="text-xs px-2 py-0.5 bg-red-500/20 text-red-300 rounded-full">预算告警</span>
             )}
           </div>
-          <div className="text-3xl font-bold font-mono">{zen.estimated_zen_credits}</div>
+          <div className="text-3xl font-bold font-mono">${cost.month_cost_usd.toFixed(2)}</div>
           <div className="text-xs text-gray-400 mt-1">
-            估算 Zen credits（站内消耗 {zen.month_credits} 点 × 系数 {zen.ratio}）
+            上游实际计费；站内消耗 {cost.month_credits} 点
+            {cost.gross_margin_percent !== null && (
+              <span className="ml-2 text-emerald-400">毛利 {cost.gross_margin_percent}%</span>
+            )}
           </div>
-          {zen.monthly_budget > 0 ? (
+          {cost.monthly_budget_usd > 0 ? (
             <div className="mt-4">
               <div className="flex justify-between text-xs text-gray-400 mb-1">
-                <span>月度预算 {zen.monthly_budget}</span>
+                <span>月度预算 ${cost.monthly_budget_usd.toFixed(2)}</span>
                 <span>{usagePct}%</span>
               </div>
               <div className="h-2 bg-white/10 rounded-full overflow-hidden">
@@ -266,7 +269,7 @@ export default function AdminDashboardPage() {
               </div>
             </div>
           ) : (
-            <p className="text-[10px] text-gray-500 mt-3">未设置 ZEN_MONTHLY_BUDGET，不做预算对照</p>
+            <p className="text-[10px] text-gray-500 mt-3">未设置 WAVESPEED_MONTHLY_BUDGET_USD，不做预算对照</p>
           )}
         </div>
 
@@ -275,7 +278,7 @@ export default function AdminDashboardPage() {
           {stats.telegram_configured ? (
             <p className="text-sm text-emerald-300">
               <i className="fas fa-check-circle mr-2" />
-              已配置：充值成功、新用户注册、生成失败退款、Zen 预算告警会推送到指定会话
+              已配置：充值成功、新用户注册、生成失败退款、成本预算告警会推送到指定会话
             </p>
           ) : (
             <div className="text-sm text-gray-400">

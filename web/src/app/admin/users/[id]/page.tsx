@@ -370,7 +370,7 @@ export default function AdminUserDetailPage() {
   );
 }
 
-type AdminMediaKind = "zen" | "wavespeed" | "upload";
+type AdminMediaKind = "main" | "plaything" | "upload";
 
 interface AdminMediaItem {
   id: number;
@@ -397,13 +397,13 @@ interface AdminMediaResponse {
 }
 
 const MEDIA_TABS: Array<{ kind: AdminMediaKind; label: string }> = [
-  { kind: "zen", label: "基础创作" },
-  { kind: "wavespeed", label: "玩物生成" },
+  { kind: "main", label: "创作中心" },
+  { kind: "plaything", label: "玩物专区" },
   { kind: "upload", label: "上传素材" },
 ];
 
 function AdminUserMediaSection({ userId }: { userId: number }) {
-  const [kind, setKind] = useState<AdminMediaKind>("zen");
+  const [kind, setKind] = useState<AdminMediaKind>("main");
   const [page, setPage] = useState(1);
   const [data, setData] = useState<AdminMediaResponse | null>(null);
   const [error, setError] = useState("");

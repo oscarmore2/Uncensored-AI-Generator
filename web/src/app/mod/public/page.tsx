@@ -29,7 +29,7 @@ const EMPTY_FORM = {
   prompt: "",
   mode: "txt2img",
   negative_prompt: "",
-  source_zen_job_id: "",
+  source_job_id: "",
   title: "",
   is_adult: false,
 };
@@ -114,7 +114,7 @@ export default function ModPublicPage() {
           prompt: form.prompt.trim(),
           mode: form.mode,
           negative_prompt: form.negative_prompt.trim() || undefined,
-          source_zen_job_id: form.source_zen_job_id.trim() || undefined,
+          source_job_id: form.source_job_id.trim() || undefined,
           title: form.title.trim() || undefined,
           is_adult: form.is_adult,
         }),
@@ -131,7 +131,7 @@ export default function ModPublicPage() {
       <div className="flex items-end justify-between mb-6">
         <div>
           <h1 className="text-3xl font-bold tracking-tighter mb-1">公共库</h1>
-          <p className="text-gray-400 text-sm">上下架、排序、删除；支持 Zen/外部内容采集导入</p>
+          <p className="text-gray-400 text-sm">上下架、排序、删除；支持外部内容采集导入</p>
         </div>
         <button
           onClick={() => setFormOpen((v) => !v)}
@@ -158,7 +158,7 @@ export default function ModPublicPage() {
               />
             </div>
             <div>
-              <label className="text-xs text-gray-400 block mb-1">媒体 URL（与 Zen Job ID 二选一）</label>
+              <label className="text-xs text-gray-400 block mb-1">媒体 URL（必填）</label>
               <input
                 value={form.media_url}
                 onChange={(e) => setForm({ ...form, media_url: e.target.value })}
@@ -175,10 +175,10 @@ export default function ModPublicPage() {
               标记为 18+ 成人作品
             </label>
             <div>
-              <label className="text-xs text-gray-400 block mb-1">Zen Job ID（自动拉取结果 URL）</label>
+              <label className="text-xs text-gray-400 block mb-1">上游任务 ID（仅作溯源备注）</label>
               <input
-                value={form.source_zen_job_id}
-                onChange={(e) => setForm({ ...form, source_zen_job_id: e.target.value })}
+                value={form.source_job_id}
+                onChange={(e) => setForm({ ...form, source_job_id: e.target.value })}
                 className="w-full bg-[#111] border border-white/10 rounded-2xl px-3 py-2.5 text-sm outline-none"
               />
             </div>

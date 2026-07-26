@@ -33,7 +33,7 @@ export type CleanupResult = {
   deleted: number;
   failed: number;
   uploads: number;
-  zenGenerations: number;
+  mainGenerations: number;
   waveSpeedGenerations: number;
 };
 
@@ -56,7 +56,7 @@ export async function runMediaCleanup(opts?: {
   let deleted = 0;
   let failed = 0;
   let uploadsDeleted = 0;
-  let zenDeleted = 0;
+  let mainDeleted = 0;
   let waveDeleted = 0;
   const errors: Array<{ type: string; id: number; error: string }> = [];
 
@@ -143,7 +143,7 @@ export async function runMediaCleanup(opts?: {
 
     for (const generation of generations) {
       if (dryRun) {
-        zenDeleted++;
+        mainDeleted++;
         deleted++;
         continue;
       }
@@ -155,12 +155,12 @@ export async function runMediaCleanup(opts?: {
           where: { id: generation.id },
           data: { resultUrls: null, mediaDeletedAt: now },
         });
-        zenDeleted++;
+        mainDeleted++;
         deleted++;
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
         failed++;
-        errors.push({ type: "zen", id: generation.id, error: message.slice(0, 200) });
+        errors.push({ type: "main", id: generation.id, error: message.slice(0, 200) });
       }
     }
 
@@ -183,7 +183,7 @@ export async function runMediaCleanup(opts?: {
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
         failed++;
-        errors.push({ type: "wavespeed", id: generation.id, error: message.slice(0, 200) });
+        errors.push({ type: "plaything", id: generation.id, error: message.slice(0, 200) });
       }
     }
 
@@ -194,7 +194,7 @@ export async function runMediaCleanup(opts?: {
       deleted,
       failed,
       uploads: uploadsDeleted,
-      zenGenerations: zenDeleted,
+      mainGenerations: mainDeleted,
       waveSpeedGenerations: waveDeleted,
     };
     await db.mediaCleanupRun.update({

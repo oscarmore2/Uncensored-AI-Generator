@@ -2,7 +2,7 @@ import "server-only";
 import { db } from "./db";
 
 export const SIGNUP_INITIAL_CREDITS_KEY = "signup_initial_credits";
-export const DEFAULT_SIGNUP_INITIAL_CREDITS = 20;
+export const DEFAULT_SIGNUP_INITIAL_CREDITS = 200;
 export const MAX_SIGNUP_INITIAL_CREDITS = 100_000;
 
 export async function getSignupInitialCredits(): Promise<number> {

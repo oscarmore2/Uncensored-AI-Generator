@@ -14,7 +14,7 @@ interface OssAcc {
   secret_key_mask: string;
   public_base_url: string | null;
   path_prefix: string;
-  mirror_zen_results: boolean;
+  mirror_results: boolean;
   force_path_style: boolean;
   is_active: boolean;
 }
@@ -26,7 +26,7 @@ interface ListResp {
     endpoint: string | null;
     bucket: string | null;
     in_use: boolean;
-    mirror_zen_results: boolean;
+    mirror_results: boolean;
   };
 }
 
@@ -47,7 +47,7 @@ const EMPTY = {
   secret_access_key: "",
   public_base_url: "",
   path_prefix: "media",
-  mirror_zen_results: true,
+  mirror_results: true,
   force_path_style: false,
   activate: true,
 };
@@ -112,7 +112,7 @@ export default function AdminOssPage() {
         <div>
           <h1 className="text-3xl font-bold tracking-tighter mb-1">对象存储 OSS</h1>
           <p className="text-gray-400 text-sm">
-            S3 兼容存储（阿里云 OSS / AWS / MinIO / R2）；生成结果可自动从 Zen URL 镜像到自有桶
+            S3 兼容存储（阿里云 OSS / AWS / MinIO / R2）；生成结果可自动从上游 URL 镜像到自有桶
           </p>
         </div>
         <button
@@ -244,10 +244,10 @@ export default function AdminOssPage() {
             <label className="flex items-center gap-2 text-sm pt-6">
               <input
                 type="checkbox"
-                checked={form.mirror_zen_results}
-                onChange={(e) => setForm({ ...form, mirror_zen_results: e.target.checked })}
+                checked={form.mirror_results}
+                onChange={(e) => setForm({ ...form, mirror_results: e.target.checked })}
               />
-              自动镜像 Zen 生成结果
+              自动镜像结果 生成结果
             </label>
             <label className="flex items-center gap-2 text-sm">
               <input
@@ -300,7 +300,7 @@ export default function AdminOssPage() {
                   <div>
                     前缀 {a.path_prefix}
                     {a.public_base_url ? ` · CDN ${a.public_base_url}` : ""}
-                    {a.mirror_zen_results ? " · 镜像 Zen" : " · 不镜像"}
+                    {a.mirror_results ? " · 镜像结果" : " · 不镜像"}
                   </div>
                 </div>
               </div>

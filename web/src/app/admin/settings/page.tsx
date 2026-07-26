@@ -9,11 +9,9 @@ interface Settings {
   signup_initial_credits: number;
   vip_price_cents: number;
   credit_packages: Record<string, number>;
-  zen: {
+  wavespeed: {
     base_url: string;
     env_key_configured: boolean;
-    credit_ratio: number;
-    monthly_budget: number;
     db_accounts: number;
     active_account: { id: number; label: string } | null;
   };
@@ -45,7 +43,7 @@ interface Settings {
     active_vip_plans: number;
   };
   telegram_configured: boolean;
-  webhooks: { stripe: string; nowpayments: string; zen: string };
+  webhooks: { stripe: string; nowpayments: string };
 }
 
 export default function AdminSettingsPage() {
@@ -108,16 +106,14 @@ export default function AdminSettingsPage() {
     },
     { label: "Telegram", value: settings.telegram_configured ? "已配置" : "未配置", warn: !settings.telegram_configured },
     {
-      label: "Zen 激活账户",
-      value: settings.zen.active_account
-        ? `${settings.zen.active_account.label} (#${settings.zen.active_account.id})`
-        : settings.zen.env_key_configured
+      label: "WaveSpeed 激活账户",
+      value: settings.wavespeed.active_account
+        ? `${settings.wavespeed.active_account.label} (#${settings.wavespeed.active_account.id})`
+        : settings.wavespeed.env_key_configured
           ? "env 兜底"
           : "未配置",
     },
-    { label: "Zen 账户数", value: String(settings.zen.db_accounts) },
-    { label: "Zen 换算系数", value: String(settings.zen.credit_ratio) },
-    { label: "Zen 月度预算", value: settings.zen.monthly_budget > 0 ? String(settings.zen.monthly_budget) : "未设置" },
+    { label: "WaveSpeed 账户数", value: String(settings.wavespeed.db_accounts) },
     {
       label: "Stripe 激活账户",
       value: settings.stripe.active_account
@@ -206,10 +202,6 @@ export default function AdminSettingsPage() {
           <div>
             <span className="text-gray-500">NOWPayments: </span>
             <span className="text-gray-300">{settings.webhooks.nowpayments}</span>
-          </div>
-          <div>
-            <span className="text-gray-500">Zen (预留): </span>
-            <span className="text-gray-300">{settings.webhooks.zen}</span>
           </div>
         </div>
       </div>

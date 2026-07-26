@@ -55,7 +55,7 @@ export async function DELETE(_req: Request, ctx: { params: Promise<{ id: string 
     : null;
   const restoredExpiry = sourceGeneration
     ? await generatedMediaExpiry(
-        "zen",
+        "main",
         sourceGeneration.ownerVipAtCreation,
         sourceGeneration.createdAt
       )

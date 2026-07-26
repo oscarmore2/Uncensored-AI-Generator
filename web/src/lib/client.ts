@@ -64,30 +64,30 @@ export async function api<T>(path: string, init?: RequestInit): Promise<T> {
   return data as T;
 }
 
-export const MODES: Array<{ key: string; label: string; icon: string }> = [
-  { key: "txt2img", label: "文字生图", icon: "fa-font" },
-  { key: "txt2vid", label: "文字生视频", icon: "fa-video" },
-  { key: "img2img", label: "图片生图", icon: "fa-image" },
-  { key: "img2vid", label: "图片生视频", icon: "fa-film" },
-];
+export { MODE_LIST as MODES } from "./generation-modes";
+export type { GenerationMode, GenerationTier } from "./generation-modes";
 
+/** 生成端可见的档位信息——刻意不含任何上游模型字段 */
 export type CatalogProduct = {
   id: number;
   mode: string;
-  zen_tool: string;
-  zen_model: string;
-  variant_key: string;
+  tier: string;
+  spicy: boolean;
   label: string;
+  description: string;
   credit_cost: number;
   batch_four_multiplier: number;
+  unit_seconds: number;
+  requires_vip: boolean;
   is_default: boolean;
+  sort_order: number;
 };
 
 export type CatalogMapping = {
   id?: number;
   mode: string;
   ui_key: string;
-  zen_path: string;
+  provider_path: string;
   options: Array<{ value: string; label: string }>;
   enabled: boolean;
 };
@@ -120,6 +120,7 @@ export type CatalogResponse = {
   param_mappings: CatalogMapping[];
   credit_packages: CatalogPackage[];
   vip_plans: CatalogVipPlan[];
+  vip_active: boolean;
   user_vip: {
     is_active: boolean;
     tier: CatalogVipPlan["tier"] | null;
@@ -127,21 +128,28 @@ export type CatalogResponse = {
   };
 };
 
-/** 前端本地估算扣点（与服务端 quote 规则对齐） */
+/** 前端本地估算扣点（与服务端 resolveGenerationQuote 规则保持一致） */
 export function estimateCost(opts: {
   product: CatalogProduct | undefined;
   batch: number;
-  mode: string;
+  durationSeconds?: number;
   discountBps?: number;
 }): number {
   if (!opts.product) return 0;
-  let cost = opts.product.credit_cost;
-  if (opts.mode !== "undress" && opts.batch === 4) {
-    cost = Math.floor(cost * opts.product.batch_four_multiplier);
+  const p = opts.product;
+
+  const units =
+    p.unit_seconds > 0
+      ? Math.max(1, Math.ceil((opts.durationSeconds || p.unit_seconds) / p.unit_seconds))
+      : 1;
+  let cost = p.credit_cost * units;
+
+  if (p.unit_seconds === 0) {
+    if (opts.batch === 4) cost = Math.floor(cost * p.batch_four_multiplier);
+    else if (opts.batch === 2) cost = cost * 2;
   }
+
   const bps = opts.discountBps ?? 0;
-  if (bps > 0) {
-    cost = Math.max(1, Math.floor((cost * (10000 - bps)) / 10000));
-  }
-  return cost;
+  if (bps > 0) cost = Math.max(1, Math.floor((cost * (10000 - bps)) / 10000));
+  return Math.max(1, cost);
 }

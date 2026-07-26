@@ -3,16 +3,16 @@ import { db } from "./db";
 
 export type MediaPolicyKey = {
   mediaType: "upload" | "generated";
-  channel: "all" | "zen" | "wavespeed";
+  channel: "all" | "main" | "plaything";
   audience: "all" | "non_vip" | "vip";
 };
 
 export const DEFAULT_MEDIA_POLICIES: Array<MediaPolicyKey & { retentionDays: number | null }> = [
   { mediaType: "upload", channel: "all", audience: "all", retentionDays: 7 },
-  { mediaType: "generated", channel: "zen", audience: "non_vip", retentionDays: 7 },
-  { mediaType: "generated", channel: "zen", audience: "vip", retentionDays: null },
-  { mediaType: "generated", channel: "wavespeed", audience: "non_vip", retentionDays: 7 },
-  { mediaType: "generated", channel: "wavespeed", audience: "vip", retentionDays: null },
+  { mediaType: "generated", channel: "main", audience: "non_vip", retentionDays: 7 },
+  { mediaType: "generated", channel: "main", audience: "vip", retentionDays: null },
+  { mediaType: "generated", channel: "plaything", audience: "non_vip", retentionDays: 7 },
+  { mediaType: "generated", channel: "plaything", audience: "vip", retentionDays: null },
 ];
 
 export async function ensureMediaCleanupPolicies() {
@@ -48,7 +48,7 @@ export function expiresAtFromDays(createdAt: Date, retentionDays: number | null)
 }
 
 export async function generatedMediaExpiry(
-  channel: "zen" | "wavespeed",
+  channel: "main" | "plaything",
   ownerVipAtCreation: boolean,
   createdAt = new Date()
 ) {
@@ -76,9 +76,9 @@ export async function uploadMediaExpiry(createdAt = new Date()) {
 export async function backfillMissingMediaExpirations(): Promise<number> {
   await ensureMediaCleanupPolicies();
   const now = new Date();
-  const [zenNonVipDays, waveNonVipDays, uploadDays] = await Promise.all([
-    retentionDaysFor({ mediaType: "generated", channel: "zen", audience: "non_vip" }),
-    retentionDaysFor({ mediaType: "generated", channel: "wavespeed", audience: "non_vip" }),
+  const [mainNonVipDays, playthingNonVipDays, uploadDays] = await Promise.all([
+    retentionDaysFor({ mediaType: "generated", channel: "main", audience: "non_vip" }),
+    retentionDaysFor({ mediaType: "generated", channel: "plaything", audience: "non_vip" }),
     retentionDaysFor({ mediaType: "upload", channel: "all", audience: "all" }),
   ]);
   const [generations, waveGenerations, uploads] = await Promise.all([
@@ -120,7 +120,7 @@ export async function backfillMissingMediaExpirations(): Promise<number> {
         data: {
           ownerVipAtCreation: vip,
           retentionAssigned: true,
-          mediaExpiresAt: expiresAtFromDays(item.createdAt, vip ? null : zenNonVipDays),
+          mediaExpiresAt: expiresAtFromDays(item.createdAt, vip ? null : mainNonVipDays),
         },
       });
     }),
@@ -131,7 +131,7 @@ export async function backfillMissingMediaExpirations(): Promise<number> {
         data: {
           ownerVipAtCreation: vip,
           retentionAssigned: true,
-          mediaExpiresAt: expiresAtFromDays(item.createdAt, vip ? null : waveNonVipDays),
+          mediaExpiresAt: expiresAtFromDays(item.createdAt, vip ? null : playthingNonVipDays),
         },
       });
     }),
@@ -185,7 +185,7 @@ export async function recalculateMediaExpirations(): Promise<number> {
           retentionAssigned: true,
           mediaExpiresAt: expiresAtFromDays(
             item.createdAt,
-            policyMap.get(`generated:zen:${item.ownerVipAtCreation ? "vip" : "non_vip"}`) ?? null
+            policyMap.get(`generated:main:${item.ownerVipAtCreation ? "vip" : "non_vip"}`) ?? null
           ),
         },
       })
@@ -197,7 +197,7 @@ export async function recalculateMediaExpirations(): Promise<number> {
           retentionAssigned: true,
           mediaExpiresAt: expiresAtFromDays(
             item.createdAt,
-            policyMap.get(`generated:wavespeed:${item.ownerVipAtCreation ? "vip" : "non_vip"}`) ?? null
+            policyMap.get(`generated:plaything:${item.ownerVipAtCreation ? "vip" : "non_vip"}`) ?? null
           ),
         },
       })

@@ -16,7 +16,7 @@ function accountOut(a: {
   secretAccessKeyEnc: string;
   publicBaseUrl: string | null;
   pathPrefix: string;
-  mirrorZenResults: boolean;
+  mirrorResults: boolean;
   forcePathStyle: boolean;
   isActive: boolean;
   createdAt: Date;
@@ -39,7 +39,7 @@ function accountOut(a: {
     secret_key_mask: secretMask,
     public_base_url: a.publicBaseUrl,
     path_prefix: a.pathPrefix,
-    mirror_zen_results: a.mirrorZenResults,
+    mirror_results: a.mirrorResults,
     force_path_style: a.forcePathStyle,
     is_active: a.isActive,
     created_at: a.createdAt,
@@ -68,7 +68,7 @@ export async function GET() {
       access_key_id: env.OSS_ACCESS_KEY_ID || null,
       secret_key_mask: env.OSS_SECRET_ACCESS_KEY ? maskSecret(env.OSS_SECRET_ACCESS_KEY) : null,
       public_base_url: env.OSS_PUBLIC_BASE_URL || null,
-      mirror_zen_results: env.OSS_MIRROR_ZEN_RESULTS,
+      mirror_results: env.OSS_MIRROR_RESULTS,
       in_use: !activeFromDb && envConfigured,
     },
   });
@@ -84,7 +84,7 @@ const createSchema = z.object({
   secret_access_key: z.string().min(1).max(300),
   public_base_url: z.string().url().optional().nullable(),
   path_prefix: z.string().max(128).optional().default("media"),
-  mirror_zen_results: z.boolean().optional().default(true),
+  mirror_results: z.boolean().optional().default(true),
   force_path_style: z.boolean().optional(),
   activate: z.boolean().optional().default(false),
 });
@@ -119,7 +119,7 @@ export async function POST(req: Request) {
         secretAccessKeyEnc: encryptSecret(data.secret_access_key.trim()),
         publicBaseUrl: data.public_base_url?.trim() || null,
         pathPrefix: data.path_prefix?.trim() || "media",
-        mirrorZenResults: data.mirror_zen_results,
+        mirrorResults: data.mirror_results,
         forcePathStyle,
         isActive: data.activate,
       },

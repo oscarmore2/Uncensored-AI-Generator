@@ -23,6 +23,7 @@ interface CatalogModel {
   base_price_usd: number;
   last_unit_price_usd: number | null;
   thumbnail_url: string | null;
+  tags: string[];
   synced_at: string;
   product: ProductInfo | null;
 }
@@ -33,8 +34,42 @@ interface ListResp {
   page_size: number;
   last_synced_at: string | null;
   types: string[];
+  tags: string[];
   models: CatalogModel[];
 }
+
+
+const MAX_TAGS = 12;
+const SUGGESTED = [
+  "文生图",
+  "图生图",
+  "图片编辑",
+  "文生视频",
+  "图生视频",
+  "低档",
+  "中档",
+  "高档",
+  "Spicy",
+  "快速",
+  "高画质",
+  "低成本",
+];
+
+function splitTags(raw: string): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const part of raw.split(/[,，]/)) {
+    const tag = part.trim().slice(0, 24);
+    if (!tag) continue;
+    const key = tag.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(tag);
+    if (out.length >= MAX_TAGS) break;
+  }
+  return out;
+}
+
 
 export default function AdminWaveSpeedModelsPage() {
   const [data, setData] = useState<ListResp | null>(null);
@@ -42,6 +77,9 @@ export default function AdminWaveSpeedModelsPage() {
   const [msg, setMsg] = useState("");
   const [q, setQ] = useState("");
   const [type, setType] = useState("");
+  const [tag, setTag] = useState("");
+  const [tagEditFor, setTagEditFor] = useState<CatalogModel | null>(null);
+  const [tagDraft, setTagDraft] = useState("");
   const [shelved, setShelved] = useState("");
   const [adult, setAdult] = useState(false);
   const [page, setPage] = useState(1);
@@ -51,6 +89,7 @@ export default function AdminWaveSpeedModelsPage() {
       const params = new URLSearchParams();
       if (q.trim()) params.set("q", q.trim());
       if (type) params.set("type", type);
+      if (tag) params.set("tag", tag);
       if (shelved) params.set("shelved", shelved);
       if (adult) params.set("adult", "1");
       params.set("page", String(page));
@@ -59,7 +98,7 @@ export default function AdminWaveSpeedModelsPage() {
     } catch (e) {
       setMsg(e instanceof ApiError ? e.message : "加载失败");
     }
-  }, [q, type, shelved, adult, page]);
+  }, [q, type, tag, shelved, adult, page]);
 
   useEffect(() => {
     void load();
@@ -153,6 +192,21 @@ export default function AdminWaveSpeedModelsPage() {
           ))}
         </select>
         <select
+          value={tag}
+          onChange={(e) => {
+            setPage(1);
+            setTag(e.target.value);
+          }}
+          className="bg-[#111] border border-white/10 rounded-xl px-3 py-2 text-sm"
+        >
+          <option value="">全部标签</option>
+          {(data?.tags ?? []).map((t) => (
+            <option key={t} value={t}>
+              {t}
+            </option>
+          ))}
+        </select>
+        <select
           value={shelved}
           onChange={(e) => {
             setPage(1);
@@ -226,6 +280,32 @@ export default function AdminWaveSpeedModelsPage() {
                     ) : (
                       <span className="text-gray-500">未上架</span>
                     )}
+                  </div>
+                  <div className="flex flex-wrap gap-1 mt-2 items-center">
+                    {m.tags.map((t) => (
+                      <button
+                        key={t}
+                        type="button"
+                        title="按此标签筛选"
+                        onClick={() => {
+                          setPage(1);
+                          setTag(t);
+                        }}
+                        className="px-1.5 py-0.5 text-[10px] rounded bg-sky-500/15 text-sky-300 border border-sky-500/25 hover:bg-sky-500/25"
+                      >
+                        {t}
+                      </button>
+                    ))}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setTagEditFor(m);
+                        setTagDraft(m.tags.join(", "));
+                      }}
+                      className="px-1.5 py-0.5 text-[10px] rounded border border-white/15 text-gray-400 hover:text-gray-200"
+                    >
+                      {m.tags.length ? "编辑标签" : "+ 标签"}
+                    </button>
                   </div>
                 </div>
                 <div className="flex flex-wrap gap-1.5 mt-auto">
@@ -389,6 +469,77 @@ export default function AdminWaveSpeedModelsPage() {
           >
             下一页
           </button>
+        </div>
+      )}
+
+      {tagEditFor && (
+        <div
+          className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4"
+          onClick={() => setTagEditFor(null)}
+        >
+          <div
+            className="glass rounded-3xl p-5 w-full max-w-lg"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="mb-1 font-semibold">编辑类型标签</div>
+            <div className="text-[11px] text-gray-500 font-mono mb-3 break-all">
+              {tagEditFor.model_id}
+            </div>
+            <p className="text-xs text-gray-400 mb-2">
+              逗号分隔，最多 {MAX_TAGS} 个。标签只保存在本站，
+              <b>不会被「同步全库」覆盖</b>；创作中心的档位绑定可按标签筛选。
+            </p>
+            <input
+              autoFocus
+              value={tagDraft}
+              onChange={(e) => setTagDraft(e.target.value)}
+              placeholder="例如：文生视频, 高档, Spicy"
+              className="w-full bg-[#111] border border-white/10 rounded-xl px-3 py-2 text-sm mb-3"
+            />
+            <div className="flex flex-wrap gap-1.5 mb-4">
+              {SUGGESTED.map((t) => (
+                <button
+                  key={t}
+                  type="button"
+                  onClick={() => {
+                    const current = splitTags(tagDraft);
+                    if (current.some((x) => x.toLowerCase() === t.toLowerCase())) return;
+                    setTagDraft([...current, t].join(", "));
+                  }}
+                  className="px-2 py-0.5 text-[11px] rounded-full border border-white/15 text-gray-300 hover:border-sky-500/50 hover:text-sky-300"
+                >
+                  + {t}
+                </button>
+              ))}
+            </div>
+            <div className="flex justify-end gap-2">
+              <button
+                className="px-3 py-1.5 text-xs border border-white/10 rounded-xl"
+                onClick={() => setTagEditFor(null)}
+              >
+                取消
+              </button>
+              <button
+                disabled={busy}
+                className="px-4 py-1.5 text-xs font-semibold bg-rose-600 hover:bg-rose-500 rounded-xl disabled:opacity-50"
+                onClick={() => {
+                  const modelId = tagEditFor.model_id;
+                  const tags = splitTags(tagDraft);
+                  setTagEditFor(null);
+                  void action(
+                    () =>
+                      api(patchUrl(modelId), {
+                        method: "PATCH",
+                        body: JSON.stringify({ tags }),
+                      }),
+                    "标签已保存"
+                  );
+                }}
+              >
+                保存
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

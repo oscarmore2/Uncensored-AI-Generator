@@ -145,6 +145,7 @@ export async function syncWaveSpeedCatalog(): Promise<{
     const thumbnailUrl = extractThumbnailUrl(m);
     const apiSchema = m.api_schema != null ? JSON.stringify(m.api_schema) : null;
 
+    // update 里刻意不含 tags：手工贴的标签必须扛过每一次目录同步
     await db.waveSpeedCatalogModel.upsert({
       where: { modelId },
       create: {
@@ -155,6 +156,7 @@ export async function syncWaveSpeedCatalog(): Promise<{
         basePriceUsd,
         thumbnailUrl,
         apiSchema,
+        tags: "[]",
         syncedAt: now,
       },
       update: {
@@ -171,6 +173,7 @@ export async function syncWaveSpeedCatalog(): Promise<{
   }
 
   const seeded = await ensureDefaultPlaythingProducts();
+  // 生成端档位的桥接模型一律由管理端手工指定，这里不做自动绑定
   return { upserted, total: remote.length, seeded };
 }
 
@@ -262,13 +265,17 @@ function normalizeOutputs(raw: unknown): string[] {
   return urls;
 }
 
-function mapWsStatus(status: string): "pending" | "processing" | "succeeded" | "failed" {
+export function mapWaveSpeedStatus(
+  status: string
+): "pending" | "processing" | "succeeded" | "failed" {
   const s = status.toLowerCase();
   if (["completed", "succeeded", "success", "done"].includes(s)) return "succeeded";
   if (["failed", "error", "cancelled", "canceled"].includes(s)) return "failed";
   if (["created", "queued", "pending"].includes(s)) return "pending";
   return "processing";
 }
+
+const mapWsStatus = mapWaveSpeedStatus;
 
 /** 从 apiSchema / override 解析可提交的默认 inputs，合并用户 params */
 export function buildWaveSpeedInputs(

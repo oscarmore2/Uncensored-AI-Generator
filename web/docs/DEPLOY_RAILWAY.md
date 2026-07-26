@@ -20,7 +20,7 @@
 | 数据库 | Railway PostgreSQL | 通过 `DATABASE_URL` 注入 |
 | 媒体存储 | 外部对象存储（R2 / S3 等） | 可选；env 或 `/admin/oss` 配置 |
 | 日志 | Railway Logs | 平台内置 |
-| 第三方 API | Zen / Stripe / NOWPayments / Telegram | Webhook 回调至公网 `APP_URL` |
+| 第三方 API | WaveSpeed / Stripe / NOWPayments / Telegram | Webhook 回调至公网 `APP_URL` |
 
 无需单独部署 Serverless / 函数计算：支付与可选 Webhook 由 Next.js API Routes 在同一服务内处理。
 
@@ -44,7 +44,7 @@
 openssl rand -hex 32   # AUTH_SECRET，至少 32 字符
 ```
 
-- 按需准备：Zen Creator、Stripe、NOWPayments、对象存储、Telegram Bot
+- 按需准备：WaveSpeed、Stripe、NOWPayments、对象存储、Telegram Bot
 
 ## 1. 创建 Railway 项目
 
@@ -72,6 +72,16 @@ Web 服务 **Settings → Deploy**：
 
 `postinstall` 已包含 `prisma generate`。Release Command 在每次部署前同步表结构。
 
+`db:deploy` = `node scripts/migrate-wavespeed-bridge.mjs && prisma db push`。
+前置脚本用原生 SQL 完成 `prisma db push` 拒绝执行的破坏性变更，因此**不需要** `--accept-data-loss`：
+
+- 删除 `ZenAccount` 表、`Generation.zenAccountId` / `zenCreditsCost` 列
+- 重建旧结构的 `GenerationProduct`（档位与价格会在应用启动时按蓝图重新播种）
+- 媒体清理渠道标识 `zen` / `wavespeed` → `main` / `plaything`
+- 点数细分改制：存量余额、VIP 赠点、注册送点一次性 ×10（单点美元价同步降为 1/10，购买力不变）
+
+脚本全部语句带 `IF EXISTS` 并用 `AppSetting` 打标，重复执行安全；新库与已迁移库都会跳过。
+
 Railway 会注入 `PORT`，`npm start` 会自动监听。
 
 ## 3. 环境变量
@@ -91,7 +101,7 @@ Railway 会注入 `PORT`，`npm start` 会自动监听。
 
 | 变量 | 说明 |
 |------|------|
-| `ZEN_API_KEY` | AI 生成 API（或在 `/admin/zen` 配置多账户） |
+| `WAVESPEED_API_KEY` | 唯一上游生成 API（或在 `/admin/wavespeed` 配置多账户） |
 | `STRIPE_SECRET_KEY` / `STRIPE_WEBHOOK_SECRET` | 或在 `/admin/stripe` 配置 |
 | `NOWPAYMENTS_API_KEY` / `NOWPAYMENTS_IPN_SECRET` | 可选兜底；推荐部署后在 `/admin/nowpayments` 保存数据库配置 |
 | `RESEND_API_KEY` / `EMAIL_FROM` | 邮箱注册验证；`EMAIL_FROM` 必须来自 Resend 已验证域名 |
@@ -105,7 +115,7 @@ Railway 会注入 `PORT`，`npm start` 会自动监听。
 | `OSS_ENDPOINT` / `OSS_REGION` / `OSS_BUCKET` | S3 兼容端点与桶 |
 | `OSS_ACCESS_KEY_ID` / `OSS_SECRET_ACCESS_KEY` | 访问密钥 |
 | `OSS_PUBLIC_BASE_URL` | 对外 CDN 域名 |
-| `OSS_MIRROR_ZEN_RESULTS` | 是否镜像生成结果到桶（默认 `true`） |
+| `OSS_MIRROR_RESULTS` | 是否镜像生成结果到桶（默认 `true`；旧名 `OSS_MIRROR_ZEN_RESULTS` 仍兼容） |
 | `MEDIA_CLEANUP_SECRET` | 自动媒体清理内部接口密钥，使用 `openssl rand -hex 32` 生成 |
 | `MEDIA_CLEANUP_BATCH_SIZE` | 每次每类清理数量（默认 `100`，最大 `500`） |
 
@@ -114,8 +124,7 @@ Railway 会注入 `PORT`，`npm start` 会自动监听。
 | 变量 | 说明 |
 |------|------|
 | `TELEGRAM_BOT_TOKEN` / `TELEGRAM_CHAT_ID` | 充值、注册、失败退款等通知 |
-| `ZEN_CREDIT_RATIO` / `ZEN_MONTHLY_BUDGET` | 管理端成本估算 |
-| `ZEN_WEBHOOK_SECRET` | 预留 Zen 回调校验 |
+| `WAVESPEED_MONTHLY_BUDGET_USD` | 上游月度成本预算（美元），达 80% 推 Telegram |
 | `GOOGLE_SITE_VERIFICATION` | Google Search Console HTML meta 验证值，仅填写 `content` 内容 |
 | `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | Google 登录；不配置则前端自动隐藏入口 |
 | `FACEBOOK_APP_ID` / `FACEBOOK_APP_SECRET` | Facebook 登录；不配置则前端自动隐藏入口 |
@@ -168,7 +177,6 @@ Facebook 不会仅凭同邮箱自动合并既有账户，以避免账户接管�
 |------|----------|----------|
 | Stripe | `{APP_URL}/api/payments/webhook` | `checkout.session.completed`、`customer.subscription.deleted` |
 | NOWPayments | `{APP_URL}/api/payments/crypto/webhook` | IPN 支付状态回调 |
-| Zen（预留） | `{APP_URL}/api/zen/webhook` | 若后续自建中转 |
 
 签名密钥写入 env 或管理端对应账户配置。可在 `/admin/webhooks` 查看投递记录。
 
@@ -179,7 +187,7 @@ Facebook 不会仅凭同邮箱自动合并既有账户，以避免账户接管�
 - [ ] 邮箱注册可收到验证邮件，链接仅可使用一次，验证后自动登录
 - [ ] Google / Facebook 登录回调与生产域名完全一致
 - [ ] `/admin/settings` 显示 `DEMO_MODE=false`
-- [ ] 配置 Zen 后可提交生成任务
+- [ ] 配置 WaveSpeed 并在 `/admin/wavespeed/models` 同步模型库后，`/admin/pricing` 26 个档位应全部绑定；再提交生成任务
 - [ ] Stripe（及 NOWPayments，若启用）测试支付 + Webhook 入账
 - [ ] 可选：OSS 镜像、Telegram 通知、`/admin/audit` 有记录
 - [ ] `robots.txt`、`sitemap.xml`、Manifest 和网站图标均返回 200
@@ -217,9 +225,9 @@ SEO 与 Google 收录的完整设置见 [`SEO_GOOGLE.md`](SEO_GOOGLE.md)。
 1. Railway 连 GitHub，Root Directory = `web`
 2. 添加 Postgres，Reference `DATABASE_URL`
 3. 配置 build / start / release 命令
-4. 填写 `AUTH_SECRET`、临时 `APP_URL`、`DEMO_MODE=false`、`ZEN_API_KEY`、`SEED_ADMIN_*`
+4. 填写 `AUTH_SECRET`、临时 `APP_URL`、`DEMO_MODE=false`、`WAVESPEED_API_KEY`、`SEED_ADMIN_*`
 5. 生成域名 → 更新 `APP_URL`
-6. 登录 `/admin`，检查 Stripe / NOWPayments / Zen / OSS 配置
+6. 登录 `/admin`，检查 Stripe / NOWPayments / WaveSpeed / OSS 配置
 7. 配置 Webhook → 完成一笔测试支付
 
 ## 常见错误
@@ -247,16 +255,6 @@ SEO 与 Google 收录的完整设置见 [`SEO_GOOGLE.md`](SEO_GOOGLE.md)。
 - 检查 `AUTH_SECRET` 是否已配置（≥ 32 字符）
 - 检查 `DATABASE_URL` 是否 Reference 到 Postgres
 - 查看 Deploy Logs 中 `prisma db push` 是否报错
-
-### `User.email` 唯一约束触发 `--accept-data-loss`
-
-新版邮箱登录需要给既有 `User` 表增加可空邮箱和唯一索引。`db:deploy` 会先运行
-`scripts/prepare-user-email-index.mjs`：安全增加可空字段、检查忽略大小写及首尾空格后的
-重复邮箱，再建立 Prisma 预期的唯一索引，之后才执行普通 `prisma db push`。
-
-不要把部署命令长期改成 `prisma db push --accept-data-loss`，否则未来其他真正可能删除
-数据的 schema 变化也会被自动放行。如果预迁移报告重复邮箱，需要先在数据库中合并或
-更正对应账户后再部署。
 
 ## 相关文档
 

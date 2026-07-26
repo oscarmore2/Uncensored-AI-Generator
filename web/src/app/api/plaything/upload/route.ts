@@ -88,7 +88,7 @@ export async function POST(req: Request) {
         data: {
           userId: user.id,
           kind: "upload",
-          channel: "wavespeed",
+          channel: "plaything",
           url: uploaded.url,
           objectKey: uploaded.objectKey,
           contentType: validated.contentType,

@@ -25,11 +25,11 @@ export async function GET() {
   await ensurePricingSeeded();
 
   const [
-    zenActive,
+    wsActive,
     stripeActive,
     ossActive,
     hfActive,
-    zenCount,
+    wsCount,
     stripeCount,
     ossCount,
     hfCount,
@@ -41,14 +41,14 @@ export async function GET() {
     nowPaymentsCredentials,
     nowPaymentsAccountCount,
   ] = await Promise.all([
-    db.zenAccount.findFirst({ where: { isActive: true }, select: { id: true, label: true } }),
+    db.waveSpeedAccount.findFirst({ where: { isActive: true }, select: { id: true, label: true } }),
     db.stripeAccount.findFirst({ where: { isActive: true }, select: { id: true, label: true } }),
     db.ossAccount.findFirst({
       where: { isActive: true },
       select: { id: true, label: true, bucket: true },
     }),
     db.hfAccount.findFirst({ where: { isActive: true }, select: { id: true, label: true } }),
-    db.zenAccount.count(),
+    db.waveSpeedAccount.count(),
     db.stripeAccount.count(),
     db.ossAccount.count(),
     db.hfAccount.count(),
@@ -67,13 +67,11 @@ export async function GET() {
     signup_initial_credits: signupInitialCredits,
     vip_price_cents: env.VIP_PRICE,
     credit_packages: env.CREDIT_PACKAGES,
-    zen: {
-      base_url: env.ZEN_BASE_URL,
-      env_key_configured: Boolean(env.ZEN_API_KEY),
-      credit_ratio: env.ZEN_CREDIT_RATIO,
-      monthly_budget: env.ZEN_MONTHLY_BUDGET,
-      db_accounts: zenCount,
-      active_account: zenActive ? { id: zenActive.id, label: zenActive.label } : null,
+    wavespeed: {
+      base_url: env.WAVESPEED_BASE_URL,
+      env_key_configured: Boolean(env.WAVESPEED_API_KEY),
+      db_accounts: wsCount,
+      active_account: wsActive ? { id: wsActive.id, label: wsActive.label } : null,
     },
     stripe: {
       env_configured: await stripeConfigured(),
@@ -98,7 +96,7 @@ export async function GET() {
       active_account: ossActive
         ? { id: ossActive.id, label: ossActive.label, bucket: ossActive.bucket }
         : null,
-      mirror_zen_results: env.OSS_MIRROR_ZEN_RESULTS,
+      mirror_results: env.OSS_MIRROR_RESULTS,
     },
     hf: {
       configured: await hfConfigured(),
@@ -119,7 +117,6 @@ export async function GET() {
     webhooks: {
       stripe: `${env.APP_URL}/api/payments/webhook`,
       nowpayments: `${env.APP_URL}/api/payments/crypto/webhook`,
-      zen: `${env.APP_URL}/api/zen/webhook`,
     },
   });
 }

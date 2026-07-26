@@ -5,27 +5,60 @@ import { api, ApiError } from "@/lib/client";
 
 type Tab = "products" | "mappings" | "packages" | "tiers" | "plans";
 
-const MODES = ["txt2img", "txt2vid", "img2img", "img2vid", "undress"] as const;
+const MODES = ["txt2img", "img2img", "imgedit", "txt2vid", "img2vid"] as const;
+
+const MODE_LABEL: Record<string, string> = {
+  txt2img: "文字生图",
+  img2img: "图片生图",
+  imgedit: "图片编辑",
+  txt2vid: "文字生视频",
+  img2vid: "图片生视频",
+};
+
+const TIER_LABEL: Record<string, string> = { low: "低档", mid: "中档", high: "高档" };
 
 interface Product {
   id: number;
   mode: string;
-  zen_tool: string;
-  zen_model: string;
-  variant_key: string;
+  tier: string;
+  spicy: boolean;
   label: string;
+  description: string;
   credit_cost: number;
   batch_four_multiplier: number;
+  unit_seconds: number;
+  requires_vip: boolean;
   is_active: boolean;
   is_default: boolean;
   sort_order: number;
+  provider: string;
+  provider_model_id: string;
+  provider_model_name: string | null;
+  provider_cost_usd: number | null;
+  margin_percent: number | null;
+  is_bound: boolean;
+  ref_credits: number;
+  ref_label: string;
+  price_multiplier_bps: number;
+  effective_multiplier_bps: number;
+  retail_usd: number;
+  default_inputs: Record<string, unknown>;
+}
+
+interface BridgeModel {
+  model_id: string;
+  name: string;
+  type: string;
+  tags: string[];
+  base_price_usd: number;
+  last_unit_price_usd: number | null;
 }
 
 interface Mapping {
   id: number;
   mode: string;
   ui_key: string;
-  zen_path: string;
+  provider_path: string;
   value_map: Record<string, unknown>;
   options: Array<{ value: string; label: string }>;
   enabled: boolean;
@@ -83,20 +116,17 @@ export default function AdminPricingPage() {
   const [tiers, setTiers] = useState<VipTier[]>([]);
   const [plans, setPlans] = useState<VipPlan[]>([]);
 
-  const [productForm, setProductForm] = useState({
-    mode: "txt2img",
-    zen_tool: "by_prompt",
-    zen_model: "",
-    variant_key: "",
-    label: "",
-    credit_cost: 2,
-    batch_four_multiplier: 1.5,
-    is_default: false,
-  });
+  const [unbound, setUnbound] = useState(0);
+  const [catalogSynced, setCatalogSynced] = useState(0);
+  const [bridgeFor, setBridgeFor] = useState<Product | null>(null);
+  const [bridgeModels, setBridgeModels] = useState<BridgeModel[]>([]);
+  const [bridgeTags, setBridgeTags] = useState<string[]>([]);
+  const [bridgeQuery, setBridgeQuery] = useState("");
+  const [bridgeTag, setBridgeTag] = useState("");
   const [mappingForm, setMappingForm] = useState({
     mode: "txt2img",
     ui_key: "",
-    zen_path: "",
+    provider_path: "",
     options_json: '[{"value":"","label":""}]',
     enabled: true,
   });
@@ -123,13 +153,17 @@ export default function AdminPricingPage() {
   const load = useCallback(async () => {
     try {
       const [p, m, c, t, pl] = await Promise.all([
-        api<{ products: Product[] }>("/api/admin/pricing/products"),
+        api<{ products: Product[]; unbound: number; catalog_synced: number }>(
+          "/api/admin/pricing/products"
+        ),
         api<{ mappings: Mapping[] }>("/api/admin/pricing/param-mappings"),
         api<{ packages: CreditPkg[] }>("/api/admin/pricing/credit-packages"),
         api<{ tiers: VipTier[] }>("/api/admin/pricing/vip-tiers"),
         api<{ plans: VipPlan[] }>("/api/admin/pricing/vip-plans"),
       ]);
       setProducts(p.products);
+      setUnbound(p.unbound);
+      setCatalogSynced(p.catalog_synced);
       setMappings(m.mappings);
       setPackages(c.packages);
       setTiers(t.tiers);
@@ -169,6 +203,38 @@ export default function AdminPricingPage() {
     return map;
   }, [products]);
 
+  const fetchBridge = useCallback(
+    async (product: Product, q: string, tag: string) => {
+      const params = new URLSearchParams({
+        mode: product.mode,
+        tier: product.tier,
+        spicy: product.spicy ? "1" : "0",
+      });
+      if (q.trim()) params.set("q", q.trim());
+      if (tag) params.set("tag", tag);
+      try {
+        const data = await api<{ models: BridgeModel[]; tags: string[] }>(
+          `/api/admin/pricing/bridge-models?${params}`
+        );
+        setBridgeModels(data.models);
+        setBridgeTags(data.tags);
+      } catch {
+        setBridgeModels([]);
+      }
+    },
+    []
+  );
+
+  const openBridge = useCallback(
+    async (product: Product) => {
+      setBridgeFor(product);
+      setBridgeQuery("");
+      setBridgeTag("");
+      await fetchBridge(product, "", "");
+    },
+    [fetchBridge]
+  );
+
   return (
     <div>
       <div className="mb-6">
@@ -199,118 +265,127 @@ export default function AdminPricingPage() {
 
       {tab === "products" && (
         <div className="space-y-6">
-          <form
-            className="glass rounded-3xl p-5 grid grid-cols-1 md:grid-cols-3 gap-3"
-            onSubmit={(e) => {
-              e.preventDefault();
-              void action(
-                () =>
-                  api("/api/admin/pricing/products", {
-                    method: "POST",
-                    body: JSON.stringify(productForm),
-                  }),
-                "产品已添加"
-              );
-            }}
-          >
-            <select
-              value={productForm.mode}
-              onChange={(e) => setProductForm({ ...productForm, mode: e.target.value })}
-              className="bg-[#111] border border-white/10 rounded-xl px-3 py-2 text-sm"
-            >
-              {MODES.map((m) => (
-                <option key={m} value={m}>
-                  {m}
-                </option>
-              ))}
-            </select>
-            <input
-              required
-              placeholder="标签"
-              value={productForm.label}
-              onChange={(e) => setProductForm({ ...productForm, label: e.target.value })}
-              className="bg-[#111] border border-white/10 rounded-xl px-3 py-2 text-sm"
-            />
-            <input
-              required
-              placeholder="Zen Model"
-              value={productForm.zen_model}
-              onChange={(e) => setProductForm({ ...productForm, zen_model: e.target.value })}
-              className="bg-[#111] border border-white/10 rounded-xl px-3 py-2 text-sm font-mono"
-            />
-            <input
-              required
-              placeholder="Zen Tool"
-              value={productForm.zen_tool}
-              onChange={(e) => setProductForm({ ...productForm, zen_tool: e.target.value })}
-              className="bg-[#111] border border-white/10 rounded-xl px-3 py-2 text-sm font-mono"
-            />
-            <input
-              placeholder="可选产品变体标识"
-              value={productForm.variant_key}
-              onChange={(e) => setProductForm({ ...productForm, variant_key: e.target.value })}
-              className="bg-[#111] border border-white/10 rounded-xl px-3 py-2 text-sm"
-            />
-            <input
-              type="number"
-              min={1}
-              required
-              value={productForm.credit_cost}
-              onChange={(e) =>
-                setProductForm({ ...productForm, credit_cost: Number(e.target.value) })
-              }
-              className="bg-[#111] border border-white/10 rounded-xl px-3 py-2 text-sm"
-            />
-            <label className="flex items-center gap-2 text-sm text-gray-300">
-              <input
-                type="checkbox"
-                checked={productForm.is_default}
-                onChange={(e) => setProductForm({ ...productForm, is_default: e.target.checked })}
-              />
-              设为该模式默认
-            </label>
-            <button
-              type="submit"
-              disabled={busy}
-              className="md:col-span-3 px-4 py-2.5 text-sm font-semibold bg-rose-600 hover:bg-rose-500 rounded-2xl disabled:opacity-50"
-            >
-              添加产品
-            </button>
-          </form>
+          <div className="glass rounded-3xl p-5">
+            <div className="flex flex-wrap items-center gap-3 justify-between">
+              <div className="text-sm text-gray-300">
+                档位矩阵固定为 <b>5 模式 × 档位 × 普通/Spicy</b>，不支持增删；管理端只做绑定模型、调价与上下架。
+                <div className="text-xs text-gray-500 mt-1">
+                  桥接模型<b>全部由你手工指定</b>，目录同步与版本升级都不会自动改动绑定。
+                  未绑定的档位对用户隐藏，不会出现点了必然失败的情况。
+                </div>
+                <div className="text-xs text-gray-500 mt-1">
+                  已同步 WaveSpeed 模型 {catalogSynced} 个
+                  {unbound > 0 && (
+                    <span className="text-amber-300"> · {unbound} 个档位未绑定</span>
+                  )}
+                  <span className="text-gray-600">
+                    {" "}
+                    · 在「玩物专区 → 模型库」给模型贴类型标签后，这里可按标签筛选
+                  </span>
+                </div>
+              </div>
+              <button
+                disabled={busy}
+                title="仅填补当前未绑定的档位，已绑定的不会被覆盖"
+                className="px-4 py-2 text-sm font-semibold border border-white/15 hover:border-white/30 rounded-2xl disabled:opacity-50"
+                onClick={() => {
+                  if (!confirm("按内置候选表填补未绑定的档位？已绑定的不受影响。")) return;
+                  void action(
+                    () => api("/api/admin/pricing/products", { method: "POST" }),
+                    "已填补未绑定档位"
+                  );
+                }}
+              >
+                按候选表填充空档位
+              </button>
+            </div>
+          </div>
 
           {MODES.map((mode) => (
             <div key={mode} className="space-y-2">
-              <h2 className="text-sm font-semibold text-gray-300">{mode}</h2>
+              <h2 className="text-sm font-semibold text-gray-300">
+                {MODE_LABEL[mode]} <span className="text-gray-600 font-mono">{mode}</span>
+              </h2>
               {(productsByMode[mode] ?? []).map((p) => (
                 <div
                   key={p.id}
                   className={`glass rounded-2xl p-4 flex flex-wrap items-center gap-3 ${
-                    p.is_default ? "ring-1 ring-emerald-500/40" : ""
-                  }`}
+                    p.spicy ? "ring-1 ring-fuchsia-500/30" : ""
+                  } ${!p.is_bound ? "opacity-70" : ""}`}
                 >
-                  <div className="flex-1 min-w-[200px]">
-                    <div className="font-medium">
-                      {p.label}{" "}
+                  <div className="flex-1 min-w-[260px]">
+                    <div className="font-medium flex items-center gap-2 flex-wrap">
+                      <span>{p.label}</span>
+                      <span className="text-[10px] px-1.5 py-0.5 bg-white/10 rounded">
+                        {TIER_LABEL[p.tier] ?? p.tier}
+                      </span>
+                      {p.spicy && (
+                        <span className="text-[10px] px-1.5 py-0.5 bg-fuchsia-600 text-white rounded font-bold">
+                          SPICY · 会员专属
+                        </span>
+                      )}
                       {!p.is_active && <span className="text-xs text-gray-500">停用</span>}
-                      {p.is_default && (
-                        <span className="text-[10px] ml-2 px-2 py-0.5 bg-emerald-500/20 text-emerald-300 rounded-full">
-                          默认
+                      {!p.is_bound && (
+                        <span className="text-[10px] px-1.5 py-0.5 bg-amber-500/20 text-amber-300 rounded">
+                          未绑定模型
                         </span>
                       )}
                     </div>
-                    <div className="text-xs font-mono text-gray-400">
-                      {p.zen_tool} / {p.zen_model}
-                      {p.variant_key ? ` / ${p.variant_key}` : ""} · {p.credit_cost} 点
-                      {p.batch_four_multiplier !== 1.5
-                        ? ` · ×4=${p.batch_four_multiplier}`
-                        : ""}
+
+                    <div className="text-xs text-gray-400 mt-1">
+                      {p.credit_cost} 点
+                      {p.unit_seconds > 0 ? ` / ${p.unit_seconds}s` : ""} · 售价 $
+                      {p.retail_usd.toFixed(3)}
+                      {p.provider_cost_usd != null && (
+                        <>
+                          {" "}
+                          · 成本 ${p.provider_cost_usd.toFixed(4)}
+                          {p.margin_percent != null && (
+                            <span
+                              className={
+                                p.margin_percent >= 40
+                                  ? " text-emerald-400"
+                                  : p.margin_percent >= 0
+                                    ? " text-amber-300"
+                                    : " text-red-400"
+                              }
+                            >
+                              {" "}
+                              毛利 {p.margin_percent}%
+                            </span>
+                          )}
+                        </>
+                      )}
+                    </div>
+
+                    <div className="text-[11px] text-gray-500 mt-0.5">
+                      对标 {p.ref_label || `${p.ref_credits} 分`} × {p.price_multiplier_bps / 100}%
+                      {p.effective_multiplier_bps > 0 &&
+                        p.effective_multiplier_bps !== p.price_multiplier_bps && (
+                          <span className="text-amber-400">
+                            {" "}
+                            （取整后实际 {p.effective_multiplier_bps / 100}%）
+                          </span>
+                        )}
+                    </div>
+
+                    <div className="text-[11px] font-mono text-gray-500 mt-0.5 truncate">
+                      {p.is_bound ? `${p.provider}: ${p.provider_model_id}` : "—"}
                     </div>
                   </div>
+
+                  <button
+                    disabled={busy}
+                    className="px-3 py-1.5 text-xs border border-sky-500/30 text-sky-300 rounded-xl"
+                    onClick={() => void openBridge(p)}
+                  >
+                    绑定模型
+                  </button>
                   <button
                     disabled={busy}
                     className="px-3 py-1.5 text-xs border border-white/10 rounded-xl"
                     onClick={() => {
-                      const cost = prompt("新扣点", String(p.credit_cost));
+                      const cost = prompt(`「${p.label}」新扣点`, String(p.credit_cost));
                       if (!cost) return;
                       void action(
                         () =>
@@ -324,24 +399,29 @@ export default function AdminPricingPage() {
                   >
                     改价
                   </button>
-                  {!p.is_default && (
-                    <button
-                      disabled={busy}
-                      className="px-3 py-1.5 text-xs border border-emerald-500/30 text-emerald-300 rounded-xl"
-                      onClick={() =>
-                        action(
-                          () =>
-                            api(`/api/admin/pricing/products/${p.id}`, {
-                              method: "PATCH",
-                              body: JSON.stringify({ is_default: true }),
+                  <button
+                    disabled={busy}
+                    className="px-3 py-1.5 text-xs border border-white/10 rounded-xl"
+                    onClick={() => {
+                      const pct = prompt(
+                        `「${p.label}」倍率（%，相对 ZenCreator 对标价 ${p.ref_credits} 分）`,
+                        String(p.price_multiplier_bps / 100)
+                      );
+                      if (!pct) return;
+                      void action(
+                        () =>
+                          api(`/api/admin/pricing/products/${p.id}`, {
+                            method: "PATCH",
+                            body: JSON.stringify({
+                              price_multiplier_bps: Math.round(Number(pct) * 100),
                             }),
-                          "已设为默认"
-                        )
-                      }
-                    >
-                      设默认
-                    </button>
-                  )}
+                          }),
+                        "已按倍率重算扣点"
+                      );
+                    }}
+                  >
+                    调倍率
+                  </button>
                   <button
                     disabled={busy}
                     className="px-3 py-1.5 text-xs border border-white/10 rounded-xl"
@@ -358,24 +438,159 @@ export default function AdminPricingPage() {
                   >
                     {p.is_active ? "停用" : "启用"}
                   </button>
-                  <button
-                    disabled={busy}
-                    className="px-3 py-1.5 text-xs border border-red-500/30 text-red-300 rounded-xl"
-                    onClick={() => {
-                      if (!confirm(`删除「${p.label}」？`)) return;
-                      void action(
-                        () =>
-                          api(`/api/admin/pricing/products/${p.id}`, { method: "DELETE" }),
-                        "已删除"
-                      );
-                    }}
-                  >
-                    删除
-                  </button>
                 </div>
               ))}
             </div>
           ))}
+
+          {bridgeFor && (
+            <div
+              className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4"
+              onClick={() => setBridgeFor(null)}
+            >
+              <div
+                className="glass rounded-3xl p-5 w-full max-w-2xl max-h-[80vh] flex flex-col"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="mb-3">
+                  <div className="font-semibold">绑定桥接模型 · {bridgeFor.label}</div>
+                  <div className="text-xs text-gray-400 mt-1">
+                    售价 ${bridgeFor.retail_usd.toFixed(3)} / 次；选成本低于此值的模型才有毛利。
+                    生成端不会看到任何模型信息。
+                  </div>
+                </div>
+                <input
+                  autoFocus
+                  placeholder="搜索 model_id / 名称 / 类型"
+                  value={bridgeQuery}
+                  onChange={(e) => {
+                    setBridgeQuery(e.target.value);
+                    void fetchBridge(bridgeFor, e.target.value, bridgeTag);
+                  }}
+                  className="bg-[#111] border border-white/10 rounded-xl px-3 py-2 text-sm mb-2"
+                />
+                {bridgeTags.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5 mb-3 items-center">
+                    <span className="text-[11px] text-gray-500">按标签：</span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setBridgeTag("");
+                        void fetchBridge(bridgeFor, bridgeQuery, "");
+                      }}
+                      className={`px-2 py-0.5 text-[11px] rounded-full border ${
+                        bridgeTag === ""
+                          ? "bg-sky-600/25 border-sky-500 text-sky-200"
+                          : "border-white/15 text-gray-400"
+                      }`}
+                    >
+                      全部
+                    </button>
+                    {bridgeTags.map((t) => (
+                      <button
+                        key={t}
+                        type="button"
+                        onClick={() => {
+                          const next = bridgeTag === t ? "" : t;
+                          setBridgeTag(next);
+                          void fetchBridge(bridgeFor, bridgeQuery, next);
+                        }}
+                        className={`px-2 py-0.5 text-[11px] rounded-full border ${
+                          bridgeTag === t
+                            ? "bg-sky-600/25 border-sky-500 text-sky-200"
+                            : "border-white/15 text-gray-400 hover:text-gray-200"
+                        }`}
+                      >
+                        {t}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                <div className="overflow-y-auto space-y-1.5 flex-1">
+                  {bridgeModels.length === 0 && (
+                    <p className="text-sm text-gray-500 py-6 text-center">
+                      没有匹配的模型。请先到「玩物专区 → 模型库」同步目录，并给模型贴上类型标签。
+                    </p>
+                  )}
+                  {bridgeModels.map((m) => {
+                    const cost = m.last_unit_price_usd ?? m.base_price_usd;
+                    const margin =
+                      cost > 0 && bridgeFor.retail_usd > 0
+                        ? ((bridgeFor.retail_usd - cost) / bridgeFor.retail_usd) * 100
+                        : null;
+                    return (
+                      <button
+                        key={m.model_id}
+                        disabled={busy}
+                        onClick={() => {
+                          const id = bridgeFor.id;
+                          setBridgeFor(null);
+                          void action(
+                            () =>
+                              api(`/api/admin/pricing/products/${id}`, {
+                                method: "PATCH",
+                                body: JSON.stringify({ provider_model_id: m.model_id }),
+                              }),
+                            `已绑定 ${m.model_id}`
+                          );
+                        }}
+                        className={`w-full text-left px-3 py-2 rounded-xl border text-sm ${
+                          m.model_id === bridgeFor.provider_model_id
+                            ? "bg-sky-600/20 border-sky-500"
+                            : "bg-white/5 border-white/10 hover:border-white/25"
+                        }`}
+                      >
+                        <div className="font-mono text-xs truncate">{m.model_id}</div>
+                        <div className="text-[11px] text-gray-400 flex gap-2 flex-wrap items-center">
+                          <span>{m.name}</span>
+                          {m.tags.map((t) => (
+                            <span
+                              key={t}
+                              className="px-1.5 py-px rounded bg-sky-500/15 text-sky-300 border border-sky-500/25"
+                            >
+                              {t}
+                            </span>
+                          ))}
+                          {m.type && <span className="text-gray-600">{m.type}</span>}
+                          <span>${cost.toFixed(4)}</span>
+                          {margin !== null && (
+                            <span className={margin >= 40 ? "text-emerald-400" : margin >= 0 ? "text-amber-300" : "text-red-400"}>
+                              毛利 {margin.toFixed(0)}%
+                            </span>
+                          )}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+                <div className="mt-3 flex justify-between">
+                  <button
+                    className="px-3 py-1.5 text-xs border border-red-500/30 text-red-300 rounded-xl"
+                    onClick={() => {
+                      const id = bridgeFor.id;
+                      setBridgeFor(null);
+                      void action(
+                        () =>
+                          api(`/api/admin/pricing/products/${id}`, {
+                            method: "PATCH",
+                            body: JSON.stringify({ provider_model_id: "" }),
+                          }),
+                        "已解绑（该档位对用户隐藏）"
+                      );
+                    }}
+                  >
+                    解绑
+                  </button>
+                  <button
+                    className="px-3 py-1.5 text-xs border border-white/10 rounded-xl"
+                    onClick={() => setBridgeFor(null)}
+                  >
+                    关闭
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -402,7 +617,7 @@ export default function AdminPricingPage() {
                     body: JSON.stringify({
                       mode: mappingForm.mode,
                       ui_key: mappingForm.ui_key,
-                      zen_path: mappingForm.zen_path,
+                      provider_path: mappingForm.provider_path,
                       options,
                       enabled: mappingForm.enabled,
                     }),
@@ -431,9 +646,9 @@ export default function AdminPricingPage() {
             />
             <input
               required
-              placeholder="Zen path（如 ratio；_style 仅本地）"
-              value={mappingForm.zen_path}
-              onChange={(e) => setMappingForm({ ...mappingForm, zen_path: e.target.value })}
+              placeholder="上游字段名（如 aspect_ratio；下划线开头仅本地）"
+              value={mappingForm.provider_path}
+              onChange={(e) => setMappingForm({ ...mappingForm, provider_path: e.target.value })}
               className="bg-[#111] border border-white/10 rounded-xl px-3 py-2 text-sm"
             />
             <textarea
@@ -454,7 +669,7 @@ export default function AdminPricingPage() {
             <div key={m.id} className="glass rounded-2xl p-4 flex flex-wrap gap-3 items-center">
               <div className="flex-1 text-sm">
                 <div className="font-medium">
-                  {m.mode} · {m.ui_key} → {m.zen_path}
+                  {m.mode} · {m.ui_key} → {m.provider_path}
                   {!m.enabled && <span className="text-gray-500 text-xs ml-2">停用</span>}
                 </div>
                 <div className="text-xs text-gray-500 font-mono">

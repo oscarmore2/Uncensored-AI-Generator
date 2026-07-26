@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { GENERATION_MODES } from "@/lib/generation-modes";
 import { db } from "@/lib/db";
 import { requireRole } from "@/lib/auth";
 import { logAdminAction } from "@/lib/admin-audit";
@@ -16,9 +17,9 @@ export async function GET() {
 }
 
 const createSchema = z.object({
-  mode: z.enum(["txt2img", "txt2vid", "img2img", "img2vid", "undress"]),
+  mode: z.enum(GENERATION_MODES),
   ui_key: z.string().min(1).max(40),
-  zen_path: z.string().min(1).max(80),
+  provider_path: z.string().min(1).max(80),
   value_map: z.record(z.string(), z.unknown()).nullable().optional(),
   options: z
     .array(z.object({ value: z.string(), label: z.string() }))
@@ -43,7 +44,7 @@ export async function POST(req: Request) {
     data: {
       mode: d.mode,
       uiKey: d.ui_key,
-      zenPath: d.zen_path,
+      providerPath: d.provider_path,
       valueMap: d.value_map ? JSON.stringify(d.value_map) : null,
       options: d.options ? JSON.stringify(d.options) : null,
       enabled: d.enabled,

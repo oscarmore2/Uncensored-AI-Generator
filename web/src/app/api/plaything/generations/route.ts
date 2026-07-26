@@ -136,7 +136,7 @@ export async function POST(req: Request) {
   }
 
   const ownerVipAtCreation = isVipActive(user);
-  const mediaExpiresAt = await generatedMediaExpiry("wavespeed", ownerVipAtCreation);
+  const mediaExpiresAt = await generatedMediaExpiry("plaything", ownerVipAtCreation);
   const charged = await db.user.updateMany({
     where: { id: user.id, balance: { gte: cost } },
     data: { balance: { decrement: cost } },

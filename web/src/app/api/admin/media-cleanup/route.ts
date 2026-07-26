@@ -23,7 +23,7 @@ export async function GET() {
   if (!admin) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   await ensureMediaCleanupPolicies();
-  const [policies, runs, pendingUploads, pendingZen, pendingWave] = await Promise.all([
+  const [policies, runs, pendingUploads, pendingMain, pendingPlaything] = await Promise.all([
     db.mediaCleanupPolicy.findMany({ orderBy: { id: "asc" } }),
     db.mediaCleanupRun.findMany({ orderBy: { startedAt: "desc" }, take: 20 }),
     db.mediaAsset.count({ where: { expiresAt: { not: null }, deletedAt: null } }),
@@ -50,8 +50,8 @@ export async function GET() {
     })),
     pending: {
       uploads: pendingUploads,
-      zen_generations: pendingZen,
-      wavespeed_generations: pendingWave,
+      main_generations: pendingMain,
+      plaything_generations: pendingPlaything,
     },
     runs: runs.map((run) => ({
       id: run.id,

@@ -4,7 +4,7 @@ import { db } from "@/lib/db";
 import { requireRole } from "@/lib/auth";
 
 const querySchema = z.object({
-  kind: z.enum(["zen", "wavespeed", "upload"]).default("zen"),
+  kind: z.enum(["main", "plaything", "upload"]).default("main"),
   page: z.coerce.number().int().min(1).max(10_000).default(1),
   limit: z.coerce.number().int().min(1).max(48).default(24),
 });
@@ -42,7 +42,7 @@ export async function GET(
   const { kind, page, limit } = query.data;
   const skip = (page - 1) * limit;
 
-  if (kind === "zen") {
+  if (kind === "main") {
     const [total, records] = await Promise.all([
       db.generation.count({ where: { userId } }),
       db.generation.findMany({
@@ -72,7 +72,7 @@ export async function GET(
       limit,
       media: records.map((record) => ({
         id: record.id,
-        channel: "zen",
+        channel: "main",
         label: record.mode,
         prompt: record.prompt,
         status: record.status,
@@ -87,7 +87,7 @@ export async function GET(
     });
   }
 
-  if (kind === "wavespeed") {
+  if (kind === "plaything") {
     const [total, records] = await Promise.all([
       db.waveSpeedGeneration.count({ where: { userId } }),
       db.waveSpeedGeneration.findMany({
@@ -115,7 +115,7 @@ export async function GET(
       limit,
       media: records.map((record) => ({
         id: record.id,
-        channel: "wavespeed",
+        channel: "plaything",
         label: record.product.label || record.product.modelId,
         prompt: record.prompt,
         status: record.status,

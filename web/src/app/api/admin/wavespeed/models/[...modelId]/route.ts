@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { requireRole } from "@/lib/auth";
 import { logAdminAction } from "@/lib/admin-audit";
 import { estimatePricing } from "@/lib/wavespeed";
+import { MAX_TAGS_PER_MODEL, MAX_TAG_LENGTH, normalizeTags, parseTags } from "@/lib/model-tags";
 
 const patchSchema = z
   .object({
@@ -15,6 +16,8 @@ const patchSchema = z
     shelf: z.boolean().optional(),
     refresh_pricing: z.boolean().optional(),
     param_policy: z.union([z.string().max(20000), z.record(z.unknown())]).nullable().optional(),
+    /** 手工类型标签；整组覆盖式提交 */
+    tags: z.array(z.string().max(MAX_TAG_LENGTH)).max(MAX_TAGS_PER_MODEL).optional(),
   })
   .refine((v) => Object.keys(v).length > 0, "至少提供一个字段");
 
@@ -48,6 +51,16 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ modelId: stri
       ok: true,
       last_unit_price_usd: price,
       base_price_usd: catalog.basePriceUsd,
+    });
+  }
+
+  // 标签挂在目录模型上，未上架的模型也能贴，便于先分类再决定上架
+  let tags = parseTags(catalog.tags);
+  if (d.tags !== undefined) {
+    tags = normalizeTags(d.tags);
+    await db.waveSpeedCatalogModel.update({
+      where: { id: catalog.id },
+      data: { tags: JSON.stringify(tags) },
     });
   }
 
@@ -136,6 +149,7 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ modelId: stri
 
   return NextResponse.json({
     ok: true,
+    tags,
     product: product
       ? {
           id: product.id,

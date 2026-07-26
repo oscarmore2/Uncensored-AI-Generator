@@ -7,8 +7,8 @@ export async function GET() {
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const catalog = await listActiveCatalog();
   const vipActive = isVipActive(user);
+  const catalog = await listActiveCatalog({ vipActive });
 
   return NextResponse.json({
     ...catalog,

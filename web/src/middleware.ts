@@ -24,7 +24,6 @@ const ADMIN_API_PREFIX = "/api/admin";
 const PUBLIC_API = [
   "/api/payments/webhook",
   "/api/payments/crypto/webhook",
-  "/api/zen/webhook",
   "/api/auth/login",
   "/api/auth/register",
   "/api/auth/logout",
