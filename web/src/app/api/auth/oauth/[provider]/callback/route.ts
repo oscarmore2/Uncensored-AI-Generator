@@ -23,8 +23,13 @@ function parseProvider(value: string): OAuthProvider | null {
   return value === "google" || value === "facebook" ? value : null;
 }
 
-function errorRedirect(req: Request, code: string) {
-  const url = new URL("/login", req.url);
+/**
+ * 一律基于 APP_URL 构造回跳地址。
+ * 反代后 req.url 的 host 是容器内部地址（localhost:3000），
+ * 且不认 X-Forwarded-Host，直接用它会把用户踢到本机地址。
+ */
+function errorRedirect(code: string) {
+  const url = new URL(absoluteUrl("/login"));
   url.searchParams.set("oauth_error", code);
   return url;
 }
@@ -52,9 +57,9 @@ export async function GET(
   let destination: URL;
   let sessionToken: string | null = null;
   if (providerError === "access_denied") {
-    destination = errorRedirect(req, "access_denied");
+    destination = errorRedirect("access_denied");
   } else if (!flow || flow.provider !== provider || !state || flow.state !== state || !code) {
-    destination = errorRedirect(req, "invalid_state");
+    destination = errorRedirect("invalid_state");
   } else {
     try {
       const redirectUri = absoluteUrl(`/api/auth/oauth/${provider}/callback`);
@@ -87,11 +92,10 @@ export async function GET(
         username: user.username,
         role: user.role,
       });
-      destination = new URL(flow.next, url.origin);
+      destination = new URL(absoluteUrl(flow.next));
     } catch (error) {
       console.error(`[oauth:${provider}] callback failed`, error);
       destination = errorRedirect(
-        req,
         error instanceof OAuthLoginError && PUBLIC_OAUTH_ERRORS.has(error.code)
           ? error.code
           : "provider_failed"

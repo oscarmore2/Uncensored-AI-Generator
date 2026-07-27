@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { absoluteUrl } from "@/lib/site";
 import { hashVerificationToken } from "@/lib/email-verification";
 import {
   SESSION_COOKIE,
@@ -9,7 +10,8 @@ import {
 
 export async function GET(req: Request) {
   const token = new URL(req.url).searchParams.get("token");
-  const loginUrl = new URL("/login", req.url);
+  // 反代后 req.url 是容器内部地址，回跳必须基于 APP_URL
+  const loginUrl = new URL(absoluteUrl("/login"));
   if (!token || token.length > 256) {
     loginUrl.searchParams.set("verify_error", "invalid");
     return NextResponse.redirect(loginUrl);
@@ -56,7 +58,7 @@ export async function GET(req: Request) {
     username: record.user.username,
     role: record.user.role,
   });
-  const response = NextResponse.redirect(new URL("/make?email_verified=1", req.url));
+  const response = NextResponse.redirect(new URL(absoluteUrl("/make?email_verified=1")));
   response.cookies.set(SESSION_COOKIE, tokenValue, sessionCookieOptions());
   return response;
 }

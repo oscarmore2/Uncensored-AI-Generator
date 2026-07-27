@@ -22,7 +22,8 @@ export async function GET(
   const provider = parseProvider((await context.params).provider);
   if (!provider) return NextResponse.json({ error: "Unknown provider" }, { status: 404 });
 
-  const loginUrl = new URL("/login", req.url);
+  // 同理不能用 req.url：反代后拿到的是容器内部地址
+  const loginUrl = new URL(absoluteUrl("/login"));
   if (!oauthProviderConfigured(provider)) {
     loginUrl.searchParams.set("oauth_error", "not_configured");
     return NextResponse.redirect(loginUrl);
