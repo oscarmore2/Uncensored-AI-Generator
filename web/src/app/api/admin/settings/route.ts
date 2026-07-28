@@ -7,6 +7,7 @@ import { getActiveNowPaymentsCredentials } from "@/lib/nowpayments";
 import { stripeConfigured } from "@/lib/stripe";
 import { ossConfigured } from "@/lib/oss";
 import { hfConfigured } from "@/lib/hf";
+import { openAiConfigured } from "@/lib/openai";
 import { ensurePricingSeeded } from "@/lib/pricing-seed";
 import { z } from "zod";
 import { assertSameOrigin } from "@/lib/csrf";
@@ -29,10 +30,12 @@ export async function GET() {
     stripeActive,
     ossActive,
     hfActive,
+    openAiActive,
     wsCount,
     stripeCount,
     ossCount,
     hfCount,
+    openAiCount,
     productCount,
     packageCount,
     tierCount,
@@ -48,10 +51,12 @@ export async function GET() {
       select: { id: true, label: true, bucket: true },
     }),
     db.hfAccount.findFirst({ where: { isActive: true }, select: { id: true, label: true } }),
+    db.openAiAccount.findFirst({ where: { isActive: true }, select: { id: true, label: true } }),
     db.waveSpeedAccount.count(),
     db.stripeAccount.count(),
     db.ossAccount.count(),
     db.hfAccount.count(),
+    db.openAiAccount.count(),
     db.generationProduct.count({ where: { isActive: true } }),
     db.creditPackage.count({ where: { isActive: true } }),
     db.vipTier.count({ where: { isActive: true } }),
@@ -105,6 +110,13 @@ export async function GET() {
       magic_model: env.HF_MAGIC_MODEL,
       db_accounts: hfCount,
       active_account: hfActive ? { id: hfActive.id, label: hfActive.label } : null,
+    },
+    content_safety: {
+      configured: await openAiConfigured(),
+      env_key_configured: Boolean(env.OPENAI_API_KEY),
+      moderation_model: env.OPENAI_MODERATION_MODEL,
+      db_accounts: openAiCount,
+      active_account: openAiActive ? { id: openAiActive.id, label: openAiActive.label } : null,
     },
     pricing: {
       db_enabled: true,

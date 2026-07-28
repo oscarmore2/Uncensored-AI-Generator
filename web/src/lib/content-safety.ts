@@ -1,6 +1,6 @@
 import "server-only";
 import { getActiveHfCredentials } from "./hf";
-import { env } from "./env";
+import { getActiveOpenAiCredentials } from "./openai";
 
 export type SafetyCategory =
   | "suggestive"
@@ -149,8 +149,9 @@ const MINORS_SCORE_FLOOR = 0.2;
 const SEXUAL_EXPLICIT_FLOOR = 0.85;
 const SEXUAL_SUGGESTIVE_FLOOR = 0.4;
 
-export function openAiModerationConfigured(): boolean {
-  return Boolean(env.OPENAI_API_KEY);
+/** 管理端激活账户优先，其次 .env */
+export async function openAiModerationConfigured(): Promise<boolean> {
+  return Boolean(await getActiveOpenAiCredentials());
 }
 
 type OpenAiResult = NonNullable<OpenAiModerationResponse["results"]>[number];
@@ -182,14 +183,17 @@ async function callOpenAiModeration(
   input: string | OpenAiInputPart[],
   timeoutMs: number
 ): Promise<ContentSafetyResult> {
-  const resp = await fetch(`${env.OPENAI_BASE_URL.replace(/\/$/, "")}/moderations`, {
+  const creds = await getActiveOpenAiCredentials();
+  if (!creds) throw new Error("openai not configured");
+
+  const resp = await fetch(`${creds.baseUrl.replace(/\/$/, "")}/moderations`, {
     method: "POST",
     headers: {
-      Authorization: `Bearer ${env.OPENAI_API_KEY}`,
+      Authorization: `Bearer ${creds.apiKey}`,
       "Content-Type": "application/json",
     },
     signal: AbortSignal.timeout(timeoutMs),
-    body: JSON.stringify({ model: env.OPENAI_MODERATION_MODEL, input }),
+    body: JSON.stringify({ model: creds.moderationModel, input }),
   });
 
   if (!resp.ok) throw new Error(`openai moderation ${resp.status}`);
@@ -297,7 +301,7 @@ export async function reviewPrompt(input: {
   const local = localCheck(`${input.mode ?? ""}\n${text}`);
   if (local) return local;
 
-  if (openAiModerationConfigured()) {
+  if (await openAiModerationConfigured()) {
     try {
       return await reviewWithOpenAi(text);
     } catch (err) {
@@ -346,7 +350,7 @@ export async function reviewImages(input: {
     .slice(0, MAX_IMAGES_PER_CALL);
 
   if (!urls.length) return localCleanVerdict(false);
-  if (!openAiModerationConfigured()) return localCleanVerdict(true);
+  if (!(await openAiModerationConfigured())) return localCleanVerdict(true);
 
   const parts: OpenAiInputPart[] = [];
   if (input.prompt?.trim()) {

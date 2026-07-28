@@ -298,6 +298,20 @@ model HfAccount {
 }
 
 /**
+ * OpenAI 账户：内容审查用（moderations 端点免费）；同一时间最多一个 isActive=true
+ */
+model OpenAiAccount {
+  id              Int      @id @default(autoincrement())
+  label           String
+  apiKeyEnc       String // sk-… AES-256-GCM
+  baseUrl         String? // 空则用 env.OPENAI_BASE_URL，可指向兼容代理
+  moderationModel String? // 空则用 env.OPENAI_MODERATION_MODEL
+  isActive        Boolean  @default(false)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+/**
  * 生成产品 SKU：模式 + 档位 + 是否 Spicy → 扣点与桥接模型。
  * providerModelId 只在服务端使用，绝不出现在面向生成端的任何响应里。
  */

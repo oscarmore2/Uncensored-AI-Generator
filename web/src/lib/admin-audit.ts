@@ -18,7 +18,8 @@ export type AdminAuditAction =
   | "wavespeed_sync"
   | "wavespeed_product"
   | "system_signup_credits"
-  | "nowpayments_account";
+  | "nowpayments_account"
+  | "openai_account";
 
 export async function logAdminAction(
   adminId: number,

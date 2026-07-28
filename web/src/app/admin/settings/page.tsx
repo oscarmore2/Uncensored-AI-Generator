@@ -27,6 +27,13 @@ interface Settings {
     ipn_secret_configured: boolean;
     base_url: string;
   };
+  content_safety: {
+    configured: boolean;
+    env_key_configured: boolean;
+    moderation_model: string;
+    db_accounts: number;
+    active_account: { id: number; label: string } | null;
+  };
   hf: {
     configured: boolean;
     env_token_configured: boolean;
@@ -140,6 +147,16 @@ export default function AdminSettingsPage() {
       warn: !settings.hf.configured,
     },
     { label: "HF 账户数", value: String(settings.hf.db_accounts) },
+    {
+      label: "内容审查 OpenAI",
+      value: settings.content_safety.active_account
+        ? `${settings.content_safety.active_account.label} (#${settings.content_safety.active_account.id})`
+        : settings.content_safety.env_key_configured
+          ? "env 兜底"
+          : "未配置（降级到 HF）",
+      warn: !settings.content_safety.configured,
+    },
+    { label: "审查模型", value: settings.content_safety.moderation_model },
     { label: "HF 模型", value: settings.hf.magic_model },
     {
       label: "价格体系",
