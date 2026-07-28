@@ -3,6 +3,7 @@
 import { Suspense, useCallback, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { api, ApiError } from "@/lib/client";
+import { MediaKindBadge, MediaPreviewModal, MediaThumb } from "@/components/MediaPreview";
 
 interface ModGeneration {
   id: number;
@@ -34,6 +35,7 @@ function GenerationsInner() {
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState("");
+  const [preview, setPreview] = useState<ModGeneration | null>(null);
 
   const load = useCallback(async () => {
     const params = new URLSearchParams({ page: String(page), limit: "30" });
@@ -96,7 +98,7 @@ function GenerationsInner() {
   return (
     <div>
       <h1 className="text-3xl font-bold tracking-tighter mb-1">作品审核</h1>
-      <p className="text-gray-400 text-sm mb-6">软删除 / 恢复 / 曝光到公共库；支持多选批量软删</p>
+      <p className="text-gray-400 text-sm mb-6">软删除 / 恢复 / 曝光到公共库；点击作品可预览图片、视频与 3D 模型</p>
 
       <div className="flex flex-wrap items-center gap-3 mb-5">
         <select
@@ -150,18 +152,26 @@ function GenerationsInner() {
             }`}
           >
             <div className="relative aspect-video bg-[#111]">
-              {g.result_urls?.[0] ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={g.result_urls[0]} alt={`#${g.id}`} className="w-full h-full object-cover" loading="lazy" />
+              {g.result_urls?.length ? (
+                <button
+                  type="button"
+                  onClick={() => setPreview(g)}
+                  title="点击预览"
+                  className="absolute inset-0 w-full h-full group cursor-zoom-in"
+                >
+                  <MediaThumb urls={g.result_urls} mode={g.mode} alt={`#${g.id}`} />
+                  <span className="absolute inset-0 bg-black/0 group-hover:bg-black/25 transition-colors" />
+                </button>
               ) : (
                 <div className="fake-image w-full h-full flex items-center justify-center text-xs text-gray-500">
                   无结果图（{g.status}）
                 </div>
               )}
-              <label className="absolute top-3 left-3 w-6 h-6 flex items-center justify-center bg-black/70 rounded-lg cursor-pointer">
+              <label className="absolute top-3 left-3 z-10 w-6 h-6 flex items-center justify-center bg-black/70 rounded-lg cursor-pointer">
                 <input type="checkbox" checked={selected.has(g.id)} onChange={() => toggle(g.id)} />
               </label>
-              <div className="absolute top-3 right-3 flex gap-1">
+              <div className="absolute top-3 right-3 z-10 flex gap-1 pointer-events-none">
+                <MediaKindBadge urls={g.result_urls} mode={g.mode} />
                 {g.deleted_at && <span className="text-[10px] px-2 py-0.5 bg-red-600/80 rounded-full">已删</span>}
                 {g.visibility === "featured" && (
                   <span className="text-[10px] px-2 py-0.5 bg-emerald-600/80 rounded-full">已曝光</span>
@@ -249,6 +259,86 @@ function GenerationsInner() {
             下一页
           </button>
         </div>
+      )}
+
+      {preview && (
+        <MediaPreviewModal
+          urls={preview.result_urls ?? []}
+          mode={preview.mode}
+          onClose={() => setPreview(null)}
+          title={
+            <>
+              <span className="font-mono text-gray-400">#{preview.id}</span>
+              <span className="text-gray-500">{preview.mode}</span>
+              {preview.is_adult && (
+                <span className="px-1.5 py-0.5 rounded bg-red-600 text-[10px] font-bold">18+</span>
+              )}
+              {preview.deleted_at && (
+                <span className="px-1.5 py-0.5 rounded bg-red-600/80 text-[10px]">已删</span>
+              )}
+              {preview.visibility === "featured" && (
+                <span className="px-1.5 py-0.5 rounded bg-emerald-600/80 text-[10px]">已曝光</span>
+              )}
+            </>
+          }
+        >
+          <div className="space-y-3">
+            <div className="flex flex-wrap gap-x-5 gap-y-1 text-xs text-gray-400">
+              <span>用户：{preview.username ?? `ID ${preview.user_id}`}</span>
+              <span>状态：{preview.status}</span>
+              <span>生成于：{new Date(preview.created_at).toLocaleString()}</span>
+            </div>
+            <div>
+              <div className="text-[11px] text-gray-500 mb-1">提示词</div>
+              <p className="text-sm text-gray-200 whitespace-pre-wrap break-words max-h-40 overflow-y-auto">
+                {preview.prompt || "（空）"}
+              </p>
+            </div>
+            <div className="flex gap-2 pt-1">
+              {preview.deleted_at ? (
+                <button
+                  onClick={() => {
+                    void restore(preview.id);
+                    setPreview(null);
+                  }}
+                  disabled={busy}
+                  className="flex-1 py-2 text-xs bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl disabled:opacity-50"
+                >
+                  恢复
+                </button>
+              ) : (
+                <>
+                  <button
+                    onClick={() => {
+                      void softDelete(preview.id);
+                      setPreview(null);
+                    }}
+                    disabled={busy}
+                    className="flex-1 py-2 text-xs bg-white/5 hover:bg-red-600/30 border border-white/10 rounded-xl disabled:opacity-50"
+                  >
+                    软删除
+                  </button>
+                  {preview.status === "succeeded" && preview.visibility !== "featured" && (
+                    <button
+                      onClick={() => {
+                        void feature(preview.id);
+                        setPreview(null);
+                      }}
+                      disabled={
+                        busy ||
+                        Date.now() >=
+                          new Date(preview.created_at).getTime() + 7 * 24 * 60 * 60 * 1000
+                      }
+                      className="flex-1 py-2 text-xs bg-emerald-600/20 hover:bg-emerald-600/40 border border-emerald-500/30 text-emerald-300 rounded-xl disabled:opacity-50"
+                    >
+                      曝光到公共库
+                    </button>
+                  )}
+                </>
+              )}
+            </div>
+          </div>
+        </MediaPreviewModal>
       )}
     </div>
   );
