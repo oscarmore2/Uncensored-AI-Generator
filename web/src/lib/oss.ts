@@ -124,6 +124,24 @@ function guessExtension(url: string, contentType: string | null): string {
   return "jpg";
 }
 
+/**
+ * 从远程 URL 提取可用作 OSS 文件名的原始 basename（不含扩展名，已消毒）。
+ * 取不到就返回 null，调用方回退到序号命名。
+ */
+export function guessBasename(url: string): string | null {
+  try {
+    const pathname = new URL(url).pathname;
+    const last = pathname.split("/").filter(Boolean).pop();
+    if (!last) return null;
+    const withoutExt = last.replace(/\.[a-zA-Z0-9]{2,5}$/, "");
+    // 只保留安全字符，防止路径穿越 / 特殊字符进对象 key
+    const safe = withoutExt.replace(/[^a-zA-Z0-9._-]/g, "_").slice(0, 80);
+    return safe || null;
+  } catch {
+    return null;
+  }
+}
+
 /** 上传 Buffer 到 OSS，返回公网 URL */
 export async function uploadBuffer(
   buffer: Buffer,
@@ -254,6 +272,7 @@ export async function mirrorRemoteUrls(
   if (!cfg || !cfg.mirrorResults) return urls;
 
   const mirrored: string[] = [];
+  const usedNames = new Set<string>();
   for (let i = 0; i < urls.length; i++) {
     const url = urls[i];
     if (!url) continue;
@@ -264,7 +283,20 @@ export async function mirrorRemoteUrls(
     }
     try {
       const ext = guessExtension(url, null);
-      const rel = `${keyPrefix}/${i}.${ext}`;
+      // 保留原始文件名（而非纯序号）：3D 生成常见输出是 .gltf + .bin + 贴图的组合，
+      // 内部靠相对文件名互相引用；同一次生成的文件仍放在同一个 keyPrefix 目录下，
+      // 只要文件名不变，镜像后这些相对引用照样能解析，贴图不会因为改名而丢失。
+      // 去重判定必须带上扩展名——mesh.gltf 和 mesh.bin 同名不同缀是正常情况，
+      // 只按 basename 去重会把 mesh.bin 错误地改名成 mesh_1.bin，反而破坏引用。
+      const base = guessBasename(url);
+      let name = base ?? String(i);
+      let filename = `${name}.${ext}`;
+      if (usedNames.has(filename)) {
+        name = `${name}_${i}`;
+        filename = `${name}.${ext}`;
+      }
+      usedNames.add(filename);
+      const rel = `${keyPrefix}/${filename}`;
       const publicUrl = await uploadFromUrl(url, rel, cfg);
       mirrored.push(publicUrl);
     } catch (err) {
