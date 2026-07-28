@@ -4,10 +4,18 @@
  * 产品结构：
  *   图片 —— 文字生图 / 图片生图 / 图片编辑，各分 低 / 中 / 高 三档
  *   视频 —— 文字生视频 / 图片生视频，各分 低 / 高 两档
- * 每个档位另有一个 Spicy 变体（会员专属），共 (3×3 + 2×2) × 2 = 26 个 SKU。
+ *   脱衣 —— 成人模式专属，单档；系统注入 prompt，用户只选性别与参数
+ * 每个普通图片/视频档位另有一个 Spicy 变体（会员专属）。
  */
 
-export const GENERATION_MODES = ["txt2img", "img2img", "imgedit", "txt2vid", "img2vid"] as const;
+export const GENERATION_MODES = [
+  "txt2img",
+  "img2img",
+  "imgedit",
+  "undress",
+  "txt2vid",
+  "img2vid",
+] as const;
 export type GenerationMode = (typeof GENERATION_MODES)[number];
 
 export const GENERATION_TIERS = ["low", "mid", "high"] as const;
@@ -65,6 +73,17 @@ export const MODE_META: Record<GenerationMode, ModeMeta> = {
     supportsBatch: true,
     icon: "fa-wand-magic-sparkles",
     fallbackLabel: "图片编辑",
+  },
+  undress: {
+    mode: "undress",
+    category: "image",
+    tiers: ["low"],
+    needsImage: true,
+    needsPrompt: false,
+    supportsNegative: true,
+    supportsBatch: true,
+    icon: "fa-shirt",
+    fallbackLabel: "脱衣模式",
   },
   txt2vid: {
     mode: "txt2vid",

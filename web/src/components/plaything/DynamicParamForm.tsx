@@ -7,10 +7,29 @@ import {
   revokePendingMedia,
   type PendingMedia,
 } from "@/lib/plaything-upload-client";
+import { useState } from "react";
 import type { PlaythingProduct } from "./types";
 import { ParamControlGrid } from "@/components/ParamControls";
 import { accentOf, type AccentTone, type ParamControl } from "@/lib/param-controls";
 import { useTranslations } from "next-intl";
+
+/** 与 src/lib/prompt-optimizer.ts 的 PromptOptimizeStyle 保持一致；那边有 server-only 不便直接导入类型以外的东西 */
+export type PromptOptimizeStyle =
+  | "default"
+  | "artistic"
+  | "photographic"
+  | "technical"
+  | "anime"
+  | "realistic";
+
+const OPTIMIZE_STYLES: PromptOptimizeStyle[] = [
+  "default",
+  "artistic",
+  "photographic",
+  "technical",
+  "anime",
+  "realistic",
+];
 
 export type DynamicFormState = {
   prompt: string;
@@ -96,6 +115,9 @@ export function DynamicParamForm({
   onChange,
   onError,
   accent = "sky",
+  promptOptimizerEnabled = false,
+  optimizing = false,
+  onOptimizePrompt,
 }: {
   product: PlaythingProduct;
   value: DynamicFormState;
@@ -103,6 +125,11 @@ export function DynamicParamForm({
   onError?: (msg: string) => void;
   /** 主体强调色；玩物专区默认 sky */
   accent?: AccentTone;
+  /** 是否显示「AI 优化」入口（feature flag + 该品类是否支持） */
+  promptOptimizerEnabled?: boolean;
+  /** 优化请求进行中；由父组件管理（涉及先上传参考图再调用接口） */
+  optimizing?: boolean;
+  onOptimizePrompt?: (style: PromptOptimizeStyle) => void;
 }) {
   const t = useTranslations("Plaything");
   const controls = useMemo(() => getControls(product), [product]);
@@ -110,6 +137,12 @@ export function DynamicParamForm({
   const required = new Set(product.param_schema?.required ?? []);
   const hasPrompt = "prompt" in props || Object.keys(props).length === 0;
   const hasNegative = "negative_prompt" in props;
+  const [optimizeStyle, setOptimizeStyle] = useState<PromptOptimizeStyle>("default");
+  // 优化器只对图片/视频类产出有意义（音频/3D/工具类没有对应的视觉描述规则）
+  const showOptimizer =
+    promptOptimizerEnabled &&
+    hasPrompt &&
+    (product.media_kind === "image" || product.media_kind === "video");
 
   const mediaControls = controls.filter((c) => c.kind === "media");
   const otherControls = controls.filter((c) => c.kind !== "media");
@@ -176,9 +209,37 @@ export function DynamicParamForm({
     <div className="space-y-4">
       {hasPrompt && (
         <div>
-          <label className="text-xs text-gray-400 block mb-1">
-            {t("prompt")}{required.has("prompt") ? " *" : ""}
-          </label>
+          <div className="flex items-center justify-between mb-1 gap-2 flex-wrap">
+            <label className="text-xs text-gray-400">
+              {t("prompt")}{required.has("prompt") ? " *" : ""}
+            </label>
+            {showOptimizer && (
+              <div className="flex items-center gap-1.5">
+                <select
+                  value={optimizeStyle}
+                  onChange={(e) => setOptimizeStyle(e.target.value as PromptOptimizeStyle)}
+                  disabled={optimizing}
+                  className="bg-[#111] border border-white/10 rounded-lg px-2 py-1 text-[11px] text-gray-300 outline-none disabled:opacity-50"
+                >
+                  {OPTIMIZE_STYLES.map((s) => (
+                    <option key={s} value={s}>
+                      {t(`optimizeStyles.${s}` as "optimizeStyles.default")}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  type="button"
+                  disabled={optimizing || !value.prompt.trim()}
+                  onClick={() => onOptimizePrompt?.(optimizeStyle)}
+                  title={t("optimizeHint")}
+                  className={`px-2.5 py-1 rounded-lg text-[11px] font-medium border transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${a.activeChip}`}
+                >
+                  <i className={`fas ${optimizing ? "fa-spinner fa-spin" : "fa-wand-magic-sparkles"} mr-1`} />
+                  {optimizing ? t("optimizing") : t("optimize")}
+                </button>
+              </div>
+            )}
+          </div>
           <textarea
             value={value.prompt}
             onChange={(e) => onChange({ ...value, prompt: e.target.value })}

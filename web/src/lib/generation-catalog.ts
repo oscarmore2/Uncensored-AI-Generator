@@ -301,6 +301,31 @@ function imageSkus(): SkuBlueprint[] {
       }
     }
   }
+
+  // 脱衣模式：单档，成人模式专属；模型由管理端手工桥接
+  const undressLow = IMAGE_TIERS[0];
+  out.push({
+    mode: "undress",
+    tier: "low",
+    spicy: false,
+    label: "脱衣模式 · 标准",
+    description: "上传人物图，一键脱衣 · 仅成人模式可用",
+    refCredits: undressLow.refCredits,
+    refLabel: undressLow.refLabel,
+    unitSeconds: 0,
+    sortOrder: 10,
+    isDefault: true,
+    defaultInputs: undressLow.defaultInputs,
+    modelCandidates: [
+      "wavespeed-ai/qwen-image/edit-plus",
+      "wavespeed-ai/qwen-image/edit",
+      "wavespeed-ai/flux-kontext-dev",
+      "wavespeed-ai/flux-dev/image-to-image",
+      "wavespeed-ai/z-image-turbo/image-to-image",
+    ],
+    modelPattern: /(edit|image-to-image|kontext|inpaint)/i,
+  });
+
   return out;
 }
 

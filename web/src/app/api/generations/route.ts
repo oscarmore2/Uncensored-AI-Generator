@@ -9,6 +9,7 @@ import { rateLimit } from "@/lib/rate-limit";
 import { isAdultContent, isBlocked, reviewPrompt, safetyAudit } from "@/lib/content-safety";
 import { hasAdultAccess } from "@/lib/adult-access";
 import { generatedMediaExpiry } from "@/lib/media-retention";
+import { resolveUndressPrompts } from "@/lib/undress-prompts";
 
 export async function POST(req: Request) {
   const user = await getCurrentUser();
@@ -26,10 +27,27 @@ export async function POST(req: Request) {
 
   const gen = parsed.data;
   const adultAccess = hasAdultAccess(user);
+
+  if (gen.mode === "undress" && !adultAccess) {
+    return NextResponse.json(
+      { error: "脱衣模式需要开启成人模式", code: "ADULT_MODE_REQUIRED" },
+      { status: 403 }
+    );
+  }
+
+  // 脱衣模式：忽略客户端 prompt，按性别注入系统预定正负向词
+  let prompt = gen.prompt.trim();
+  let negativePrompt = gen.negative_prompt;
+  if (gen.mode === "undress") {
+    const pair = resolveUndressPrompts(gen.gender!);
+    prompt = pair.prompt;
+    negativePrompt = pair.negative_prompt;
+  }
+
   // 分级判定：擦边放行、露骨需成人模式、未成年/非自愿绝对拒绝。
   // 分类器全部不可用时 reviewPrompt 会回退本地规则结论，不再抛错阻断。
-  const safety = await reviewPrompt({ mode: gen.mode, prompt: gen.prompt });
-  const isAdult = isAdultContent(safety);
+  const safety = await reviewPrompt({ mode: gen.mode, prompt });
+  const isAdult = gen.mode === "undress" ? true : isAdultContent(safety);
   const safetyCategories = safetyAudit(safety);
   if (isBlocked(safety, adultAccess)) {
     return NextResponse.json(
@@ -71,7 +89,6 @@ export async function POST(req: Request) {
   }
 
   const cost = quote.cost;
-  const prompt = gen.prompt.trim();
   const ownerVipAtCreation = isVipActive(user);
   const mediaExpiresAt = await generatedMediaExpiry("main", ownerVipAtCreation);
 
@@ -86,6 +103,31 @@ export async function POST(req: Request) {
     );
   }
 
+  // schema 控件里的 strength / format / steps 等会随 body 一并提交；
+  // zod 会剥掉未知键，这里从原始 body 回收可序列化的 UI 参数。
+  const reserved = new Set([
+    "mode",
+    "tier",
+    "spicy",
+    "prompt",
+    "negative_prompt",
+    "gender",
+    "ratio",
+    "duration",
+    "seed",
+    "batch",
+    "image_base64",
+  ]);
+  const extraUi: Record<string, unknown> = {};
+  if (body && typeof body === "object" && !Array.isArray(body)) {
+    for (const [key, value] of Object.entries(body as Record<string, unknown>)) {
+      if (reserved.has(key)) continue;
+      if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
+        extraUi[key] = value;
+      }
+    }
+  }
+
   const record = await db.generation.create({
     data: {
       userId: user.id,
@@ -94,13 +136,15 @@ export async function POST(req: Request) {
       spicy: quote.product.spicy,
       productId: quote.product.id,
       prompt,
-      negativePrompt: gen.negative_prompt,
+      negativePrompt,
       params: JSON.stringify({
         ratio: gen.ratio,
         duration: gen.duration,
         seed: gen.seed,
         batch: gen.batch,
         image_base64: gen.image_base64 ?? null,
+        ...(gen.mode === "undress" && gen.gender ? { gender: gen.gender } : {}),
+        ...extraUi,
       }),
       cost,
       isAdult,

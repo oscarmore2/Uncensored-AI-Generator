@@ -16,10 +16,11 @@ import {
   mergeMediaUrlsIntoParams,
   releaseFormMedia,
   type DynamicFormState,
+  type PromptOptimizeStyle,
 } from "@/components/plaything/DynamicParamForm";
 import { GenerateBar } from "@/components/plaything/GenerateBar";
 import { MediaBrowser } from "@/components/plaything/MediaBrowser";
-import { uploadAllPending } from "@/lib/plaything-upload-client";
+import { uploadAllPending, uploadPendingMediaCached } from "@/lib/plaything-upload-client";
 import type {
   Phase,
   PlaythingCategorySummary,
@@ -46,8 +47,12 @@ export default function PlaythingPage() {
   const [quoteCost, setQuoteCost] = useState<number | null>(null);
   const [quoteSource, setQuoteSource] = useState<"wavespeed" | "fallback" | null>(null);
   const [quoting, setQuoting] = useState(false);
+  const [promptOptimizerEnabled, setPromptOptimizerEnabled] = useState(false);
+  const [optimizing, setOptimizing] = useState(false);
   const pollingRef = useRef(false);
   const quoteTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // PendingMedia.id → 已上传 URL；优化提示词时抢先传的参考图，真正提交生成时复用，不重复上传
+  const uploadedUrlCache = useRef(new Map<string, string>());
 
   const loadCatalog = useCallback(async () => {
     try {
@@ -81,6 +86,9 @@ export default function PlaythingPage() {
   useEffect(() => {
     void loadCatalog();
     void loadHistory();
+    api<{ plaything_prompt_optimizer?: boolean }>("/api/features")
+      .then((f) => setPromptOptimizerEnabled(Boolean(f.plaything_prompt_optimizer)))
+      .catch(() => setPromptOptimizerEnabled(false));
   }, [loadCatalog, loadHistory]);
 
   const categoryProducts = useMemo(() => {
@@ -113,6 +121,7 @@ export default function PlaythingPage() {
     });
     setQuoteCost(selected?.credit_cost ?? null);
     setQuoteSource(null);
+    uploadedUrlCache.current.clear();
   }, [selected?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const mediaKind: PlaythingMediaKind =
@@ -169,6 +178,47 @@ export default function PlaythingPage() {
       if (quoteTimer.current) clearTimeout(quoteTimer.current);
     };
   }, [form.prompt, form.negativePrompt, form.fields, selected]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  /**
+   * WaveSpeed 提示词优化（仅玩物专区）。若已选了参考图，抢先上传一次拿公开 URL 一并送审优化，
+   * 上传结果写进 uploadedUrlCache，真正提交生成时 uploadAllPending 会命中缓存不再重复上传。
+   */
+  async function optimizePromptText(style: PromptOptimizeStyle) {
+    if (!selected || optimizing) return;
+    const text = form.prompt.trim();
+    if (!text) return;
+
+    setOptimizing(true);
+    try {
+      const fieldKinds = mediaFieldKinds(selected);
+      let imageUrl: string | undefined;
+      for (const [field, items] of Object.entries(form.mediaFiles)) {
+        const item = items[0];
+        if (item?.kind === "image") {
+          imageUrl = await uploadPendingMediaCached({
+            item,
+            productId: selected.id,
+            field,
+            fieldKinds,
+            cache: uploadedUrlCache.current,
+          });
+          break;
+        }
+      }
+
+      const mode = selected.media_kind === "video" ? "video" : "image";
+      const res = await api<{ prompt: string }>("/api/plaything/prompt-optimize", {
+        method: "POST",
+        body: JSON.stringify({ text, image_url: imageUrl, mode, style }),
+      });
+      setForm((prev) => ({ ...prev, prompt: res.prompt }));
+      toast(t("optimizeDone"));
+    } catch (e) {
+      toast(e instanceof ApiError ? e.message : t("optimizeFailed"), true);
+    } finally {
+      setOptimizing(false);
+    }
+  }
 
   async function pollUntilDone(id: number) {
     if (pollingRef.current) return;
@@ -228,6 +278,7 @@ export default function PlaythingPage() {
         productId: selected.id,
         mediaByField: payload.mediaFiles,
         fieldKinds: mediaFieldKinds(selected),
+        cache: uploadedUrlCache.current,
       });
       const params = mergeMediaUrlsIntoParams(selected, payload.params, mediaUrls);
 
@@ -298,6 +349,9 @@ export default function PlaythingPage() {
                       value={form}
                       onChange={setForm}
                       onError={(msg) => toast(msg)}
+                      promptOptimizerEnabled={promptOptimizerEnabled}
+                      optimizing={optimizing}
+                      onOptimizePrompt={(style) => void optimizePromptText(style)}
                     />
                   </div>
                   <GenerateBar

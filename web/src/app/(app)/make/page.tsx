@@ -9,10 +9,10 @@ import {
   estimateCost,
   type ApiGeneration,
   type CatalogProduct,
-  type CatalogMapping,
   type CatalogResponse,
 } from "@/lib/client";
 import { MODE_META, isGenerationMode, type GenerationMode } from "@/lib/generation-modes";
+import { UNDRESS_GENDERS, type UndressGender } from "@/lib/undress-prompts";
 import { ParamControlGrid } from "@/components/ParamControls";
 import type { ParamControl } from "@/lib/param-controls";
 import { useApp } from "@/components/AppContext";
@@ -39,6 +39,7 @@ function MakePageInner() {
   const [negative, setNegative] = useState(
     () => searchParams.get("negative") ?? t("defaultNegative")
   );
+  const [gender, setGender] = useState<UndressGender>("female");
   const [ratio, setRatio] = useState("1:1");
   const [batch, setBatch] = useState(1);
   const [duration, setDuration] = useState("5");
@@ -62,10 +63,21 @@ function MakePageInner() {
 
   const meta = MODE_META[mode];
   const isVip = Boolean(catalog?.user_vip.is_active);
+  const adultEnabled = Boolean(user?.adult_mode_enabled);
+  const isUndress = mode === "undress";
+  const visibleModes = useMemo(
+    () => MODES.filter((m) => m.mode !== "undress" || adultEnabled),
+    [adultEnabled]
+  );
 
   useEffect(() => {
     if (user && user.balance <= 0) router.replace("/pricing");
   }, [router, user]);
+
+  // 关闭成人模式后若仍停在脱衣 Tab，回退到文字生图
+  useEffect(() => {
+    if (mode === "undress" && !adultEnabled) setMode("txt2img");
+  }, [mode, adultEnabled]);
 
   useEffect(() => {
     const workId = searchParams.get("remix_work");
@@ -78,7 +90,13 @@ function MakePageInner() {
       params: Record<string, unknown>;
     }>(`/api/public/works/${encodeURIComponent(workId)}`)
       .then((work) => {
-        if (isGenerationMode(work.mode)) setMode(work.mode);
+        if (isGenerationMode(work.mode)) {
+          if (work.mode === "undress" && !user?.adult_mode_enabled) {
+            setMode("txt2img");
+          } else {
+            setMode(work.mode);
+          }
+        }
         setPrompt(work.prompt);
         if (work.negative_prompt) setNegative(work.negative_prompt);
         const p = work.params ?? {};
@@ -89,7 +107,13 @@ function MakePageInner() {
         if (typeof p.tier === "string") setTier(p.tier);
         if (typeof p.spicy === "boolean") setSpicy(p.spicy);
         if (p.batch === 1 || p.batch === 2 || p.batch === 4) setBatch(p.batch);
-        const known = new Set(["ratio", "duration", "tier", "spicy", "batch", "product_id"]);
+        if (
+          typeof p.gender === "string" &&
+          (UNDRESS_GENDERS as readonly string[]).includes(p.gender)
+        ) {
+          setGender(p.gender as UndressGender);
+        }
+        const known = new Set(["ratio", "duration", "tier", "spicy", "batch", "product_id", "gender"]);
         setExtraParams(
           Object.fromEntries(
             Object.entries(p)
@@ -103,7 +127,7 @@ function MakePageInner() {
         toast(t("copied"));
       })
       .catch((error) => toast(error instanceof Error ? error.message : t("copyFailed"), true));
-  }, [searchParams, t, toast]);
+  }, [searchParams, t, toast, user?.adult_mode_enabled]);
 
   useEffect(() => {
     let cancelled = false;
@@ -251,8 +275,9 @@ function MakePageInner() {
   }
 
   async function startGeneration() {
-    if (meta.needsPrompt && !prompt.trim()) return toast(t("promptRequired"), true);
+    if (!isUndress && meta.needsPrompt && !prompt.trim()) return toast(t("promptRequired"), true);
     if (meta.needsImage && !imageBase64) return toast(t("imageRequired"), true);
+    if (isUndress && !adultEnabled) return toast(t("undressNeedsAdult"), true);
     if (phase !== "idle") return;
     if (!selectedProduct) return toast(t("tierUnavailable"), true);
 
@@ -266,8 +291,9 @@ function MakePageInner() {
           mode,
           tier: selectedProduct.tier,
           spicy: selectedProduct.spicy,
-          prompt: prompt.trim(),
-          negative_prompt: meta.supportsNegative ? negative : "",
+          prompt: isUndress ? "" : prompt.trim(),
+          negative_prompt: isUndress ? "" : meta.supportsNegative ? negative : "",
+          ...(isUndress ? { gender } : {}),
           ratio,
           duration: meta.category === "video" ? duration : undefined,
           batch: meta.supportsBatch ? batch : 1,
@@ -292,6 +318,9 @@ function MakePageInner() {
         (e.code === "INSUFFICIENT_CREDITS" || e.code === "SPICY_REQUIRES_VIP")
       ) {
         router.push("/pricing");
+      }
+      if (e instanceof ApiError && e.code === "ADULT_MODE_REQUIRED") {
+        router.push("/profile");
       }
       setPhase("idle");
     }
@@ -390,7 +419,7 @@ function MakePageInner() {
       </div>
 
       <div className="flex flex-wrap gap-2 mb-6">
-        {MODES.map((m) => {
+        {visibleModes.map((m) => {
           const cheapest = catalog?.products
             .filter((p) => p.mode === m.mode && !p.spicy)
             .sort((a, b) => a.credit_cost - b.credit_cost)[0];
@@ -459,52 +488,75 @@ function MakePageInner() {
             )}
           </div>
 
-          <div className="mb-5">
-            <div className="flex items-center justify-between mb-2 gap-2 flex-wrap">
-              <label className="text-sm font-semibold text-gray-300">{t("prompt")}</label>
-              <div className="flex items-center gap-2">
-                {magicEnabled && (
+          {isUndress ? (
+            <div className="mb-5">
+              <label className="text-sm font-semibold text-gray-300 mb-2 block">{t("genderLabel")}</label>
+              <div className="flex flex-wrap gap-2">
+                {UNDRESS_GENDERS.map((g) => (
+                  <button
+                    key={g}
+                    type="button"
+                    onClick={() => setGender(g)}
+                    className={`px-4 py-2 rounded-2xl text-sm font-medium border transition-colors ${
+                      gender === g
+                        ? "bg-rose-600/20 border-rose-500 text-rose-100"
+                        : "bg-white/5 border-white/10 text-gray-300 hover:border-white/25"
+                    }`}
+                  >
+                    {t(`genders.${g}` as "genders.female")}
+                  </button>
+                ))}
+              </div>
+              <p className="mt-2 text-[11px] text-gray-500 leading-relaxed">{t("undressHint")}</p>
+            </div>
+          ) : (
+            <div className="mb-5">
+              <div className="flex items-center justify-between mb-2 gap-2 flex-wrap">
+                <label className="text-sm font-semibold text-gray-300">{t("prompt")}</label>
+                <div className="flex items-center gap-2">
+                  {magicEnabled && (
+                    <button
+                      type="button"
+                      onClick={() => void runMagicPrompt()}
+                      disabled={magicBusy || phase !== "idle"}
+                      className="magic-prompt-btn inline-flex items-center gap-x-1.5 px-3.5 py-1.5 rounded-full text-sm font-medium text-black disabled:opacity-50 disabled:cursor-not-allowed transition-transform hover:scale-[1.02] active:scale-[0.98]"
+                      title={t("magicTitle")}
+                    >
+                      {magicBusy ? (
+                        <i className="fas fa-spinner fa-spin text-[13px] text-[#5c4a7a]" />
+                      ) : (
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden className="text-[#5c4a7a]">
+                          <path
+                            d="M12 2.5l1.6 5.2L19 9.3l-5.2 1.6L12 16.1l-1.6-5.2L5 9.3l5.4-1.6L12 2.5z"
+                            fill="currentColor"
+                            opacity="0.95"
+                          />
+                          <path d="M18.5 14.2l.7 2.2 2.2.7-2.2.7-.7 2.2-.7-2.2-2.2-.7 2.2-.7.7-2.2z" fill="currentColor" opacity="0.75" />
+                          <path d="M6.2 15.5l.45 1.4 1.4.45-1.4.45-.45 1.4-.45-1.4-1.4-.45 1.4-.45.45-1.4z" fill="currentColor" opacity="0.65" />
+                        </svg>
+                      )}
+                      <span>{magicBusy ? t("casting") : t("magic")}</span>
+                    </button>
+                  )}
                   <button
                     type="button"
-                    onClick={() => void runMagicPrompt()}
-                    disabled={magicBusy || phase !== "idle"}
-                    className="magic-prompt-btn inline-flex items-center gap-x-1.5 px-3.5 py-1.5 rounded-full text-sm font-medium text-black disabled:opacity-50 disabled:cursor-not-allowed transition-transform hover:scale-[1.02] active:scale-[0.98]"
-                    title={t("magicTitle")}
+                    onClick={() => setPrompt(examplePrompts[Math.floor(Math.random() * examplePrompts.length)])}
+                    className="text-xs flex items-center gap-x-1 text-rose-400 hover:text-rose-300"
                   >
-                    {magicBusy ? (
-                      <i className="fas fa-spinner fa-spin text-[13px] text-[#5c4a7a]" />
-                    ) : (
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden className="text-[#5c4a7a]">
-                        <path
-                          d="M12 2.5l1.6 5.2L19 9.3l-5.2 1.6L12 16.1l-1.6-5.2L5 9.3l5.4-1.6L12 2.5z"
-                          fill="currentColor"
-                          opacity="0.95"
-                        />
-                        <path d="M18.5 14.2l.7 2.2 2.2.7-2.2.7-.7 2.2-.7-2.2-2.2-.7 2.2-.7.7-2.2z" fill="currentColor" opacity="0.75" />
-                        <path d="M6.2 15.5l.45 1.4 1.4.45-1.4.45-.45 1.4-.45-1.4-1.4-.45 1.4-.45.45-1.4z" fill="currentColor" opacity="0.65" />
-                      </svg>
-                    )}
-                    <span>{magicBusy ? t("casting") : t("magic")}</span>
+                    <i className="fas fa-dice" /> <span>{t("random")}</span>
                   </button>
-                )}
-                <button
-                  type="button"
-                  onClick={() => setPrompt(examplePrompts[Math.floor(Math.random() * examplePrompts.length)])}
-                  className="text-xs flex items-center gap-x-1 text-rose-400 hover:text-rose-300"
-                >
-                  <i className="fas fa-dice" /> <span>{t("random")}</span>
-                </button>
+                </div>
               </div>
+              <textarea
+                value={prompt}
+                onChange={(e) => setPrompt(e.target.value)}
+                className="prompt-box w-full bg-[#111] border border-white/10 focus:border-rose-500/60 rounded-2xl p-4 text-sm placeholder:text-gray-500 outline-none min-h-[120px]"
+                placeholder={mode === "imgedit" ? t("editPlaceholder") : t("promptPlaceholder")}
+              />
             </div>
-            <textarea
-              value={prompt}
-              onChange={(e) => setPrompt(e.target.value)}
-              className="prompt-box w-full bg-[#111] border border-white/10 focus:border-rose-500/60 rounded-2xl p-4 text-sm placeholder:text-gray-500 outline-none min-h-[120px]"
-              placeholder={mode === "imgedit" ? t("editPlaceholder") : t("promptPlaceholder")}
-            />
-          </div>
+          )}
 
-          {meta.supportsNegative && (
+          {!isUndress && meta.supportsNegative && (
             <div className="mb-5">
               <label className="text-sm font-semibold text-gray-300 mb-2 block">{t("negative")}</label>
               <input

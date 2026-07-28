@@ -187,7 +187,7 @@
       "txt2vid": "Text to video",
       "img2img": "Image to image",
       "img2vid": "Image to video",
-      "undress": "Image editing"
+      "undress": "Undress"
     }
   },
   "History": {
@@ -273,8 +273,17 @@
       "txt2vid": "Text to video",
       "img2img": "Image to image",
       "img2vid": "Image to video",
-      "imgedit": "Image editing"
+      "imgedit": "Image editing",
+      "undress": "Undress"
     },
+    "genderLabel": "Subject gender",
+    "genders": {
+      "female": "Female",
+      "male": "Male",
+      "couple": "Couple"
+    },
+    "undressHint": "A system undress prompt is applied automatically. Only clothing is removed; identity and scene details are preserved as much as possible.",
+    "undressNeedsAdult": "Undress mode requires adult mode to be enabled",
     "tierLabel": "Quality tier",
     "spicyLabel": "Spicy tiers (members only)",
     "spicyUnlock": "Unlock with membership",
@@ -382,7 +391,20 @@
     "threeDHint": "Generate with a 3D model, then rotate and inspect it here",
     "threeDAlt": "Generated 3D result",
     "threeDDownload": "This result cannot be previewed as glb/gltf. Download it instead:",
-    "select3d": "Select a 3D result to preview"
+    "select3d": "Select a 3D result to preview",
+    "optimize": "AI Optimize",
+    "optimizing": "Optimizing…",
+    "optimizeHint": "Rewrite the description via WaveSpeed's prompt optimizer; the reference image (if any) is analyzed too",
+    "optimizeDone": "Prompt optimized",
+    "optimizeFailed": "Prompt optimization failed",
+    "optimizeStyles": {
+      "default": "Default",
+      "artistic": "Artistic",
+      "photographic": "Photographic",
+      "technical": "Technical",
+      "anime": "Anime",
+      "realistic": "Realistic"
+    }
   },
   "Cookie": {
     "aria": "Cookie collection notice",

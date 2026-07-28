@@ -5,12 +5,13 @@ import { api, ApiError } from "@/lib/client";
 
 type Tab = "products" | "mappings" | "packages" | "tiers" | "plans";
 
-const MODES = ["txt2img", "img2img", "imgedit", "txt2vid", "img2vid"] as const;
+const MODES = ["txt2img", "img2img", "imgedit", "undress", "txt2vid", "img2vid"] as const;
 
 const MODE_LABEL: Record<string, string> = {
   txt2img: "文字生图",
   img2img: "图片生图",
   imgedit: "图片编辑",
+  undress: "脱衣模式",
   txt2vid: "文字生视频",
   img2vid: "图片生视频",
 };

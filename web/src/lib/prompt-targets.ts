@@ -27,6 +27,7 @@ const FORMAT_BY_MODE: Record<GenerationMode, PromptFormatId> = {
   txt2img: "image_t2i",
   img2img: "image_i2i",
   imgedit: "image_edit",
+  undress: "image_edit",
   txt2vid: "video_t2v",
   img2vid: "video_i2v",
 };

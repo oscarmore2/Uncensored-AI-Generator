@@ -13,7 +13,7 @@ import {
  * 播种版本：改动 SKU 结构或对标价时 +1，会重建 GenerationProduct / ModeParamMapping。
  * 重建只覆盖档位与价格；管理端手工绑定的模型按 mode+tier+spicy 原样保留。
  */
-const CATALOG_SEED_VERSION = "5";
+const CATALOG_SEED_VERSION = "6";
 const SEED_VERSION_KEY = "generation_catalog_seed_version";
 
 let seeding = false;
@@ -204,7 +204,7 @@ async function rebuildParamMappings(): Promise<void> {
     { value: "1080p", label: "1080p" },
   ]);
 
-  const IMAGE_MODES = ["txt2img", "img2img", "imgedit"] as const;
+  const IMAGE_MODES = ["txt2img", "img2img", "imgedit", "undress"] as const;
   const VIDEO_MODES = ["txt2vid", "img2vid"] as const;
 
   /**

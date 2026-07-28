@@ -8,6 +8,7 @@ const MODE_HINTS: Record<string, RegExp> = {
   txt2img: /(text-to-image|t2i)/i,
   img2img: /(image-to-image|i2i|edit)/i,
   imgedit: /(edit|kontext|inpaint)/i,
+  undress: /(edit|image-to-image|kontext|inpaint)/i,
   txt2vid: /(text-to-video|t2v)/i,
   img2vid: /(image-to-video|i2v)/i,
 };
@@ -17,6 +18,7 @@ const MODE_TAG_HINTS: Record<string, string[]> = {
   txt2img: ["文生图"],
   img2img: ["图生图"],
   imgedit: ["图片编辑"],
+  undress: ["图片编辑", "图生图"],
   txt2vid: ["文生视频"],
   img2vid: ["图生视频"],
 };

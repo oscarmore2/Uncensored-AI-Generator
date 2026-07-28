@@ -33,6 +33,13 @@ export async function POST(req: Request) {
   }
 
   try {
+    if (parsed.data.mode === "undress") {
+      return NextResponse.json(
+        { error: "脱衣模式不支持魔法指令", code: "MODE_UNSUPPORTED" },
+        { status: 400 }
+      );
+    }
+
     const adultAccess = hasAdultAccess(user);
 
     // 入口审查：成人模式只拦绝对红线，非成人模式按分级拦露骨

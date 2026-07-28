@@ -215,10 +215,43 @@ export async function uploadPlaythingFile(opts: {
   };
 }
 
+/**
+ * 上传单个待选媒体并写入缓存；命中缓存直接返回，不重复上传。
+ * 供「提示词优化」抢先上传参考图使用——真正提交生成时 uploadAllPending
+ * 会用同一个 cache 命中这次上传结果，不会传两遍。
+ */
+export async function uploadPendingMediaCached(opts: {
+  item: PendingMedia;
+  productId: number;
+  field: string;
+  fieldKinds: Record<string, { kind: "image" | "video" | "audio"; accept?: string[] }>;
+  cache: Map<string, string>;
+}): Promise<string> {
+  const cached = opts.cache.get(opts.item.id);
+  if (cached) return cached;
+  const meta = opts.fieldKinds[opts.field];
+  const uploaded = await uploadPlaythingFile({
+    file: opts.item.file,
+    kind: meta?.kind ?? opts.item.kind,
+    productId: opts.productId,
+    field: opts.field,
+    meta: opts.item.meta,
+    accept: meta?.accept,
+  });
+  opts.cache.set(opts.item.id, uploaded.url);
+  return uploaded.url;
+}
+
 export async function uploadAllPending(opts: {
   productId: number;
   mediaByField: Record<string, PendingMedia[]>;
   fieldKinds: Record<string, { kind: "image" | "video" | "audio"; accept?: string[] }>;
+  /**
+   * PendingMedia.id → 已上传 URL 的缓存，命中则跳过重复上传。
+   * 用于提示词优化先把参考图传过一次的场景，避免真正提交生成时再传一遍
+   * （否则会在 OSS 里留下两份一样的文件、多一条 MediaAsset 记录）。
+   */
+  cache?: Map<string, string>;
 }): Promise<Record<string, string[]>> {
   const out: Record<string, string[]> = {};
   for (const [field, items] of Object.entries(opts.mediaByField)) {
@@ -229,6 +262,11 @@ export async function uploadAllPending(opts: {
     const meta = opts.fieldKinds[field];
     const urls: string[] = [];
     for (const item of items) {
+      const cached = opts.cache?.get(item.id);
+      if (cached) {
+        urls.push(cached);
+        continue;
+      }
       const uploaded = await uploadPlaythingFile({
         file: item.file,
         kind: meta?.kind ?? item.kind,
@@ -237,6 +275,7 @@ export async function uploadAllPending(opts: {
         meta: item.meta,
         accept: meta?.accept,
       });
+      opts.cache?.set(item.id, uploaded.url);
       urls.push(uploaded.url);
     }
     out[field] = urls;

@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { GENERATION_MODES, GENERATION_TIERS, MODE_META } from "./generation-modes";
+import { UNDRESS_GENDERS } from "./undress-prompts";
 
 export const credentialsSchema = z.object({
   username: z
@@ -17,6 +18,7 @@ export const generationSchema = z
     spicy: z.boolean().optional().default(false),
     prompt: z.string().max(4000).optional().default(""),
     negative_prompt: z.string().max(2000).optional().default(""),
+    gender: z.enum(UNDRESS_GENDERS).optional(),
     ratio: z.string().max(10).optional().default("1:1"),
     duration: z.union([z.string().max(10), z.number()]).optional(),
     seed: z.union([z.string().max(40), z.number().int()]).optional(),
@@ -34,6 +36,9 @@ export const generationSchema = z
     }
     if (!meta.tiers.includes(v.tier)) {
       ctx.addIssue({ code: "custom", message: "该模式不支持所选档位", path: ["tier"] });
+    }
+    if (v.mode === "undress" && !v.gender) {
+      ctx.addIssue({ code: "custom", message: "请选择性别", path: ["gender"] });
     }
   });
 

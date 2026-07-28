@@ -187,7 +187,7 @@
       "txt2vid": "文生视频",
       "img2img": "图生图",
       "img2vid": "图生视频",
-      "undress": "图像编辑"
+      "undress": "脱衣模式"
     }
   },
   "History": {
@@ -273,8 +273,17 @@
       "txt2vid": "文字生视频",
       "img2img": "图片生图",
       "img2vid": "图片生视频",
-      "imgedit": "图片编辑"
+      "imgedit": "图片编辑",
+      "undress": "脱衣模式"
     },
+    "genderLabel": "人物性别",
+    "genders": {
+      "female": "女",
+      "male": "男",
+      "couple": "一男一女"
+    },
+    "undressHint": "系统将自动使用预定脱衣指令，仅移除衣物并尽量保留人物与场景其它要素。",
+    "undressNeedsAdult": "脱衣模式需要开启成人模式",
     "tierLabel": "生成档位",
     "spicyLabel": "Spicy 档位（会员专属）",
     "spicyUnlock": "开通会员解锁",
@@ -382,7 +391,20 @@
     "threeDHint": "选择 3D 模型并生成后，可在此旋转查看",
     "threeDAlt": "3D 生成结果",
     "threeDDownload": "当前结果不是可预览的 glb/gltf，可下载查看：",
-    "select3d": "选择一条 3D 结果开始预览"
+    "select3d": "选择一条 3D 结果开始预览",
+    "optimize": "AI 优化",
+    "optimizing": "优化中…",
+    "optimizeHint": "用 WaveSpeed 提示词优化器改写描述；已选参考图会一并纳入分析",
+    "optimizeDone": "提示词已优化",
+    "optimizeFailed": "提示词优化失败",
+    "optimizeStyles": {
+      "default": "默认",
+      "artistic": "艺术",
+      "photographic": "写实摄影",
+      "technical": "技术向",
+      "anime": "动漫",
+      "realistic": "超写实"
+    }
   },
   "Cookie": {
     "aria": "Cookie 数据收集提示",
