@@ -43,6 +43,8 @@ interface Product {
   effective_multiplier_bps: number;
   retail_usd: number;
   default_inputs: Record<string, unknown>;
+  ignored_params?: string[];
+  ignored_default_inputs?: string[];
 }
 
 interface BridgeModel {
@@ -372,6 +374,13 @@ export default function AdminPricingPage() {
                     <div className="text-[11px] font-mono text-gray-500 mt-0.5 truncate">
                       {p.is_bound ? `${p.provider}: ${p.provider_model_id}` : "—"}
                     </div>
+                    {(p.ignored_params?.length || p.ignored_default_inputs?.length) && (
+                      <div className="text-[11px] text-amber-400/90 mt-1">
+                        <i className="fas fa-triangle-exclamation mr-1" />
+                        该模型不支持，配置将被忽略：
+                        {[...(p.ignored_params ?? []), ...(p.ignored_default_inputs ?? [])].join("、")}
+                      </div>
+                    )}
                   </div>
 
                   <button

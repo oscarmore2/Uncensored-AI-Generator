@@ -4,7 +4,7 @@ import { GENERATION_MODES, GENERATION_TIERS } from "@/lib/generation-modes";
 import { getCurrentUser } from "@/lib/auth";
 import { rateLimit } from "@/lib/rate-limit";
 import { enhancePrompt } from "@/lib/magic-prompt";
-import { hasAlwaysBlockedCategory, reviewPromptWithHarness } from "@/lib/content-safety";
+import { isBlocked, reviewPrompt } from "@/lib/content-safety";
 import { hasAdultAccess } from "@/lib/adult-access";
 
 const bodySchema = z.object({
@@ -34,45 +34,39 @@ export async function POST(req: Request) {
 
   try {
     const adultAccess = hasAdultAccess(user);
-    if (!adultAccess) {
-      const inputSafety = await reviewPromptWithHarness({
-        mode: parsed.data.mode,
-        prompt: parsed.data.prompt,
-      });
-      if (!inputSafety.allowed) {
-        return NextResponse.json(
-          { error: `内容审查未通过：${inputSafety.reason}`, code: "CONTENT_POLICY_REJECTED" },
-          { status: 422 }
-        );
-      }
-    } else {
-      try {
-        const hardSafety = await reviewPromptWithHarness({
-          mode: parsed.data.mode,
-          prompt: parsed.data.prompt,
-        });
-        if (hasAlwaysBlockedCategory(hardSafety.categories)) {
-          return NextResponse.json(
-            { error: `内容审查未通过：${hardSafety.reason}`, code: "CONTENT_POLICY_REJECTED" },
-            { status: 422 }
-          );
-        }
-      } catch {
-        // 成人模式不会因分类服务暂时不可用而阻断提示词优化。
-      }
+
+    // 入口审查：成人模式只拦绝对红线，非成人模式按分级拦露骨
+    const inputSafety = await reviewPrompt({
+      mode: parsed.data.mode,
+      prompt: parsed.data.prompt,
+    });
+    if (isBlocked(inputSafety, adultAccess)) {
+      return NextResponse.json(
+        {
+          error: `内容审查未通过：${inputSafety.reason}`,
+          code: "CONTENT_POLICY_REJECTED",
+          level: inputSafety.level,
+        },
+        { status: 422 }
+      );
     }
+
     const result = await enhancePrompt({ ...parsed.data, allow_sensitive: adultAccess });
-    if (!adultAccess) {
-      const safety = await reviewPromptWithHarness({
-        mode: parsed.data.mode,
-        prompt: result.prompt,
-      });
-      if (!safety.allowed) {
-        return NextResponse.json(
-          { error: `内容审查未通过：${safety.reason}`, code: "CONTENT_POLICY_REJECTED" },
-          { status: 422 }
-        );
-      }
+
+    // 出口复查：扩写后的文本同样要过闸，防止 LLM 越界
+    const outputSafety = await reviewPrompt({
+      mode: parsed.data.mode,
+      prompt: result.prompt,
+    });
+    if (isBlocked(outputSafety, adultAccess)) {
+      return NextResponse.json(
+        {
+          error: `内容审查未通过：${outputSafety.reason}`,
+          code: "CONTENT_POLICY_REJECTED",
+          level: outputSafety.level,
+        },
+        { status: 422 }
+      );
     }
     return NextResponse.json({
       ok: true,

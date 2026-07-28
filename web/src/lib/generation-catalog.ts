@@ -61,16 +61,17 @@ const IMAGE_TIERS: ImageTierSpec[] = [
   {
     tier: "low",
     label: "标准",
-    description: "1K 输出 · 出图最快 · 日常草稿与批量试错",
+    description: "出图最快 · 成本最低 · 适合草稿与批量试错",
     refCredits: 1,
     refLabel: "ZC Text-to-Image (General) = 1 分",
     sortOrder: 10,
+    // size 仅对声明了该字段的模型生效，其余模型会自动忽略（管理端会标出来）
     defaultInputs: { size: "1024*1024", enable_base64_output: false },
   },
   {
     tier: "mid",
     label: "高清",
-    description: "2K 输出 · 细节与提示词还原更稳 · 日常主力档",
+    description: "细节与提示词还原更稳 · 日常主力档",
     refCredits: 2,
     refLabel: "ZC Text-to-Image (Qwen Pro / WAN Pro) = 2 分",
     sortOrder: 20,
@@ -79,7 +80,7 @@ const IMAGE_TIERS: ImageTierSpec[] = [
   {
     tier: "high",
     label: "旗舰",
-    description: "4K 输出 · 顶级画质与文字/结构准确度 · 成片交付",
+    description: "顶级画质与文字/结构准确度 · 成片交付",
     refCredits: 4,
     refLabel: "ZC Image Editor (Nano Banana 2) = 4 分",
     sortOrder: 30,

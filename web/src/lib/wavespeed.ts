@@ -461,12 +461,33 @@ export async function processWaveSpeedGeneration(genId: number): Promise<void> {
     }
 
     if (mapped === "succeeded") {
+      // 玩物专区尺度最大，结果落库前同样要过绝对红线闸
+      const { reviewImages, isAdultContent, safetyAudit } = await import("./content-safety");
+      const outSafety = await reviewImages({ urls: outputs, prompt: gen.prompt });
+      if (outSafety.level === "prohibited") {
+        await db.waveSpeedGeneration
+          .update({
+            where: { id: genId },
+            data: {
+              isAdult: true,
+              safetyCategories: JSON.stringify([...safetyAudit(outSafety), "blocked_at:生成结果"]),
+            },
+          })
+          .catch(() => undefined);
+        sendTelegram(
+          `🚨 玩物专区内容审查拦截\n任务 #${genId}\n用户 ID: ${gen.userId}\n判定: ${outSafety.level} / ${outSafety.categories.join("、") || "—"}\n${outSafety.reason}`
+        );
+        await failAndRefundWaveSpeed(genId, `生成结果内容审查未通过：${outSafety.reason}`);
+        return;
+      }
+
       const finalUrls = await mirrorRemoteUrls(outputs, `plaything/${genId}`);
       await db.waveSpeedGeneration.update({
         where: { id: genId },
         data: {
           status: "succeeded",
           progress: 100,
+          isAdult: gen.isAdult || isAdultContent(outSafety),
           resultUrls: JSON.stringify(finalUrls.length ? finalUrls : outputs),
           params: JSON.stringify(
             Object.fromEntries(

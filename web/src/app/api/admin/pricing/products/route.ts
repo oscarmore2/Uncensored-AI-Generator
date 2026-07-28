@@ -5,6 +5,7 @@ import { logAdminAction } from "@/lib/admin-audit";
 import { ensurePricingSeeded, productAdminOut } from "@/lib/pricing";
 import { rebindGenerationProducts } from "@/lib/pricing-seed";
 import { ZC_STARTER_USD_PER_CREDIT } from "@/lib/generation-catalog";
+import { parseRequestSchema, supportedParams, unsupportedDefaults } from "@/lib/generation-bridge";
 
 /**
  * 档位矩阵是固定的（5 模式 × 档位 × 普通/Spicy），不开放任意增删，
@@ -24,20 +25,38 @@ export async function GET() {
   const catalog = modelIds.length
     ? await db.waveSpeedCatalogModel.findMany({
         where: { modelId: { in: modelIds } },
-        select: { modelId: true, name: true, basePriceUsd: true, lastUnitPriceUsd: true },
+        select: {
+          modelId: true,
+          name: true,
+          basePriceUsd: true,
+          lastUnitPriceUsd: true,
+          apiSchema: true,
+        },
       })
     : [];
   const byModel = new Map(catalog.map((c) => [c.modelId, c]));
+
+  const mappings = await db.modeParamMapping.findMany({ where: { enabled: true } });
 
   return NextResponse.json({
     products: products.map((p) => {
       const base = productAdminOut(p);
       const model = byModel.get(p.providerModelId);
       const costUsd = model?.lastUnitPriceUsd ?? model?.basePriceUsd ?? null;
+      const schema = model ? parseRequestSchema(model.apiSchema) : null;
+      const modeMappings = mappings.filter((m) => m.mode === p.mode);
+      const supported = new Set(supportedParams(schema, modeMappings).map((sp) => sp.key));
       return {
         ...base,
         provider_model_name: model?.name ?? null,
         provider_cost_usd: costUsd,
+        // 配了但该模型不认的字段：会被静默丢弃，配置等于无效
+        ignored_params: modeMappings
+          .map((m) => m.uiKey)
+          .filter((k) => !supported.has(k)),
+        ignored_default_inputs: schema
+          ? unsupportedDefaults(schema, base.default_inputs)
+          : [],
         margin_percent:
           costUsd && costUsd > 0 && base.retail_usd > 0
             ? Number((((base.retail_usd - costUsd) / base.retail_usd) * 100).toFixed(1))

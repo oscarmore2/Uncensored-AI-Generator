@@ -17,6 +17,7 @@ import {
   type GenerationTier,
 } from "./generation-modes";
 import { ZC_STARTER_USD_PER_CREDIT, effectiveMultiplierBps } from "./generation-catalog";
+import { parseRequestSchema, supportedParams } from "./generation-bridge";
 
 export { ensurePricingSeeded } from "./pricing-seed";
 
@@ -202,9 +203,27 @@ export async function listActiveCatalog(opts?: { vipActive?: boolean }) {
     }),
   ]);
 
+  // 按绑定模型的 schema 算出每个档位真正可用的参数。
+  // 只回传 uiKey 与可选值，不含模型信息，生成端依旧无从得知底层模型。
+  const bound = products.filter((p) => p.providerModelId.trim() !== "");
+  const schemas = bound.length
+    ? await db.waveSpeedCatalogModel.findMany({
+        where: { modelId: { in: Array.from(new Set(bound.map((p) => p.providerModelId))) } },
+        select: { modelId: true, apiSchema: true },
+      })
+    : [];
+  const schemaByModel = new Map(schemas.map((m) => [m.modelId, parseRequestSchema(m.apiSchema)]));
+
   return {
     // 未绑定模型的档位对用户隐藏，避免点了必然失败
-    products: products.filter((p) => p.providerModelId.trim() !== "").map(productOut),
+    products: bound.map((p) => ({
+      ...productOut(p),
+      // 完整控件描述：类型 / 枚举 / 上下限 / 默认值，供前端自适应渲染
+      params: supportedParams(
+        schemaByModel.get(p.providerModelId) ?? null,
+        mappings.filter((m) => m.mode === p.mode)
+      ),
+    })),
     param_mappings: mappings.map(mappingOut),
     credit_packages: packages.map(packageOut),
     vip_plans: plans

@@ -6,7 +6,7 @@ import { processGeneration } from "@/lib/generation-runner";
 import { SpicyRequiresVipError, isVipActive, resolveGenerationQuote } from "@/lib/pricing";
 import { generationOut } from "@/lib/serialize";
 import { rateLimit } from "@/lib/rate-limit";
-import { hasAlwaysBlockedCategory, reviewPromptWithHarness } from "@/lib/content-safety";
+import { isAdultContent, isBlocked, reviewPrompt, safetyAudit } from "@/lib/content-safety";
 import { hasAdultAccess } from "@/lib/adult-access";
 import { generatedMediaExpiry } from "@/lib/media-retention";
 
@@ -26,35 +26,21 @@ export async function POST(req: Request) {
 
   const gen = parsed.data;
   const adultAccess = hasAdultAccess(user);
-  let isAdult = false;
-  let safetyCategories: string[] = [];
-  try {
-    const safety = await reviewPromptWithHarness({
-      mode: gen.mode,
-      prompt: gen.prompt,
-    });
-    isAdult = !safety.allowed;
-    safetyCategories = safety.categories;
-    if (isAdult && (!adultAccess || hasAlwaysBlockedCategory(safety.categories))) {
-      return NextResponse.json(
-        {
-          error: `内容审查未通过：${safety.reason}`,
-          code: "CONTENT_POLICY_REJECTED",
-          categories: safety.categories,
-        },
-        { status: 422 }
-      );
-    }
-  } catch (error) {
-    if (!adultAccess) {
-      return NextResponse.json(
-        { error: error instanceof Error ? error.message : "内容审查服务暂不可用" },
-        { status: 503 }
-      );
-    }
-    // 成人模式不因分类器不可用而阻断；保守标记为 18+。
-    isAdult = true;
-    safetyCategories = ["unclassified_adult_mode"];
+  // 分级判定：擦边放行、露骨需成人模式、未成年/非自愿绝对拒绝。
+  // 分类器全部不可用时 reviewPrompt 会回退本地规则结论，不再抛错阻断。
+  const safety = await reviewPrompt({ mode: gen.mode, prompt: gen.prompt });
+  const isAdult = isAdultContent(safety);
+  const safetyCategories = safetyAudit(safety);
+  if (isBlocked(safety, adultAccess)) {
+    return NextResponse.json(
+      {
+        error: `内容审查未通过：${safety.reason}`,
+        code: "CONTENT_POLICY_REJECTED",
+        level: safety.level,
+        categories: safety.categories,
+      },
+      { status: 422 }
+    );
   }
 
   let quote;

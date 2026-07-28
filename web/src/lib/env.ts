@@ -54,6 +54,11 @@ const envSchema = z.object({
   HF_MAGIC_MODEL: z
     .string()
     .default("dphn/Dolphin-Mistral-24B-Venice-Edition:featherless-ai"),
+  // 内容审查首选：OpenAI Moderation（omni-moderation-latest 免费，专用分类器）
+  // 未配置时自动降级到 HF LLM 分类
+  OPENAI_API_KEY: z.string().default(""),
+  OPENAI_BASE_URL: z.string().url().default("https://api.openai.com/v1"),
+  OPENAI_MODERATION_MODEL: z.string().default("omni-moderation-latest"),
   WAVESPEED_API_KEY: z.string().default(""),
   WAVESPEED_BASE_URL: z.string().url().default("https://api.wavespeed.ai/api/v3"),
   // Cloudflare Turnstile (site key public; secret server-only)

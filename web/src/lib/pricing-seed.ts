@@ -13,7 +13,7 @@ import {
  * 播种版本：改动 SKU 结构或对标价时 +1，会重建 GenerationProduct / ModeParamMapping。
  * 重建只覆盖档位与价格；管理端手工绑定的模型按 mode+tier+spicy 原样保留。
  */
-const CATALOG_SEED_VERSION = "4";
+const CATALOG_SEED_VERSION = "5";
 const SEED_VERSION_KEY = "generation_catalog_seed_version";
 
 let seeding = false;
@@ -184,40 +184,60 @@ async function rebuildParamMappings(): Promise<void> {
     { value: "9:16", label: "9:16 竖向" },
     { value: "1:1", label: "1:1 正方形" },
   ]);
+  // 时长选项是并集；实际可选值以模型 schema 的 enum / 上下限为准
   const durationOpts = JSON.stringify([
+    { value: "4", label: "4 秒" },
     { value: "5", label: "5 秒" },
-    { value: "10", label: "10 秒（×2 计费）" },
+    { value: "8", label: "8 秒" },
+    { value: "10", label: "10 秒" },
+    { value: "15", label: "15 秒" },
   ]);
 
-  const durationMap = JSON.stringify({ "5": 5, "10": 10 });
+  const formatOpts = JSON.stringify([
+    { value: "jpeg", label: "JPEG（体积小）" },
+    { value: "png", label: "PNG（无损）" },
+    { value: "webp", label: "WebP" },
+  ]);
+  const videoResolutionOpts = JSON.stringify([
+    { value: "480p", label: "480p" },
+    { value: "720p", label: "720p" },
+    { value: "1080p", label: "1080p" },
+  ]);
 
-  await db.modeParamMapping.createMany({
-    data: [
-      // 图片：宽高比走 aspect_ratio，分辨率由档位的 defaultInputs 固定
-      { mode: "txt2img", uiKey: "ratio", providerPath: "aspect_ratio", options: imageSizeOpts, sortOrder: 10 },
-      { mode: "img2img", uiKey: "ratio", providerPath: "aspect_ratio", options: imageSizeOpts, sortOrder: 10 },
-      { mode: "imgedit", uiKey: "ratio", providerPath: "aspect_ratio", options: imageSizeOpts, sortOrder: 10 },
-      // 视频：时长影响计费，宽高比不影响
+  const IMAGE_MODES = ["txt2img", "img2img", "imgedit"] as const;
+  const VIDEO_MODES = ["txt2vid", "img2vid"] as const;
+
+  /**
+   * 映射表按「所有模型的并集」配置，不必为每个模型单独维护：
+   * 生成端会用绑定模型的 schema 过滤，模型不支持的字段既不显示也不发送。
+   * 因此这里配得越全，换绑到功能更多的模型时可调项就越丰富。
+   */
+  const rows = [
+    ...IMAGE_MODES.flatMap((mode) => [
+      { mode, uiKey: "ratio", providerPath: "aspect_ratio", options: imageSizeOpts, sortOrder: 10 },
+      { mode, uiKey: "size", providerPath: "size", options: null, sortOrder: 20 },
+      { mode, uiKey: "format", providerPath: "output_format", options: formatOpts, sortOrder: 30 },
+      { mode, uiKey: "steps", providerPath: "num_inference_steps", options: null, sortOrder: 40 },
+      { mode, uiKey: "guidance", providerPath: "guidance_scale", options: null, sortOrder: 50 },
+      { mode, uiKey: "strength", providerPath: "strength", options: null, sortOrder: 60 },
+      { mode, uiKey: "seed", providerPath: "seed", options: null, sortOrder: 90 },
+    ]),
+    ...VIDEO_MODES.flatMap((mode) => [
       {
-        mode: "txt2vid",
+        mode,
         uiKey: "duration",
         providerPath: "duration",
         options: durationOpts,
-        valueMap: durationMap,
         sortOrder: 10,
       },
-      { mode: "txt2vid", uiKey: "ratio", providerPath: "aspect_ratio", options: videoRatioOpts, sortOrder: 20 },
-      {
-        mode: "img2vid",
-        uiKey: "duration",
-        providerPath: "duration",
-        options: durationOpts,
-        valueMap: durationMap,
-        sortOrder: 10,
-      },
-      { mode: "img2vid", uiKey: "ratio", providerPath: "aspect_ratio", options: videoRatioOpts, sortOrder: 20 },
-    ],
-  });
+      { mode, uiKey: "resolution", providerPath: "resolution", options: videoResolutionOpts, sortOrder: 20 },
+      { mode, uiKey: "ratio", providerPath: "aspect_ratio", options: videoRatioOpts, sortOrder: 30 },
+      { mode, uiKey: "audio", providerPath: "enable_audio", options: null, sortOrder: 40 },
+      { mode, uiKey: "seed", providerPath: "seed", options: null, sortOrder: 90 },
+    ]),
+  ];
+
+  await db.modeParamMapping.createMany({ data: rows });
 }
 
 /* ------------------------------------------------------------ 充值档 */

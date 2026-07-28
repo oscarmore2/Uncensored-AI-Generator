@@ -285,8 +285,16 @@
     "params": {
       "ratio": "宽高比",
       "duration": "时长",
-      "resolution": "分辨率"
-    }
+      "resolution": "分辨率",
+      "size": "输出尺寸",
+      "format": "输出格式",
+      "seed": "随机种子",
+      "steps": "采样步数",
+      "guidance": "提示词强度",
+      "strength": "重绘强度",
+      "audio": "生成音轨"
+    },
+    "noExtraParams": "该档位没有可调参数，直接生成即可"
   },
   "Profile": {
     "title": "个人中心",

@@ -8,6 +8,8 @@ import {
   type PendingMedia,
 } from "@/lib/plaything-upload-client";
 import type { PlaythingProduct } from "./types";
+import { ParamControlGrid } from "@/components/ParamControls";
+import { accentOf, type AccentTone, type ParamControl } from "@/lib/param-controls";
 import { useTranslations } from "next-intl";
 
 export type DynamicFormState = {
@@ -62,16 +64,45 @@ function getControls(product: PlaythingProduct): ResolvedControl[] {
   );
 }
 
+/** ResolvedControl → 共用的 ParamControl 描述 */
+function toParamControl(c: ResolvedControl, required: Set<string>): ParamControl | null {
+  const base = { key: c.key, required: required.has(c.key) };
+  switch (c.kind) {
+    case "tier":
+    case "enum":
+      return { ...base, kind: "enum", options: c.options, defaultValue: c.defaultValue };
+    case "boolean":
+      return { ...base, kind: "boolean", options: [], defaultValue: c.defaultValue ? "true" : "false" };
+    case "number":
+      return {
+        ...base,
+        kind: "number",
+        options: [],
+        min: c.min,
+        max: c.max,
+        integer: c.integer,
+        defaultValue: c.defaultValue,
+      };
+    case "text":
+      return { ...base, kind: "text", options: [], defaultValue: c.defaultValue };
+    default:
+      return null;
+  }
+}
+
 export function DynamicParamForm({
   product,
   value,
   onChange,
   onError,
+  accent = "sky",
 }: {
   product: PlaythingProduct;
   value: DynamicFormState;
   onChange: (next: DynamicFormState) => void;
   onError?: (msg: string) => void;
+  /** 主体强调色；玩物专区默认 sky */
+  accent?: AccentTone;
 }) {
   const t = useTranslations("Plaything");
   const controls = useMemo(() => getControls(product), [product]);
@@ -82,6 +113,12 @@ export function DynamicParamForm({
 
   const mediaControls = controls.filter((c) => c.kind === "media");
   const otherControls = controls.filter((c) => c.kind !== "media");
+  const a = accentOf(accent);
+  // 复用生成端同一套自适应控件：枚举少则 chip、数值带上下限则滑块、布尔则开关
+  const paramControls = otherControls
+    .slice(0, 16)
+    .map((c) => toParamControl(c, required))
+    .filter((c): c is ParamControl => c !== null);
 
   // 组件卸载时不 revoke（由 page 在切模型时 release），避免误清
 
@@ -147,7 +184,7 @@ export function DynamicParamForm({
             onChange={(e) => onChange({ ...value, prompt: e.target.value })}
             rows={4}
             placeholder={t("promptPlaceholder")}
-            className="w-full bg-[#111] border border-white/10 rounded-2xl px-4 py-3 text-sm outline-none resize-y focus:border-rose-500/40"
+            className={`w-full bg-[#111] border border-white/10 rounded-2xl px-4 py-3 text-sm outline-none resize-y ${a.focusBorder}`}
           />
         </div>
       )}
@@ -228,93 +265,14 @@ export function DynamicParamForm({
         </div>
       )}
 
-      {otherControls.length > 0 && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          {otherControls.slice(0, 16).map((c) => {
-            const label = `${c.key}${required.has(c.key) ? " *" : ""}`;
-            if (c.kind === "tier" || c.kind === "enum") {
-              return (
-                <div key={c.key}>
-                  <label className="text-xs text-gray-400 block mb-1">{label}</label>
-                  <select
-                    value={value.fields[c.key] ?? c.defaultValue}
-                    onChange={(e) =>
-                      onChange({
-                        ...value,
-                        fields: { ...value.fields, [c.key]: e.target.value },
-                      })
-                    }
-                    className="w-full bg-[#111] border border-white/10 rounded-xl px-3 py-2 text-sm"
-                  >
-                    {c.options.map((opt) => (
-                      <option key={opt.value} value={opt.value}>
-                        {opt.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              );
-            }
-            if (c.kind === "boolean") {
-              return (
-                <label key={c.key} className="flex items-center gap-2 text-sm text-gray-300">
-                  <input
-                    type="checkbox"
-                    checked={value.fields[c.key] === "true"}
-                    onChange={(e) =>
-                      onChange({
-                        ...value,
-                        fields: {
-                          ...value.fields,
-                          [c.key]: e.target.checked ? "true" : "false",
-                        },
-                      })
-                    }
-                  />
-                  {label}
-                </label>
-              );
-            }
-            if (c.kind === "number") {
-              return (
-                <div key={c.key}>
-                  <label className="text-xs text-gray-400 block mb-1">{label}</label>
-                  <input
-                    type="number"
-                    value={value.fields[c.key] ?? ""}
-                    min={c.min}
-                    max={c.max}
-                    step={c.integer ? 1 : "any"}
-                    onChange={(e) =>
-                      onChange({
-                        ...value,
-                        fields: { ...value.fields, [c.key]: e.target.value },
-                      })
-                    }
-                    className="w-full bg-[#111] border border-white/10 rounded-xl px-3 py-2 text-sm"
-                  />
-                </div>
-              );
-            }
-            return (
-              <div key={c.key}>
-                <label className="text-xs text-gray-400 block mb-1">{label}</label>
-                <input
-                  type="text"
-                  value={value.fields[c.key] ?? ""}
-                  onChange={(e) =>
-                    onChange({
-                      ...value,
-                      fields: { ...value.fields, [c.key]: e.target.value },
-                    })
-                  }
-                  className="w-full bg-[#111] border border-white/10 rounded-xl px-3 py-2 text-sm"
-                />
-              </div>
-            );
-          })}
-        </div>
-      )}
+      <ParamControlGrid
+        controls={paramControls}
+        accent={accent}
+        values={value.fields}
+        onChange={(key, next) =>
+          onChange({ ...value, fields: { ...value.fields, [key]: next } })
+        }
+      />
     </div>
   );
 }

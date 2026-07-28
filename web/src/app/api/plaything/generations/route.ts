@@ -11,7 +11,7 @@ import {
 import { playthingGenerationOut, playthingProductInclude } from "@/lib/plaything-serialize";
 import { assertTierValue, type SchemaProp } from "@/lib/plaything-param-policy";
 import { rateLimit } from "@/lib/rate-limit";
-import { hasAlwaysBlockedCategory, reviewPromptWithHarness } from "@/lib/content-safety";
+import { isAdultContent, isBlocked, reviewPrompt, safetyAudit } from "@/lib/content-safety";
 import { hasAdultAccess } from "@/lib/adult-access";
 import { generatedMediaExpiry } from "@/lib/media-retention";
 import { isVipActive } from "@/lib/pricing";
@@ -82,29 +82,19 @@ export async function POST(req: Request) {
   let isAdult = false;
   let safetyCategories: string[] = [];
   if (prompt) {
-    try {
-      const safety = await reviewPromptWithHarness({ mode: product.modelId, prompt });
-      isAdult = !safety.allowed;
-      safetyCategories = safety.categories;
-      if (isAdult && (!adultAccess || hasAlwaysBlockedCategory(safety.categories))) {
-        return NextResponse.json(
-          {
-            error: `内容审查未通过：${safety.reason}`,
-            code: "CONTENT_POLICY_REJECTED",
-            categories: safety.categories,
-          },
-          { status: 422 }
-        );
-      }
-    } catch (error) {
-      if (!adultAccess) {
-        return NextResponse.json(
-          { error: error instanceof Error ? error.message : "内容审查服务暂不可用" },
-          { status: 503 }
-        );
-      }
-      isAdult = true;
-      safetyCategories = ["unclassified_adult_mode"];
+    const safety = await reviewPrompt({ mode: product.modelId, prompt });
+    isAdult = isAdultContent(safety);
+    safetyCategories = safetyAudit(safety);
+    if (isBlocked(safety, adultAccess)) {
+      return NextResponse.json(
+        {
+          error: `内容审查未通过：${safety.reason}`,
+          code: "CONTENT_POLICY_REJECTED",
+          level: safety.level,
+          categories: safety.categories,
+        },
+        { status: 422 }
+      );
     }
   }
 

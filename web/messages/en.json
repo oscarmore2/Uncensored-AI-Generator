@@ -285,8 +285,16 @@
     "params": {
       "ratio": "Aspect ratio",
       "duration": "Duration",
-      "resolution": "Resolution"
-    }
+      "resolution": "Resolution",
+      "size": "Output size",
+      "format": "Output format",
+      "seed": "Seed",
+      "steps": "Steps",
+      "guidance": "Guidance",
+      "strength": "Strength",
+      "audio": "Generate audio"
+    },
+    "noExtraParams": "This tier has no adjustable parameters."
   },
   "Profile": {
     "title": "Profile",

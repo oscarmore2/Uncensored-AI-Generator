@@ -64,7 +64,10 @@ export async function api<T>(path: string, init?: RequestInit): Promise<T> {
   return data as T;
 }
 
+import type { ParamControl } from "./param-controls";
+
 export { MODE_LIST as MODES } from "./generation-modes";
+export type { ParamControl } from "./param-controls";
 export type { GenerationMode, GenerationTier } from "./generation-modes";
 
 /** 生成端可见的档位信息——刻意不含任何上游模型字段 */
@@ -81,6 +84,8 @@ export type CatalogProduct = {
   requires_vip: boolean;
   is_default: boolean;
   sort_order: number;
+  /** 该档位绑定的模型实际支持的参数控件（按模型 schema 归一，不含模型信息） */
+  params?: ParamControl[];
 };
 
 export type CatalogMapping = {

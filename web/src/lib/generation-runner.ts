@@ -13,6 +13,7 @@ import {
 } from "./wavespeed";
 import { buildProviderInputs, inputsForPricing } from "./generation-bridge";
 import { modeNeedsImage } from "./generation-modes";
+import { isAdultContent, reviewImages, safetyAudit } from "./content-safety";
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
@@ -86,6 +87,18 @@ export async function processGeneration(genId: number): Promise<void> {
       const raw = params.image_base64;
       if (typeof raw !== "string" || !raw) throw new Error("该模式需要上传参考图片");
       imageUrl = await materializeReferenceImage(gen.userId, raw);
+
+      // 参考图必须过闸再提交上游：文本分类器看不见像素，
+      // 一张真人未成年照片配无害提示词能穿透纯文本审查
+      const refSafety = await reviewImages({ urls: [imageUrl], prompt: gen.prompt });
+      if (refSafety.level === "prohibited") {
+        await recordSafetyBlock(genId, gen.userId, "参考图", refSafety);
+        await failAndRefund(genId, `参考图内容审查未通过：${refSafety.reason}`);
+        return;
+      }
+      if (isAdultContent(refSafety) && !gen.isAdult) {
+        await db.generation.update({ where: { id: genId }, data: { isAdult: true } });
+      }
     }
 
     const [catalogModel, mappings] = await Promise.all([
@@ -99,7 +112,7 @@ export async function processGeneration(genId: number): Promise<void> {
       }),
     ]);
 
-    const { inputs } = buildProviderInputs({
+    const { inputs, snapped } = buildProviderInputs({
       product,
       apiSchema: catalogModel?.apiSchema ?? null,
       prompt: gen.prompt,
@@ -108,6 +121,14 @@ export async function processGeneration(genId: number): Promise<void> {
       uiParams: params,
       mappings,
     });
+
+    if (snapped.length) {
+      // 计费按用户选的时长算，实际生成用模型允许的最近值，两者不一致时留痕便于对账
+      console.warn(
+        `[generation] ${genId} 参数被模型 schema 收敛:`,
+        snapped.map((s) => `${s.key} ${String(s.from)}→${String(s.to)}`).join(", ")
+      );
+    }
 
     await db.generation.update({
       where: { id: genId },
@@ -147,6 +168,16 @@ export async function processGeneration(genId: number): Promise<void> {
     }
 
     if (mapped === "succeeded" && outputs.length > 0) {
+      // 结果落库前先过闸：模型可能产出提示词里没有的内容，
+      // 这是纯提示词审查抓不到的一层，也是 CSAM 的最后一道防线
+      const outSafety = await reviewImages({ urls: outputs, prompt: gen.prompt });
+      if (outSafety.level === "prohibited") {
+        await recordSafetyBlock(genId, gen.userId, "生成结果", outSafety);
+        await failAndRefund(genId, `生成结果内容审查未通过：${outSafety.reason}`);
+        return;
+      }
+      const resultIsAdult = gen.isAdult || isAdultContent(outSafety);
+
       const finalUrls = await mirrorRemoteUrls(outputs, `generations/${genId}`);
       const costUsd = await estimatePricing(
         product.providerModelId,
@@ -159,6 +190,10 @@ export async function processGeneration(genId: number): Promise<void> {
           status: "succeeded",
           progress: 100,
           resultUrls: JSON.stringify(finalUrls.length ? finalUrls : outputs),
+          isAdult: resultIsAdult,
+          safetyCategories: JSON.stringify(
+            Array.from(new Set([...safeCategories(gen.safetyCategories), ...safetyAudit(outSafety)]))
+          ),
           ...(costUsd != null ? { providerCostUsd: costUsd } : {}),
           // 清掉大体积 base64，只留可复现的档位与参数
           params: JSON.stringify({
@@ -180,6 +215,47 @@ export async function processGeneration(genId: number): Promise<void> {
   } finally {
     await stripReferenceImage(genId);
   }
+}
+
+/** 解析已存的审查留痕，损坏时按空处理 */
+function safeCategories(raw: string): string[] {
+  try {
+    const v = JSON.parse(raw) as unknown;
+    return Array.isArray(v) ? v.filter((x): x is string => typeof x === "string") : [];
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * 图像审查判定为绝对红线时留痕并告警。
+ * 这类命中极少但性质严重，必须让管理员当场看到、能立刻处置账号。
+ */
+async function recordSafetyBlock(
+  genId: number,
+  userId: number,
+  stage: string,
+  safety: { level: string; categories: string[]; reason: string; source: string }
+): Promise<void> {
+  await db.generation
+    .update({
+      where: { id: genId },
+      data: {
+        isAdult: true,
+        visibility: "hidden",
+        safetyCategories: JSON.stringify([
+          ...safety.categories,
+          `level:${safety.level}`,
+          `source:${safety.source}`,
+          `blocked_at:${stage}`,
+        ]),
+      },
+    })
+    .catch(() => undefined);
+
+  sendTelegram(
+    `🚨 内容审查拦截（${stage}）\n任务 #${genId}\n用户 ID: ${userId}\n判定: ${safety.level} / ${safety.categories.join("、") || "—"}\n来源: ${safety.source}\n${safety.reason}`
+  );
 }
 
 /** 任务收尾时移除库里的 base64，避免长期占用存储 */

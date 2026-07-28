@@ -13,6 +13,8 @@ import {
   type CatalogResponse,
 } from "@/lib/client";
 import { MODE_META, isGenerationMode, type GenerationMode } from "@/lib/generation-modes";
+import { ParamControlGrid } from "@/components/ParamControls";
+import type { ParamControl } from "@/lib/param-controls";
 import { useApp } from "@/components/AppContext";
 import { AdaptiveMedia } from "@/components/WorkMedia";
 import { MediaExpiryBadge } from "@/components/MediaExpiryBadge";
@@ -151,10 +153,47 @@ function MakePageInner() {
     }
   }, [modeProducts, normalTiers, tier, spicy]);
 
-  const modeMappings = useMemo(() => {
-    if (!catalog) return [] as CatalogMapping[];
-    return catalog.param_mappings.filter((m) => m.mode === mode && m.enabled);
-  }, [catalog, mode]);
+  /**
+   * 参数控件由「所选档位绑定的模型」的 schema 归一而来：
+   * 模型不支持的字段不显示，枚举/数值上下限都以模型为准，
+   * 换档位时控件形态自动切换。
+   */
+  const controls = useMemo<ParamControl[]>(
+    () => selectedProduct?.params ?? [],
+    [selectedProduct]
+  );
+
+  // 档位切换后，把不合法的当前值回落到模型允许的第一个值，避免按不存在的规格计费
+  useEffect(() => {
+    for (const c of controls) {
+      if (c.kind !== "enum" || !c.options.length) continue;
+      const current =
+        c.key === "ratio" ? ratio : c.key === "duration" ? duration : extraParams[c.key];
+      if (current && c.options.some((o) => o.value === current)) continue;
+      const next = c.defaultValue && c.options.some((o) => o.value === c.defaultValue)
+        ? c.defaultValue
+        : c.options[0].value;
+      if (c.key === "ratio") setRatio(next);
+      else if (c.key === "duration") setDuration(next);
+      else setExtraParams((prev) => (prev[c.key] === next ? prev : { ...prev, [c.key]: next }));
+    }
+  }, [controls, ratio, duration, extraParams]);
+
+  const controlValues = useMemo<Record<string, string>>(() => {
+    const out: Record<string, string> = { ...extraParams };
+    out.ratio = ratio;
+    out.duration = duration;
+    return out;
+  }, [extraParams, ratio, duration]);
+
+  function setControlValue(key: string, next: string) {
+    if (key === "ratio") setRatio(next);
+    else if (key === "duration") setDuration(next);
+    else setExtraParams((prev) => ({ ...prev, [key]: next }));
+  }
+
+  /** Spicy 档换成洋红主体色，与档位卡片保持一致 */
+  const accent = selectedProduct?.spicy ? ("fuchsia" as const) : ("rose" as const);
 
   const cost = estimateCost({
     product: selectedProduct,
@@ -519,52 +558,36 @@ function MakePageInner() {
             </div>
 
             {advancedOpen && (
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                {modeMappings.map((m) => {
-                  if (m.options.length === 0) return null;
-                  const value =
-                    m.ui_key === "ratio"
-                      ? ratio
-                      : m.ui_key === "duration"
-                        ? duration
-                        : (extraParams[m.ui_key] ?? m.options[0]?.value ?? "");
-                  const setValue = (v: string) => {
-                    if (m.ui_key === "ratio") setRatio(v);
-                    else if (m.ui_key === "duration") setDuration(v);
-                    else setExtraParams((prev) => ({ ...prev, [m.ui_key]: v }));
-                  };
-                  return (
-                    <div key={`${m.mode}-${m.ui_key}`}>
-                      <label className="text-xs text-gray-400 block mb-1">
-                        {t.has(`params.${m.ui_key}`) ? t(`params.${m.ui_key}` as "params.ratio") : m.ui_key}
-                      </label>
+              <div className="space-y-3">
+                <ParamControlGrid
+                  controls={controls}
+                  values={controlValues}
+                  onChange={setControlValue}
+                  accent={accent}
+                  labelOf={(c) =>
+                    t.has(`params.${c.key}`) ? t(`params.${c.key}` as "params.ratio") : c.key
+                  }
+                />
+                {meta.supportsBatch && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-xs text-gray-400 block mb-1">{t("quantity")}</label>
                       <select
-                        value={value}
-                        onChange={(e) => setValue(e.target.value)}
-                        className="w-full bg-[#111] border border-white/10 rounded-xl px-3 py-2 text-sm"
+                        value={batch}
+                        onChange={(e) => setBatch(Number(e.target.value))}
+                        className={`w-full bg-[#111] border border-white/10 rounded-xl px-3 py-2 text-sm outline-none ${
+                          accent === "fuchsia" ? "focus:border-fuchsia-500/60" : "focus:border-rose-500/60"
+                        }`}
                       >
-                        {m.options.map((o) => (
-                          <option key={o.value} value={o.value}>
-                            {o.label}
-                          </option>
-                        ))}
+                        <option value={1}>{t("oneItem")}</option>
+                        <option value={2}>{t("twoItems")}</option>
+                        <option value={4}>{t("fourItems")}</option>
                       </select>
                     </div>
-                  );
-                })}
-                {meta.supportsBatch && (
-                  <div>
-                    <label className="text-xs text-gray-400 block mb-1">{t("quantity")}</label>
-                    <select
-                      value={batch}
-                      onChange={(e) => setBatch(Number(e.target.value))}
-                      className="w-full bg-[#111] border border-white/10 rounded-xl px-3 py-2 text-sm"
-                    >
-                      <option value={1}>{t("oneItem")}</option>
-                      <option value={2}>{t("twoItems")}</option>
-                      <option value={4}>{t("fourItems")}</option>
-                    </select>
                   </div>
+                )}
+                {controls.length === 0 && (
+                  <p className="text-xs text-gray-500">{t("noExtraParams")}</p>
                 )}
               </div>
             )}
