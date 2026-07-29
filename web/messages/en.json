@@ -406,7 +406,8 @@
       "technical": "Technical",
       "anime": "Anime",
       "realistic": "Realistic"
-    }
+    },
+    "threeDLoadWarning": "Some model resources failed to load — textures may be missing"
   },
   "Cookie": {
     "aria": "Cookie collection notice",

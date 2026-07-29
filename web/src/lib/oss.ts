@@ -218,6 +218,14 @@ export async function deleteManagedMediaUrl(mediaUrl: string): Promise<boolean> 
   return true;
 }
 
+/**
+ * 镜像单个文件的体积上限。
+ * 3D 生成结果（尤其是带 PBR 材质的 GLB：贴图+法线+粗糙度/金属度多张贴图叠在一个二进制里）
+ * 比普通图片大得多，容易超过一般图片/视频的体积——超限会静默跳过镜像、
+ * 回退到上游可能过期或跨域受限的原始链接，这类文件反而最该被镜像下来。
+ */
+const MIRROR_MAX_BYTES = 100 * 1024 * 1024;
+
 /** 从远程 URL 下载并上传到 OSS（带 SSRF 防护） */
 export async function uploadFromUrl(remoteUrl: string, relativePath: string, config?: OssConfig): Promise<string> {
   const { assertSafeRemoteMediaUrl } = await import("./safe-url");
@@ -234,24 +242,24 @@ export async function uploadFromUrl(remoteUrl: string, relativePath: string, con
   await assertSafeRemoteMediaUrl(remoteUrl, { extraHostSuffixes: extra });
 
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 30_000);
+  const timer = setTimeout(() => controller.abort(), 60_000);
   try {
     const resp = await fetch(remoteUrl, {
       signal: controller.signal,
       redirect: "follow",
-      headers: { Accept: "image/*,video/*,*/*" },
+      headers: { Accept: "image/*,video/*,model/*,*/*" },
     });
     if (!resp.ok) {
       throw new Error(`Failed to fetch remote media: HTTP ${resp.status}`);
     }
     const contentType = resp.headers.get("content-type") ?? "application/octet-stream";
     const len = Number(resp.headers.get("content-length") ?? 0);
-    if (len > 40 * 1024 * 1024) {
-      throw new Error("Remote media too large");
+    if (len > MIRROR_MAX_BYTES) {
+      throw new Error(`Remote media too large (${(len / 1024 / 1024).toFixed(1)}MB)`);
     }
     const buffer = Buffer.from(await resp.arrayBuffer());
-    if (buffer.length > 40 * 1024 * 1024) {
-      throw new Error("Remote media too large");
+    if (buffer.length > MIRROR_MAX_BYTES) {
+      throw new Error(`Remote media too large (${(buffer.length / 1024 / 1024).toFixed(1)}MB)`);
     }
     return uploadBuffer(buffer, relativePath, contentType, config);
   } finally {

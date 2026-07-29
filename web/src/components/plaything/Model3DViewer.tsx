@@ -3,6 +3,7 @@
 import { useEffect, useMemo } from "react";
 import { EmptyState } from "./ImageAlbum";
 import { detectMediaKindFromUrl } from "@/lib/plaything-categories";
+import { useModelViewerDiagnostics } from "@/lib/model-viewer-diagnostics";
 import type { PlaythingGen } from "./types";
 import { MediaExpiryBadge } from "@/components/MediaExpiryBadge";
 import { useTranslations } from "next-intl";
@@ -30,22 +31,37 @@ export function Model3DViewer({
     return hit ?? selected.result_urls.find((u) => /\.(glb|gltf)(\?|#|$)/i.test(u)) ?? null;
   }, [selected]);
 
+  const { ref: viewerRef, error: loadError } = useModelViewerDiagnostics(modelUrl);
+
   if (!items.length) {
     return <EmptyState title={t("no3d")} hint={t("threeDHint")} />;
   }
 
   return (
     <div className="flex flex-col lg:flex-row gap-4 min-h-[320px]">
-      <div className="flex-1 rounded-2xl border border-white/10 bg-[#0c0c0c] overflow-hidden min-h-[280px]">
+      <div className="flex-1 rounded-2xl border border-white/10 bg-[#0c0c0c] overflow-hidden min-h-[280px] relative">
         {modelUrl ? (
-          <model-viewer
-            src={modelUrl}
-            alt={t("threeDAlt")}
-            camera-controls
-            touch-action="pan-y"
-            auto-rotate
-            style={{ width: "100%", height: "min(60vh, 520px)", background: "#0c0c0c" }}
-          />
+          <>
+            {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+            <model-viewer
+              ref={viewerRef as any}
+              src={modelUrl}
+              alt={t("threeDAlt")}
+              camera-controls
+              touch-action="pan-y"
+              auto-rotate
+              style={{ width: "100%", height: "min(60vh, 520px)", background: "#0c0c0c" }}
+            />
+            {loadError && (
+              <div className="absolute bottom-2 left-2 right-2 flex items-start gap-2 rounded-xl bg-amber-950/90 border border-amber-500/30 px-3 py-2 text-[11px] text-amber-200">
+                <i className="fas fa-triangle-exclamation mt-0.5 shrink-0" />
+                <span>
+                  {t("threeDLoadWarning")}
+                  <span className="block text-amber-400/70 font-mono mt-0.5 break-all">{loadError}</span>
+                </span>
+              </div>
+            )}
+          </>
         ) : selected?.result_urls?.length ? (
           <div className="p-6 text-sm text-gray-400 space-y-3">
             <p>{t("threeDDownload")}</p>

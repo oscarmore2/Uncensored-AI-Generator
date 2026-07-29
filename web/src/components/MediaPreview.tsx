@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { detectMediaKindFromUrls, type PlaythingMediaKind } from "@/lib/plaything-categories";
+import { useModelViewerDiagnostics } from "@/lib/model-viewer-diagnostics";
 
 /**
  * 审核端通用媒体预览：卡片缩略图 + 弹窗播放。
@@ -159,6 +160,34 @@ export function MediaKindBadge({
   );
 }
 
+/** 3D 模型渲染 + 加载诊断（贴图/材质失败时给出可见提示，而不是静默显示白模） */
+function Model3DStage({ url }: { url: string }) {
+  const { ref, error } = useModelViewerDiagnostics(url);
+  return (
+    <div className="relative w-full">
+      {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+      <model-viewer
+        ref={ref as any}
+        src={url}
+        alt="3D 模型预览"
+        camera-controls
+        auto-rotate
+        touch-action="pan-y"
+        style={{ width: "100%", height: "min(65vh, 640px)", background: "#0c0c0c" }}
+      />
+      {error && (
+        <div className="absolute bottom-2 left-2 right-2 flex items-start gap-2 rounded-xl bg-amber-950/90 border border-amber-500/30 px-3 py-2 text-[11px] text-amber-200">
+          <i className="fas fa-triangle-exclamation mt-0.5 shrink-0" />
+          <span>
+            模型部分资源加载失败，可能导致贴图缺失或显示异常
+            <span className="block text-amber-400/70 font-mono mt-0.5 break-all">{error}</span>
+          </span>
+        </div>
+      )}
+    </div>
+  );
+}
+
 /** 单条媒体的完整播放视图 */
 function MediaStage({ url, kind }: { url: string; kind: PlaythingMediaKind }) {
   useEffect(() => {
@@ -209,16 +238,7 @@ function MediaStage({ url, kind }: { url: string; kind: PlaythingMediaKind }) {
         </div>
       );
     }
-    return (
-      <model-viewer
-        src={url}
-        alt="3D 模型预览"
-        camera-controls
-        auto-rotate
-        touch-action="pan-y"
-        style={{ width: "100%", height: "min(65vh, 640px)", background: "#0c0c0c" }}
-      />
-    );
+    return <Model3DStage url={url} />;
   }
 
   // eslint-disable-next-line @next/next/no-img-element

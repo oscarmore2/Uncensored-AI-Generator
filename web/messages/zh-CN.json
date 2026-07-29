@@ -406,7 +406,8 @@
       "technical": "技术向",
       "anime": "动漫",
       "realistic": "超写实"
-    }
+    },
+    "threeDLoadWarning": "模型部分资源加载失败，可能导致贴图缺失"
   },
   "Cookie": {
     "aria": "Cookie 数据收集提示",

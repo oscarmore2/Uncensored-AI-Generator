@@ -20,7 +20,10 @@ const securityHeaders = [
       "font-src 'self' https://cdnjs.cloudflare.com data:",
       "img-src 'self' data: blob: https:",
       "media-src 'self' blob: https:",
-      "connect-src 'self' https:",
+      // blob: 是 3D 预览必需的：three.js GLTFLoader 会把 GLB 内嵌的贴图
+      // 抽成 Blob 再用 fetch 读回来，走的是 connect-src（不是 img-src）。
+      // 少了它贴图会被静默拦截，模型只剩几何体渲染成白模。
+      "connect-src 'self' https: blob:",
       "frame-src https://challenges.cloudflare.com",
       "child-src https://challenges.cloudflare.com",
       "frame-ancestors 'none'",
