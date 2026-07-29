@@ -283,6 +283,8 @@
       "couple": "一男一女"
     },
     "undressHint": "系统将自动使用预定脱衣指令，仅移除衣物并尽量保留人物与场景其它要素。",
+    "undressAspectHint": "输出尺寸自动跟随原图宽高比，无法手动更改。",
+    "undressAspectFollow": "跟随原图",
     "undressNeedsAdult": "脱衣模式需要开启成人模式",
     "tierLabel": "生成档位",
     "spicyLabel": "Spicy 档位（会员专属）",

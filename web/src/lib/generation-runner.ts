@@ -11,9 +11,13 @@ import {
   pollWaveSpeedResult,
   submitWaveSpeedTask,
 } from "./wavespeed";
-import { buildProviderInputs, inputsForPricing } from "./generation-bridge";
+import { buildProviderInputs, inputsForPricing, parseRequestSchema } from "./generation-bridge";
 import { modeNeedsImage } from "./generation-modes";
 import { isAdultContent, reviewImages, safetyAudit } from "./content-safety";
+import {
+  applySourceAspectToInputs,
+  readImageDimsFromDataUrl,
+} from "./undress-geometry";
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
@@ -83,9 +87,13 @@ export async function processGeneration(genId: number): Promise<void> {
     }
 
     let imageUrl: string | null = null;
+    let sourceDims: { width: number; height: number } | null = null;
     if (modeNeedsImage(gen.mode)) {
       const raw = params.image_base64;
       if (typeof raw !== "string" || !raw) throw new Error("该模式需要上传参考图片");
+      if (gen.mode === "undress") {
+        sourceDims = readImageDimsFromDataUrl(raw);
+      }
       imageUrl = await materializeReferenceImage(gen.userId, raw);
 
       // 参考图必须过闸再提交上游：文本分类器看不见像素，
@@ -121,6 +129,17 @@ export async function processGeneration(genId: number): Promise<void> {
       uiParams: params,
       mappings,
     });
+
+    // 脱衣模式：用原图像素尺寸覆盖 size/aspect_ratio，杜绝默认方图拉伸
+    if (gen.mode === "undress" && sourceDims) {
+      const schema = parseRequestSchema(catalogModel?.apiSchema ?? null);
+      const written = applySourceAspectToInputs(inputs, schema, sourceDims);
+      if (written.length) {
+        console.info(
+          `[generation] ${genId} undress 保留原图比例 ${sourceDims.width}x${sourceDims.height} → ${written.join(",")}`
+        );
+      }
+    }
 
     if (snapped.length) {
       // 计费按用户选的时长算，实际生成用模型允许的最近值，两者不一致时留痕便于对账

@@ -315,7 +315,7 @@ function imageSkus(): SkuBlueprint[] {
     unitSeconds: 0,
     sortOrder: 10,
     isDefault: true,
-    defaultInputs: undressLow.defaultInputs,
+    defaultInputs: { enable_base64_output: false },
     modelCandidates: [
       "wavespeed-ai/qwen-image/edit-plus",
       "wavespeed-ai/qwen-image/edit",

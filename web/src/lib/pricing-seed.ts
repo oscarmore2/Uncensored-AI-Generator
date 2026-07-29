@@ -13,7 +13,7 @@ import {
  * 播种版本：改动 SKU 结构或对标价时 +1，会重建 GenerationProduct / ModeParamMapping。
  * 重建只覆盖档位与价格；管理端手工绑定的模型按 mode+tier+spicy 原样保留。
  */
-const CATALOG_SEED_VERSION = "6";
+const CATALOG_SEED_VERSION = "7";
 const SEED_VERSION_KEY = "generation_catalog_seed_version";
 
 let seeding = false;

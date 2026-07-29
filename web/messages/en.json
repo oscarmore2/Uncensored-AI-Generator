@@ -283,6 +283,8 @@
       "couple": "Couple"
     },
     "undressHint": "A system undress prompt is applied automatically. Only clothing is removed; identity and scene details are preserved as much as possible.",
+    "undressAspectHint": "Output size follows the source image aspect ratio and cannot be changed manually.",
+    "undressAspectFollow": "Match source",
     "undressNeedsAdult": "Undress mode requires adult mode to be enabled",
     "tierLabel": "Quality tier",
     "spicyLabel": "Spicy tiers (members only)",

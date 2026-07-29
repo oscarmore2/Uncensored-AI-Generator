@@ -12,7 +12,7 @@ import {
   type CatalogResponse,
 } from "@/lib/client";
 import { MODE_META, isGenerationMode, type GenerationMode } from "@/lib/generation-modes";
-import { UNDRESS_GENDERS, type UndressGender } from "@/lib/undress-prompts";
+import { UNDRESS_GENDERS, UNDRESS_LOCKED_UI_KEYS, type UndressGender } from "@/lib/undress-prompts";
 import { ParamControlGrid } from "@/components/ParamControls";
 import type { ParamControl } from "@/lib/param-controls";
 import { useApp } from "@/components/AppContext";
@@ -181,11 +181,13 @@ function MakePageInner() {
    * 参数控件由「所选档位绑定的模型」的 schema 归一而来：
    * 模型不支持的字段不显示，枚举/数值上下限都以模型为准，
    * 换档位时控件形态自动切换。
+   * 脱衣模式锁定宽高比/尺寸（服务端按原图强制写入）。
    */
-  const controls = useMemo<ParamControl[]>(
-    () => selectedProduct?.params ?? [],
-    [selectedProduct]
-  );
+  const controls = useMemo<ParamControl[]>(() => {
+    const raw = selectedProduct?.params ?? [];
+    if (!isUndress) return raw;
+    return raw.filter((c) => !UNDRESS_LOCKED_UI_KEYS.has(c.key));
+  }, [selectedProduct, isUndress]);
 
   // 档位切换后，把不合法的当前值回落到模型允许的第一个值，避免按不存在的规格计费
   useEffect(() => {
@@ -508,6 +510,7 @@ function MakePageInner() {
                 ))}
               </div>
               <p className="mt-2 text-[11px] text-gray-500 leading-relaxed">{t("undressHint")}</p>
+              <p className="mt-1 text-[11px] text-gray-500 leading-relaxed">{t("undressAspectHint")}</p>
             </div>
           ) : (
             <div className="mb-5">
@@ -688,7 +691,8 @@ function MakePageInner() {
                 <span>{meta.category === "video" ? "60–240s" : "8–40s"}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-gray-400">{t("ratio")}</span> <span>{ratio}</span>
+                <span className="text-gray-400">{t("ratio")}</span>{" "}
+                <span>{isUndress ? t("undressAspectFollow") : ratio}</span>
               </div>
               {meta.category === "video" && (
                 <div className="flex justify-between">
