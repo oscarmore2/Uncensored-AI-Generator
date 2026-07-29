@@ -10,6 +10,10 @@ import { isAdultContent, isBlocked, reviewPrompt, safetyAudit } from "@/lib/cont
 import { hasAdultAccess } from "@/lib/adult-access";
 import { generatedMediaExpiry } from "@/lib/media-retention";
 import { resolveUndressPrompts } from "@/lib/undress-prompts";
+import {
+  hasUndressAdvancedAccess,
+  normalizeUndressAdvanced,
+} from "@/lib/undress-options";
 
 export async function POST(req: Request) {
   const user = await getCurrentUser();
@@ -35,11 +39,16 @@ export async function POST(req: Request) {
     );
   }
 
-  // 脱衣模式：忽略客户端 prompt，按性别注入系统预定正负向词
+  // 脱衣模式：忽略客户端 prompt，按性别 +（VIP2）高级选项注入系统预定正负向词
   let prompt = gen.prompt.trim();
   let negativePrompt = gen.negative_prompt;
+  let undressOptions = null as ReturnType<typeof normalizeUndressAdvanced> | null;
   if (gen.mode === "undress") {
-    const pair = resolveUndressPrompts(gen.gender!);
+    const vipOk = hasUndressAdvancedAccess(isVipActive(user), user.vipTier?.code);
+    undressOptions = vipOk
+      ? normalizeUndressAdvanced(gen.undress_options ?? null)
+      : normalizeUndressAdvanced(null);
+    const pair = resolveUndressPrompts(gen.gender!, undressOptions);
     prompt = pair.prompt;
     negativePrompt = pair.negative_prompt;
   }
@@ -112,6 +121,7 @@ export async function POST(req: Request) {
     "prompt",
     "negative_prompt",
     "gender",
+    "undress_options",
     "ratio",
     "duration",
     "seed",
@@ -144,6 +154,7 @@ export async function POST(req: Request) {
         batch: gen.batch,
         image_base64: gen.image_base64 ?? null,
         ...(gen.mode === "undress" && gen.gender ? { gender: gen.gender } : {}),
+        ...(gen.mode === "undress" && undressOptions ? { undress_options: undressOptions } : {}),
         ...extraUi,
       }),
       cost,

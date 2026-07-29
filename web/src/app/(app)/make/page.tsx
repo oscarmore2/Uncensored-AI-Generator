@@ -13,6 +13,13 @@ import {
 } from "@/lib/client";
 import { MODE_META, isGenerationMode, type GenerationMode } from "@/lib/generation-modes";
 import { UNDRESS_GENDERS, UNDRESS_LOCKED_UI_KEYS, type UndressGender } from "@/lib/undress-prompts";
+import {
+  DEFAULT_UNDRESS_ADVANCED,
+  hasUndressAdvancedAccess,
+  normalizeUndressAdvanced,
+  type UndressAdvancedOptions,
+} from "@/lib/undress-options";
+import { UndressAdvancedPanel } from "@/components/UndressAdvancedPanel";
 import { ParamControlGrid } from "@/components/ParamControls";
 import type { ParamControl } from "@/lib/param-controls";
 import { useApp } from "@/components/AppContext";
@@ -40,6 +47,8 @@ function MakePageInner() {
     () => searchParams.get("negative") ?? t("defaultNegative")
   );
   const [gender, setGender] = useState<UndressGender>("female");
+  const [undressOptions, setUndressOptions] =
+    useState<UndressAdvancedOptions>(DEFAULT_UNDRESS_ADVANCED);
   const [ratio, setRatio] = useState("1:1");
   const [batch, setBatch] = useState(1);
   const [duration, setDuration] = useState("5");
@@ -65,6 +74,10 @@ function MakePageInner() {
   const isVip = Boolean(catalog?.user_vip.is_active);
   const adultEnabled = Boolean(user?.adult_mode_enabled);
   const isUndress = mode === "undress";
+  const isVip2Undress = hasUndressAdvancedAccess(
+    Boolean(catalog?.user_vip.is_active),
+    catalog?.user_vip.tier?.code ?? user?.vip_tier?.code
+  );
   const visibleModes = useMemo(
     () => MODES.filter((m) => m.mode !== "undress" || adultEnabled),
     [adultEnabled]
@@ -113,7 +126,19 @@ function MakePageInner() {
         ) {
           setGender(p.gender as UndressGender);
         }
-        const known = new Set(["ratio", "duration", "tier", "spicy", "batch", "product_id", "gender"]);
+        if (p.undress_options) {
+          setUndressOptions(normalizeUndressAdvanced(p.undress_options));
+        }
+        const known = new Set([
+          "ratio",
+          "duration",
+          "tier",
+          "spicy",
+          "batch",
+          "product_id",
+          "gender",
+          "undress_options",
+        ]);
         setExtraParams(
           Object.fromEntries(
             Object.entries(p)
@@ -296,6 +321,7 @@ function MakePageInner() {
           prompt: isUndress ? "" : prompt.trim(),
           negative_prompt: isUndress ? "" : meta.supportsNegative ? negative : "",
           ...(isUndress ? { gender } : {}),
+          ...(isUndress && isVip2Undress ? { undress_options: undressOptions } : {}),
           ratio,
           duration: meta.category === "video" ? duration : undefined,
           batch: meta.supportsBatch ? batch : 1,
@@ -512,7 +538,18 @@ function MakePageInner() {
               <p className="mt-2 text-[11px] text-gray-500 leading-relaxed">{t("undressHint")}</p>
               <p className="mt-1 text-[11px] text-gray-500 leading-relaxed">{t("undressAspectHint")}</p>
             </div>
-          ) : (
+          ) : null}
+
+          {isUndress && isVip2Undress && (
+            <UndressAdvancedPanel
+              value={undressOptions}
+              onChange={setUndressOptions}
+              showBreastSection={gender !== "male"}
+              t={(key) => t(key as "undressAdvancedTitle")}
+            />
+          )}
+
+          {isUndress ? null : (
             <div className="mb-5">
               <div className="flex items-center justify-between mb-2 gap-2 flex-wrap">
                 <label className="text-sm font-semibold text-gray-300">{t("prompt")}</label>

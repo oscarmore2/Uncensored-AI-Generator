@@ -1,7 +1,13 @@
 /**
  * 脱衣模式系统提示词：按性别注入，用户不可编辑。
- * 只做 undress / remove clothing，明确禁止身份、姿态、背景、风格等任何其它修改。
+ * VIP2 高级选项非默认时会重构 prompt，把穿着/身材片段塞入。
  */
+
+import {
+  collectUndressPromptExtras,
+  normalizeUndressAdvanced,
+  type UndressAdvancedOptions,
+} from "./undress-options";
 
 export const UNDRESS_GENDERS = ["female", "male", "couple"] as const;
 export type UndressGender = (typeof UNDRESS_GENDERS)[number];
@@ -24,57 +30,104 @@ const ANATOMY_NEGATIVE =
   "distorted body, elongated limbs, shortened limbs, liquid body, " +
   "anatomical nonsense, grotesque, mangled";
 
-const SHARED_NEGATIVE =
-  ANATOMY_NEGATIVE +
-  ", change face, different person, identity change, change pose, change body shape, " +
+const IDENTITY_NEGATIVE =
+  "change face, different person, identity change, change pose, " +
   "change hairstyle, change background, change lighting, change camera angle, change aspect ratio, " +
   "crop, zoom, stretch, warp, reshape canvas, " +
-  "add clothes, add accessories, add jewelry, restyle outfit, style transfer, " +
-  "artistic filter, makeup change, age change, child, minor, underage, " +
+  "style transfer, artistic filter, makeup change, age change, child, minor, underage, " +
   "low quality, blurry, jpeg artifacts, watermark, text, logo, signature";
 
 const KEEP_FRAMING =
   "Preserve the exact original aspect ratio, framing, and canvas size. " +
   "Do not crop, stretch, pad, or reframe the image.";
 
-const PROMPTS: Record<UndressGender, UndressPromptPair> = {
-  female: {
-    prompt:
-      "Remove all the clothes of the woman in the picture. Keep her face, hairstyle, " +
-      "body shape, skin tone, pose, hands, fingers, feet, expression, background, lighting, and camera " +
-      `framing exactly the same. ${KEEP_FRAMING} ` +
-      "Only undress; do not redesign, restyle, or modify anything else. " +
-      "Keep anatomically correct human proportions with natural hands and fingers.",
-    negative_prompt: SHARED_NEGATIVE,
-  },
-  male: {
-    prompt:
-      "Remove all the clothes of the man in the picture. Keep his face, hairstyle, " +
-      "body shape, skin tone, pose, hands, fingers, feet, expression, background, lighting, and camera " +
-      `framing exactly the same. ${KEEP_FRAMING} ` +
-      "Only undress; do not redesign, restyle, or modify anything else. " +
-      "Keep anatomically correct human proportions with natural hands and fingers.",
-    negative_prompt: SHARED_NEGATIVE,
-  },
-  couple: {
-    prompt:
-      "Remove all the clothes of both the man and the woman in the picture. Keep each person's " +
-      "face, hairstyle, body shape, skin tone, pose, hands, fingers, feet, relative positions, expressions, " +
-      `background, lighting, and camera framing exactly the same. ${KEEP_FRAMING} ` +
-      "Only undress both people; do not add or remove people, swap identities, redesign, restyle, or modify anything else. " +
-      "Keep anatomically correct human proportions with natural hands and fingers for both people.",
-    negative_prompt:
-      SHARED_NEGATIVE +
-      ", add person, remove person, swap gender, change number of people, face swap",
-  },
-};
+function subjectPhrase(gender: UndressGender): string {
+  if (gender === "female") return "the woman in the picture";
+  if (gender === "male") return "the man in the picture";
+  return "both the man and the woman in the picture";
+}
+
+function buildBasePrompt(gender: UndressGender, extras: ReturnType<typeof collectUndressPromptExtras>): string {
+  const subject = subjectPhrase(gender);
+  const keepBody = extras.altersBody
+    ? "Keep face, hairstyle, skin tone, pose, hands, fingers, feet, expression, background, lighting, and camera framing consistent with the source."
+    : "Keep face, hairstyle, body shape, skin tone, pose, hands, fingers, feet, expression, background, lighting, and camera framing exactly the same.";
+
+  const bodyPermit = extras.altersBody
+    ? "Allowed body edits are limited strictly to the attributes listed below; do not change unrelated body parts."
+    : "Do not redesign, restyle, or modify body shape.";
+
+  const clothingRule = extras.addsClothing
+    ? "After undressing, apply only the listed clothing or footwear items; do not add any other garments or accessories."
+    : "Only undress; do not add clothes, accessories, or footwear.";
+
+  const coupleExtra =
+    gender === "couple"
+      ? " Do not add or remove people, swap identities, or change relative positions."
+      : "";
+
+  const head =
+    gender === "couple"
+      ? `Remove all the clothes of ${subject}. ${keepBody} ${KEEP_FRAMING} ${clothingRule} ${bodyPermit}${coupleExtra}`
+      : `Remove all the clothes of ${subject}. ${keepBody} ${KEEP_FRAMING} ${clothingRule} ${bodyPermit}`;
+
+  const anatomy =
+    " Keep anatomically correct human proportions with natural hands and fingers.";
+
+  if (!extras.additions.length) {
+    return `${head}${anatomy}`;
+  }
+
+  return `${head}${anatomy} Additionally apply these exact edits only: ${extras.additions.join("; ")}.`;
+}
+
+function buildNegative(
+  gender: UndressGender,
+  extras: ReturnType<typeof collectUndressPromptExtras>
+): string {
+  const parts = [ANATOMY_NEGATIVE, IDENTITY_NEGATIVE];
+
+  if (!extras.altersBody) {
+    parts.push("change body shape");
+  }
+  if (!extras.addsClothing) {
+    parts.push(
+      "add clothes, add accessories, add jewelry, restyle outfit, add shoes, add socks, add stockings"
+    );
+  } else {
+    parts.push("add unrelated clothes, extra jackets, coats, shirts, pants beyond specified items");
+  }
+
+  if (gender === "couple") {
+    parts.push("add person, remove person, swap gender, change number of people, face swap");
+  }
+
+  return parts.join(", ");
+}
 
 export function isUndressGender(v: unknown): v is UndressGender {
   return typeof v === "string" && (UNDRESS_GENDERS as readonly string[]).includes(v);
 }
 
-export function resolveUndressPrompts(gender: UndressGender): UndressPromptPair {
-  return PROMPTS[gender];
+export function resolveUndressPrompts(
+  gender: UndressGender,
+  advanced?: UndressAdvancedOptions | null
+): UndressPromptPair {
+  let options = normalizeUndressAdvanced(advanced ?? null);
+  // 男性不应用乳房相关改动
+  if (gender === "male") {
+    options = {
+      ...options,
+      breast_size: "default",
+      breast_shape: "default",
+      nipple_size: "default",
+    };
+  }
+  const extras = collectUndressPromptExtras(options);
+  return {
+    prompt: buildBasePrompt(gender, extras),
+    negative_prompt: buildNegative(gender, extras),
+  };
 }
 
 /** 脱衣模式 UI 不展示宽高比 / 尺寸：由服务端按原图强制写入 */

@@ -286,6 +286,88 @@
     "undressAspectHint": "Output size follows the source image aspect ratio and cannot be changed manually.",
     "undressAspectFollow": "Match source",
     "undressNeedsAdult": "Undress mode requires adult mode to be enabled",
+    "undressAdvancedTitle": "VIP2 advanced options",
+    "undressAdvancedHint": "Leave options on Default to keep the base undress prompt. Other choices are injected into the system prompt automatically.",
+    "undressSections": {
+      "wear": "Clothing",
+      "body": "Body"
+    },
+    "undressFields": {
+      "lower_wear": "Lower body",
+      "underwear_color": "Underwear color",
+      "footwear": "Footwear",
+      "breast_size": "Breast size",
+      "breast_shape": "Breast shape",
+      "nipple_size": "Nipple size",
+      "body_decoration": "Body decoration",
+      "body_type": "Body type",
+      "leg_enhance": "Leg enhancement"
+    },
+    "undressOpts": {
+      "lower_wear": {
+        "default": "Default",
+        "pantyhose": "Pantyhose",
+        "thigh_highs": "Thigh highs (lace)",
+        "fishnets": "Fishnet thigh highs (lace)",
+        "cotton_socks": "Short cotton socks"
+      },
+      "underwear_color": {
+        "skin": "Skin tone",
+        "black": "Black",
+        "white": "White",
+        "red": "Red"
+      },
+      "footwear": {
+        "default": "Default",
+        "barefoot": "No shoes",
+        "pointed_heels": "Pointed heels",
+        "pointed_flats": "Pointed flats",
+        "canvas_shoes": "Canvas shoes",
+        "basketball_shoes": "Basketball shoes",
+        "heeled_sandals": "Heeled sandals",
+        "flat_sandals": "Flat sandals"
+      },
+      "breast_size": {
+        "default": "Default",
+        "flat": "Petite",
+        "medium": "Medium",
+        "large": "Large",
+        "huge": "Huge"
+      },
+      "breast_shape": {
+        "default": "Default",
+        "sagging": "Sagging",
+        "perky": "Perky",
+        "round": "Round",
+        "east_west": "East-west",
+        "teardrop": "Teardrop",
+        "baggy": "Baggy",
+        "bell": "Bell"
+      },
+      "nipple_size": {
+        "default": "Default",
+        "small": "Small",
+        "medium": "Medium",
+        "large": "Large"
+      },
+      "body_decoration": {
+        "default": "Default",
+        "navel_piercing": "Navel piercing",
+        "nipple_piercing": "Nipple piercings"
+      },
+      "body_type": {
+        "default": "Default",
+        "slim": "Slim",
+        "muscular": "Muscular",
+        "curvy": "Curvy"
+      },
+      "leg_enhance": {
+        "default": "Default",
+        "longer": "Longer",
+        "muscular": "More muscular",
+        "both": "Both"
+      }
+    },
     "tierLabel": "Quality tier",
     "spicyLabel": "Spicy tiers (members only)",
     "spicyUnlock": "Unlock with membership",

@@ -286,6 +286,88 @@
     "undressAspectHint": "输出尺寸自动跟随原图宽高比，无法手动更改。",
     "undressAspectFollow": "跟随原图",
     "undressNeedsAdult": "脱衣模式需要开启成人模式",
+    "undressAdvancedTitle": "VIP2 高级选项",
+    "undressAdvancedHint": "选「默认」不会改动系统脱衣指令；其它选项会自动写入生成提示词。",
+    "undressSections": {
+      "wear": "穿着",
+      "body": "身材"
+    },
+    "undressFields": {
+      "lower_wear": "下身穿着",
+      "underwear_color": "内衣颜色",
+      "footwear": "双脚穿着",
+      "breast_size": "乳房大小",
+      "breast_shape": "乳房形状",
+      "nipple_size": "乳头大小",
+      "body_decoration": "身体装饰",
+      "body_type": "身材类型",
+      "leg_enhance": "腿部增强"
+    },
+    "undressOpts": {
+      "lower_wear": {
+        "default": "默认",
+        "pantyhose": "连裤袜",
+        "thigh_highs": "长筒袜（花边）",
+        "fishnets": "渔网长筒袜（蕾丝）",
+        "cotton_socks": "短棉袜"
+      },
+      "underwear_color": {
+        "skin": "肤色",
+        "black": "黑色",
+        "white": "白色",
+        "red": "红色"
+      },
+      "footwear": {
+        "default": "默认",
+        "barefoot": "不穿鞋",
+        "pointed_heels": "尖头高跟鞋",
+        "pointed_flats": "尖头平底鞋",
+        "canvas_shoes": "帆布鞋",
+        "basketball_shoes": "篮球鞋",
+        "heeled_sandals": "高跟凉鞋",
+        "flat_sandals": "平底凉鞋"
+      },
+      "breast_size": {
+        "default": "默认",
+        "flat": "贫乳",
+        "medium": "中等",
+        "large": "大号",
+        "huge": "巨乳"
+      },
+      "breast_shape": {
+        "default": "默认",
+        "sagging": "下垂",
+        "perky": "挺拔",
+        "round": "圆润",
+        "east_west": "八字",
+        "teardrop": "水滴",
+        "baggy": "布袋",
+        "bell": "钟形"
+      },
+      "nipple_size": {
+        "default": "默认",
+        "small": "小",
+        "medium": "中",
+        "large": "大"
+      },
+      "body_decoration": {
+        "default": "默认",
+        "navel_piercing": "肚脐钉",
+        "nipple_piercing": "乳钉"
+      },
+      "body_type": {
+        "default": "默认",
+        "slim": "纤瘦",
+        "muscular": "肌肉",
+        "curvy": "肉感"
+      },
+      "leg_enhance": {
+        "default": "默认",
+        "longer": "增长",
+        "muscular": "增肌",
+        "both": "两者都要"
+      }
+    },
     "tierLabel": "生成档位",
     "spicyLabel": "Spicy 档位（会员专属）",
     "spicyUnlock": "开通会员解锁",
