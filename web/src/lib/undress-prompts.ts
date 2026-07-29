@@ -113,16 +113,9 @@ export function resolveUndressPrompts(
   gender: UndressGender,
   advanced?: UndressAdvancedOptions | null
 ): UndressPromptPair {
-  let options = normalizeUndressAdvanced(advanced ?? null);
-  // 男性不应用乳房相关改动
-  if (gender === "male") {
-    options = {
-      ...options,
-      breast_size: "default",
-      breast_shape: "default",
-      nipple_size: "default",
-    };
-  }
+  // VIP2 穿着/身材高级选项仅对女性生效；男 / 一男一女一律走基础脱衣 prompt
+  const options =
+    gender === "female" ? normalizeUndressAdvanced(advanced ?? null) : normalizeUndressAdvanced(null);
   const extras = collectUndressPromptExtras(options);
   return {
     prompt: buildBasePrompt(gender, extras),

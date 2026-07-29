@@ -287,7 +287,7 @@
     "undressAspectFollow": "跟随原图",
     "undressNeedsAdult": "脱衣模式需要开启成人模式",
     "undressAdvancedTitle": "VIP2 高级选项",
-    "undressAdvancedHint": "选「默认」不会改动系统脱衣指令；其它选项会自动写入生成提示词。",
+    "undressAdvancedHint": "仅女性可选。选「默认」不会改动系统脱衣指令；其它选项会自动写入生成提示词。",
     "undressSections": {
       "wear": "穿着",
       "body": "身材"
@@ -300,13 +300,14 @@
       "breast_shape": "乳房形状",
       "nipple_size": "乳头大小",
       "body_decoration": "身体装饰",
+      "pubic_type": "私处类型",
       "body_type": "身材类型",
       "leg_enhance": "腿部增强"
     },
     "undressOpts": {
       "lower_wear": {
         "default": "默认",
-        "pantyhose": "连裤袜",
+        "pantyhose": "连裤袜（肉丝）",
         "thigh_highs": "长筒袜（花边）",
         "fishnets": "渔网长筒袜（蕾丝）",
         "cotton_socks": "短棉袜"
@@ -354,6 +355,13 @@
         "default": "默认",
         "navel_piercing": "肚脐钉",
         "nipple_piercing": "乳钉"
+      },
+      "pubic_type": {
+        "default": "默认",
+        "hairless": "无毛",
+        "light_hair": "少毛",
+        "heavy_hair": "多毛",
+        "panties": "内裤"
       },
       "body_type": {
         "default": "默认",

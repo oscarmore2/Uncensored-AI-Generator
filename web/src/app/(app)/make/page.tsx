@@ -321,7 +321,9 @@ function MakePageInner() {
           prompt: isUndress ? "" : prompt.trim(),
           negative_prompt: isUndress ? "" : meta.supportsNegative ? negative : "",
           ...(isUndress ? { gender } : {}),
-          ...(isUndress && isVip2Undress ? { undress_options: undressOptions } : {}),
+          ...(isUndress && isVip2Undress && gender === "female"
+            ? { undress_options: undressOptions }
+            : {}),
           ratio,
           duration: meta.category === "video" ? duration : undefined,
           batch: meta.supportsBatch ? batch : 1,
@@ -540,11 +542,10 @@ function MakePageInner() {
             </div>
           ) : null}
 
-          {isUndress && isVip2Undress && (
+          {isUndress && isVip2Undress && gender === "female" && (
             <UndressAdvancedPanel
               value={undressOptions}
               onChange={setUndressOptions}
-              showBreastSection={gender !== "male"}
               t={(key) => t(key as "undressAdvancedTitle")}
             />
           )}

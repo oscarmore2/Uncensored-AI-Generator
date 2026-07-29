@@ -44,7 +44,9 @@ export async function POST(req: Request) {
   let negativePrompt = gen.negative_prompt;
   let undressOptions = null as ReturnType<typeof normalizeUndressAdvanced> | null;
   if (gen.mode === "undress") {
-    const vipOk = hasUndressAdvancedAccess(isVipActive(user), user.vipTier?.code);
+    const vipOk =
+      gen.gender === "female" &&
+      hasUndressAdvancedAccess(isVipActive(user), user.vipTier?.code);
     undressOptions = vipOk
       ? normalizeUndressAdvanced(gen.undress_options ?? null)
       : normalizeUndressAdvanced(null);

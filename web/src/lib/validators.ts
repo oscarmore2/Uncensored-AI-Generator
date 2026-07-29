@@ -10,6 +10,7 @@ import {
   UNDRESS_LEG_ENHANCE,
   UNDRESS_LOWER_WEAR,
   UNDRESS_NIPPLE_SIZE,
+  UNDRESS_PUBIC_TYPE,
   UNDRESS_UNDERWEAR_COLORS,
 } from "./undress-options";
 
@@ -31,6 +32,7 @@ export const undressAdvancedSchema = z
     breast_shape: z.enum(UNDRESS_BREAST_SHAPE).optional(),
     nipple_size: z.enum(UNDRESS_NIPPLE_SIZE).optional(),
     body_decoration: z.enum(UNDRESS_BODY_DECORATION).optional(),
+    pubic_type: z.enum(UNDRESS_PUBIC_TYPE).optional(),
     body_type: z.enum(UNDRESS_BODY_TYPE).optional(),
     leg_enhance: z.enum(UNDRESS_LEG_ENHANCE).optional(),
   })

@@ -287,7 +287,7 @@
     "undressAspectFollow": "Match source",
     "undressNeedsAdult": "Undress mode requires adult mode to be enabled",
     "undressAdvancedTitle": "VIP2 advanced options",
-    "undressAdvancedHint": "Leave options on Default to keep the base undress prompt. Other choices are injected into the system prompt automatically.",
+    "undressAdvancedHint": "Female only. Leave options on Default to keep the base undress prompt. Other choices are injected into the system prompt automatically.",
     "undressSections": {
       "wear": "Clothing",
       "body": "Body"
@@ -300,13 +300,14 @@
       "breast_shape": "Breast shape",
       "nipple_size": "Nipple size",
       "body_decoration": "Body decoration",
+      "pubic_type": "Pubic area",
       "body_type": "Body type",
       "leg_enhance": "Leg enhancement"
     },
     "undressOpts": {
       "lower_wear": {
         "default": "Default",
-        "pantyhose": "Pantyhose",
+        "pantyhose": "Pantyhose (nude sheer)",
         "thigh_highs": "Thigh highs (lace)",
         "fishnets": "Fishnet thigh highs (lace)",
         "cotton_socks": "Short cotton socks"
@@ -354,6 +355,13 @@
         "default": "Default",
         "navel_piercing": "Navel piercing",
         "nipple_piercing": "Nipple piercings"
+      },
+      "pubic_type": {
+        "default": "Default",
+        "hairless": "Hairless",
+        "light_hair": "Light hair",
+        "heavy_hair": "Heavy hair",
+        "panties": "Panties"
       },
       "body_type": {
         "default": "Default",

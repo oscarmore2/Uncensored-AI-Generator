@@ -10,6 +10,7 @@ import {
   UNDRESS_LEG_ENHANCE,
   UNDRESS_LOWER_WEAR,
   UNDRESS_NIPPLE_SIZE,
+  UNDRESS_PUBIC_TYPE,
   UNDRESS_UNDERWEAR_COLORS,
   showsBreastDetails,
   showsUnderwearColor,
@@ -57,16 +58,14 @@ function OptionChips<T extends string>({
   );
 }
 
+/** VIP2 穿着/身材高级选项：仅女性脱衣模式展示 */
 export function UndressAdvancedPanel({
   value,
   onChange,
-  showBreastSection,
   t,
 }: {
   value: UndressAdvancedOptions;
   onChange: (next: UndressAdvancedOptions) => void;
-  /** 男性隐藏乳房相关 */
-  showBreastSection: boolean;
   t: TFn;
 }) {
   function patch(partial: Partial<UndressAdvancedOptions>) {
@@ -122,33 +121,29 @@ export function UndressAdvancedPanel({
         <h3 className="text-xs font-semibold tracking-wide text-gray-300 uppercase">
           {t("undressSections.body")}
         </h3>
-        {showBreastSection && (
+        <OptionChips
+          label={t("undressFields.breast_size")}
+          values={UNDRESS_BREAST_SIZE}
+          value={value.breast_size}
+          onChange={(breast_size) => patch({ breast_size })}
+          labelOf={(v) => t(`undressOpts.breast_size.${v}`)}
+        />
+        {showsBreastDetails(value.breast_size) && (
           <>
             <OptionChips
-              label={t("undressFields.breast_size")}
-              values={UNDRESS_BREAST_SIZE}
-              value={value.breast_size}
-              onChange={(breast_size) => patch({ breast_size })}
-              labelOf={(v) => t(`undressOpts.breast_size.${v}`)}
+              label={t("undressFields.breast_shape")}
+              values={UNDRESS_BREAST_SHAPE}
+              value={value.breast_shape}
+              onChange={(breast_shape) => patch({ breast_shape })}
+              labelOf={(v) => t(`undressOpts.breast_shape.${v}`)}
             />
-            {showsBreastDetails(value.breast_size) && (
-              <>
-                <OptionChips
-                  label={t("undressFields.breast_shape")}
-                  values={UNDRESS_BREAST_SHAPE}
-                  value={value.breast_shape}
-                  onChange={(breast_shape) => patch({ breast_shape })}
-                  labelOf={(v) => t(`undressOpts.breast_shape.${v}`)}
-                />
-                <OptionChips
-                  label={t("undressFields.nipple_size")}
-                  values={UNDRESS_NIPPLE_SIZE}
-                  value={value.nipple_size}
-                  onChange={(nipple_size) => patch({ nipple_size })}
-                  labelOf={(v) => t(`undressOpts.nipple_size.${v}`)}
-                />
-              </>
-            )}
+            <OptionChips
+              label={t("undressFields.nipple_size")}
+              values={UNDRESS_NIPPLE_SIZE}
+              value={value.nipple_size}
+              onChange={(nipple_size) => patch({ nipple_size })}
+              labelOf={(v) => t(`undressOpts.nipple_size.${v}`)}
+            />
           </>
         )}
         <OptionChips
@@ -157,6 +152,13 @@ export function UndressAdvancedPanel({
           value={value.body_decoration}
           onChange={(body_decoration) => patch({ body_decoration })}
           labelOf={(v) => t(`undressOpts.body_decoration.${v}`)}
+        />
+        <OptionChips
+          label={t("undressFields.pubic_type")}
+          values={UNDRESS_PUBIC_TYPE}
+          value={value.pubic_type}
+          onChange={(pubic_type) => patch({ pubic_type })}
+          labelOf={(v) => t(`undressOpts.pubic_type.${v}`)}
         />
         <OptionChips
           label={t("undressFields.body_type")}

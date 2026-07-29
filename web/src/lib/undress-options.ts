@@ -48,6 +48,15 @@ export type UndressNippleSize = (typeof UNDRESS_NIPPLE_SIZE)[number];
 export const UNDRESS_BODY_DECORATION = ["default", "navel_piercing", "nipple_piercing"] as const;
 export type UndressBodyDecoration = (typeof UNDRESS_BODY_DECORATION)[number];
 
+export const UNDRESS_PUBIC_TYPE = [
+  "default",
+  "hairless",
+  "light_hair",
+  "heavy_hair",
+  "panties",
+] as const;
+export type UndressPubicType = (typeof UNDRESS_PUBIC_TYPE)[number];
+
 export const UNDRESS_BODY_TYPE = ["default", "slim", "muscular", "curvy"] as const;
 export type UndressBodyType = (typeof UNDRESS_BODY_TYPE)[number];
 
@@ -62,6 +71,7 @@ export type UndressAdvancedOptions = {
   breast_shape: UndressBreastShape;
   nipple_size: UndressNippleSize;
   body_decoration: UndressBodyDecoration;
+  pubic_type: UndressPubicType;
   body_type: UndressBodyType;
   leg_enhance: UndressLegEnhance;
 };
@@ -74,6 +84,7 @@ export const DEFAULT_UNDRESS_ADVANCED: UndressAdvancedOptions = {
   breast_shape: "default",
   nipple_size: "default",
   body_decoration: "default",
+  pubic_type: "default",
   body_type: "default",
   leg_enhance: "default",
 };
@@ -111,6 +122,7 @@ export function normalizeUndressAdvanced(
   const body_decoration = inSet(UNDRESS_BODY_DECORATION, src.body_decoration)
     ? src.body_decoration
     : "default";
+  const pubic_type = inSet(UNDRESS_PUBIC_TYPE, src.pubic_type) ? src.pubic_type : "default";
   const body_type = inSet(UNDRESS_BODY_TYPE, src.body_type) ? src.body_type : "default";
   const leg_enhance = inSet(UNDRESS_LEG_ENHANCE, src.leg_enhance)
     ? src.leg_enhance
@@ -138,6 +150,7 @@ export function normalizeUndressAdvanced(
     breast_shape,
     nipple_size,
     body_decoration,
+    pubic_type,
     body_type,
     leg_enhance,
   };
@@ -165,10 +178,11 @@ function lowerWearPrompt(
   const c = UNDERWEAR_COLOR_WORD[color];
   switch (wear) {
     case "pantyhose":
-      // 连裤袜 + 同色腰头落在肚脐下方腰部
+      // 肉丝：丝袜本体几乎贴近肤色；腰头可用所选颜色落在肚脐下方
       return (
-        `wearing sheer pantyhose with a matching ${c} waistband ` +
-        `sitting on the waist just below the navel`
+        `wearing ultra-sheer flesh-tone pantyhose (nude sheer / natural skin-colored hosiery) ` +
+        `whose color nearly matches the skin so legs look almost bare with only a soft glossy sheen, ` +
+        `with a matching ${c} waistband sitting on the waist just below the navel`
       );
     case "thigh_highs":
       // 长筒袜一律带花边袜口
@@ -200,6 +214,12 @@ function barefootPrompt(
   lowerWear: UndressLowerWear,
   color: UndressUnderwearColor
 ): string {
+  if (lowerWear === "pantyhose") {
+    return (
+      "barefoot with no shoes, toes and feet wrapped in the ultra-sheer flesh-tone pantyhose, " +
+      "toenails faintly visible through the skin-matching sheer fabric"
+    );
+  }
   if (isSheerHosiery(lowerWear)) {
     const c = UNDERWEAR_COLOR_WORD[color];
     return (
@@ -211,6 +231,21 @@ function barefootPrompt(
     return "barefoot with no shoes over the short cotton socks, socked toes visible";
   }
   return "barefoot with no shoes, bare toes and soles visible";
+}
+
+/** 阴毛 + 连裤袜：阴毛被肉丝压住，仅透过薄层隐约可见 */
+function pubicHairUnderPantyhosePrompt(
+  pubicType: "light_hair" | "heavy_hair"
+): string {
+  const hair =
+    pubicType === "heavy_hair"
+      ? "thick dense bushy pubic hair"
+      : "light sparse pubic hair";
+  return (
+    `${hair} pressed flat under the ultra-sheer flesh-tone pantyhose, ` +
+    `only faintly visible as a soft shadow through the thin sheer layer of the pantyhose, ` +
+    `not floating above the fabric`
+  );
 }
 
 const BREAST_SIZE_PROMPT: Record<Exclude<UndressBreastSize, "default">, string> = {
@@ -239,6 +274,13 @@ const NIPPLE_SIZE_PROMPT: Record<Exclude<UndressNippleSize, "default">, string> 
 const BODY_DECORATION_PROMPT: Record<Exclude<UndressBodyDecoration, "default">, string> = {
   navel_piercing: "navel piercing belly button ring",
   nipple_piercing: "nipple piercings",
+};
+
+const PUBIC_TYPE_PROMPT: Record<Exclude<UndressPubicType, "default">, string> = {
+  hairless: "completely hairless shaved pubic area, smooth bare skin",
+  light_hair: "light sparse pubic hair",
+  heavy_hair: "thick dense bushy pubic hair",
+  panties: "private area covered by panties, wearing panties over the genitals",
 };
 
 const BODY_TYPE_PROMPT: Record<Exclude<UndressBodyType, "default">, string> = {
@@ -302,6 +344,25 @@ export function collectUndressPromptExtras(
   if (options.body_decoration !== "default") {
     additions.push(BODY_DECORATION_PROMPT[options.body_decoration]);
     altersBody = true;
+  }
+
+  if (options.pubic_type !== "default") {
+    if (options.pubic_type === "panties") {
+      const c = UNDERWEAR_COLOR_WORD[options.underwear_color];
+      additions.push(
+        `private area covered by ${c} panties, wearing ${c} panties over the genitals`
+      );
+      addsClothing = true;
+    } else if (
+      options.lower_wear === "pantyhose" &&
+      (options.pubic_type === "light_hair" || options.pubic_type === "heavy_hair")
+    ) {
+      additions.push(pubicHairUnderPantyhosePrompt(options.pubic_type));
+      altersBody = true;
+    } else {
+      additions.push(PUBIC_TYPE_PROMPT[options.pubic_type]);
+      altersBody = true;
+    }
   }
 
   if (options.body_type !== "default") {
