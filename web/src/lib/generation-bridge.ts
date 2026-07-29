@@ -1,7 +1,7 @@
 import "server-only";
 import type { GenerationProduct, ModeParamMapping } from "@prisma/client";
 import { MODE_META, isGenerationMode } from "./generation-modes";
-import type { ParamControl } from "./param-controls";
+import { parseSizeValue, type ParamControl } from "./param-controls";
 
 /**
  * 站内参数 → WaveSpeed input 的桥接层。
@@ -233,6 +233,28 @@ function controlFromSpec(
           const value = String(v);
           return { value, label: labelOf.get(value) ?? value };
         }),
+    };
+  }
+
+  // 组合尺寸字段（如 "1024*1536"）：给专门的宽高编辑器而不是自由文本框。
+  // 上下限来自 schema 的 minimum/maximum；不同模型的允许范围差异很大
+  // （曾经这里硬编码过 4096*4096，但有的模型上限只有 1536，直接触发上游 400），
+  // 所以默认「保持原图尺寸」——不主动预填一个可能超出该模型范围的值。
+  if (/^size$/i.test(key) && (!spec.type || spec.type === "string")) {
+    const min = spec.minimum;
+    const max = spec.maximum;
+    const parsedDefault = typeof spec.default === "string" ? parseSizeValue(spec.default) : null;
+    const defaultInRange =
+      parsedDefault &&
+      (min === undefined || (parsedDefault.width >= min && parsedDefault.height >= min)) &&
+      (max === undefined || (parsedDefault.width <= max && parsedDefault.height <= max));
+    return {
+      key,
+      kind: "size",
+      options: [],
+      min,
+      max,
+      defaultValue: defaultInRange ? (spec.default as string) : undefined,
     };
   }
 

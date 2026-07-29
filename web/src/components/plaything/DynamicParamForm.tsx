@@ -61,7 +61,8 @@ export function defaultsFromProduct(product: PlaythingProduct | null): DynamicFo
       fields[c.key] = c.defaultValue ? "true" : "false";
     } else if (c.kind === "tier" || c.kind === "enum") {
       fields[c.key] = c.defaultValue;
-    } else if (c.kind === "number" || c.kind === "text") {
+    } else if (c.kind === "number" || c.kind === "text" || c.kind === "size") {
+      // size 的 defaultValue 通常是空串（保持原图尺寸），与 number/text 走同一路径即可
       fields[c.key] = c.defaultValue;
     }
   }
@@ -104,6 +105,8 @@ function toParamControl(c: ResolvedControl, required: Set<string>): ParamControl
       };
     case "text":
       return { ...base, kind: "text", options: [], defaultValue: c.defaultValue };
+    case "size":
+      return { ...base, kind: "size", options: [], min: c.min, max: c.max, defaultValue: c.defaultValue };
     default:
       return null;
   }

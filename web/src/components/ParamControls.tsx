@@ -2,7 +2,13 @@
 
 import {
   CHIP_THRESHOLD,
+  DEFAULT_SIZE_RANGE,
+  SIZE_ASPECT_PRESETS,
+  SIZE_KEEP_ORIGINAL,
   accentOf,
+  formatSizeValue,
+  parseSizeValue,
+  sizeForRatio,
   type AccentTone,
   type ParamControl,
 } from "@/lib/param-controls";
@@ -164,6 +170,12 @@ export function ParamControlField({
     );
   }
 
+  if (control.kind === "size") {
+    return (
+      <SizeControlField control={control} value={value} onChange={onChange} accent={accent} title={title} disabled={disabled} />
+    );
+  }
+
   return (
     <div>
       <label className="text-xs text-gray-400 block mb-1">{title}</label>
@@ -174,6 +186,127 @@ export function ParamControlField({
         onChange={(e) => onChange(e.target.value)}
         className={inputClass}
       />
+    </div>
+  );
+}
+
+/**
+ * 宽高像素编辑器（如 "1024*1536" 这类组合尺寸参数）。
+ *
+ * 默认「保持原图尺寸」——不勾开自定义时该字段值为空字符串，
+ * 站内既有的「空值 = 不发送该字段」约定会自动把它从请求里剔除，
+ * 图生图/图片编辑这类以输入图尺寸为准的模式不会被强行拉伸/缩小。
+ * 只有用户主动关掉「保持原图尺寸」，才会按滑块拼出 WIDTH*HEIGHT 发给上游。
+ */
+function SizeControlField({
+  control,
+  value,
+  onChange,
+  accent,
+  title,
+  disabled,
+}: {
+  control: ParamControl;
+  value: string;
+  onChange: (next: string) => void;
+  accent: AccentTone;
+  title: string;
+  disabled?: boolean;
+}) {
+  const a = accentOf(accent);
+  const min = control.min ?? DEFAULT_SIZE_RANGE.min;
+  const max = control.max ?? DEFAULT_SIZE_RANGE.max;
+  const keepOriginal = value === SIZE_KEEP_ORIGINAL;
+  const parsed = parseSizeValue(value);
+  const width = parsed?.width ?? Math.min(max, Math.max(min, 1024));
+  const height = parsed?.height ?? Math.min(max, Math.max(min, 1024));
+
+  function setSize(w: number, h: number) {
+    const clampedW = Math.min(max, Math.max(min, Math.round(w)));
+    const clampedH = Math.min(max, Math.max(min, Math.round(h)));
+    onChange(formatSizeValue(clampedW, clampedH));
+  }
+
+  return (
+    <div className="sm:col-span-2">
+      <div className="flex items-center justify-between mb-1.5">
+        <label className="text-xs text-gray-400">{title}</label>
+        <label className="flex items-center gap-1.5 text-[11px] text-gray-400 cursor-pointer select-none">
+          <input
+            type="checkbox"
+            checked={keepOriginal}
+            disabled={disabled}
+            onChange={(e) => onChange(e.target.checked ? SIZE_KEEP_ORIGINAL : formatSizeValue(width, height))}
+            className={a.accent}
+          />
+          保持原图尺寸
+        </label>
+      </div>
+
+      {!keepOriginal && (
+        <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-3 space-y-3">
+          <div className="flex flex-wrap gap-1.5">
+            {SIZE_ASPECT_PRESETS.map((p) => {
+              const target = sizeForRatio(p.w, p.h, min, max);
+              const active = target.width === width && target.height === height;
+              return (
+                <button
+                  key={p.ratio}
+                  type="button"
+                  disabled={disabled}
+                  onClick={() => setSize(target.width, target.height)}
+                  className={`px-2.5 py-1 rounded-lg border text-[11px] transition-colors disabled:opacity-50 ${
+                    active ? a.activeChip : "bg-white/5 border-white/10 text-gray-300 hover:border-white/25"
+                  }`}
+                >
+                  {p.ratio}
+                </button>
+              );
+            })}
+          </div>
+
+          <div>
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-[11px] text-gray-500">宽度 width</span>
+              <span className={`text-[11px] font-mono ${a.text}`}>{width}</span>
+            </div>
+            <input
+              type="range"
+              min={min}
+              max={max}
+              value={width}
+              disabled={disabled}
+              onChange={(e) => setSize(Number(e.target.value), height)}
+              className={`w-full ${a.accent} disabled:opacity-50`}
+            />
+          </div>
+
+          <div>
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-[11px] text-gray-500">高度 height</span>
+              <span className={`text-[11px] font-mono ${a.text}`}>{height}</span>
+            </div>
+            <input
+              type="range"
+              min={min}
+              max={max}
+              value={height}
+              disabled={disabled}
+              onChange={(e) => setSize(width, Number(e.target.value))}
+              className={`w-full ${a.accent} disabled:opacity-50`}
+            />
+          </div>
+
+          <div className="flex items-center justify-between text-[10px] text-gray-600">
+            <span>
+              {width} × {height} px
+            </span>
+            <span>
+              Range: {min} – {max}
+            </span>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -7,7 +7,7 @@
  * 换绑模型时表单自动适配，无需改代码。
  */
 
-export type ParamControlKind = "enum" | "number" | "boolean" | "text";
+export type ParamControlKind = "enum" | "number" | "boolean" | "text" | "size";
 
 export type ParamControl = {
   /** 站内参数键（生成端用 uiKey，玩物专区用上游字段名） */
@@ -15,7 +15,7 @@ export type ParamControl = {
   kind: ParamControlKind;
   /** enum 才有值 */
   options: Array<{ value: string; label: string }>;
-  /** number 才有值 */
+  /** number/size 才有值：number 是数值上下限，size 是宽高各自的像素上下限（两边共用同一个范围） */
   min?: number;
   max?: number;
   integer?: boolean;
@@ -23,6 +23,52 @@ export type ParamControl = {
   /** 上游 schema 标记为必填 */
   required?: boolean;
 };
+
+/** size 控件没有值就是「保持原图尺寸」，不会把该字段发给上游 */
+export const SIZE_KEEP_ORIGINAL = "";
+
+/** size 字段的分隔符：站内约定统一用 "*"（如 "1024*1536"），与已同步模型的 schema 默认值格式一致 */
+export const SIZE_DELIMITER = "*";
+
+export function formatSizeValue(width: number, height: number): string {
+  return `${Math.round(width)}${SIZE_DELIMITER}${Math.round(height)}`;
+}
+
+export function parseSizeValue(raw: string | undefined): { width: number; height: number } | null {
+  if (!raw) return null;
+  const m = raw.trim().match(/^(\d+)\s*[*x×]\s*(\d+)$/i);
+  if (!m) return null;
+  const width = Number(m[1]);
+  const height = Number(m[2]);
+  if (!Number.isFinite(width) || !Number.isFinite(height)) return null;
+  return { width, height };
+}
+
+/** size 控件没有模型声明上下限时的保守兜底范围 */
+export const DEFAULT_SIZE_RANGE = { min: 256, max: 2048 };
+
+export const SIZE_ASPECT_PRESETS: Array<{ ratio: string; w: number; h: number; icon: string }> = [
+  { ratio: "1:1", w: 1, h: 1, icon: "square" },
+  { ratio: "16:9", w: 16, h: 9, icon: "landscape" },
+  { ratio: "9:16", w: 9, h: 16, icon: "portrait" },
+  { ratio: "4:3", w: 4, h: 3, icon: "landscape" },
+  { ratio: "3:4", w: 3, h: 4, icon: "portrait" },
+  { ratio: "3:2", w: 3, h: 2, icon: "landscape" },
+  { ratio: "2:3", w: 2, h: 3, icon: "portrait" },
+];
+
+/** 按目标比例算出落在 [min,max] 内的宽高；以较长边贴范围上限，短边跟随比例 */
+export function sizeForRatio(w: number, h: number, min: number, max: number): { width: number; height: number } {
+  const longSide = Math.min(max, Math.max(min, max)); // 长边尽量贴近上限
+  if (w >= h) {
+    const width = longSide;
+    const height = Math.max(min, Math.min(max, Math.round((width * h) / w)));
+    return { width, height };
+  }
+  const height = longSide;
+  const width = Math.max(min, Math.min(max, Math.round((height * w) / h)));
+  return { width, height };
+}
 
 /**
  * 主体强调色。Tailwind 需要静态类名，因此用查表而不是拼接字符串。

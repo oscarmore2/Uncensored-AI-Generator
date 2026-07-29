@@ -65,8 +65,11 @@ const IMAGE_TIERS: ImageTierSpec[] = [
     refCredits: 1,
     refLabel: "ZC Text-to-Image (General) = 1 分",
     sortOrder: 10,
-    // size 仅对声明了该字段的模型生效，其余模型会自动忽略（管理端会标出来）
-    defaultInputs: { size: "1024*1024", enable_base64_output: false },
+    // 不再硬编码固定 size：各模型允许的宽高范围差异很大（有的上限 1536，
+    // 有的支持到 4096），写死一个值必然在某些模型上超界触发上游 400。
+    // 交给「档位 → 参数控件」按绑定模型的 schema 生成宽高编辑器，
+    // 默认「保持原图尺寸」（即不发送该字段，模型走自己的默认行为）。
+    defaultInputs: { enable_base64_output: false },
   },
   {
     tier: "mid",
@@ -75,7 +78,7 @@ const IMAGE_TIERS: ImageTierSpec[] = [
     refCredits: 2,
     refLabel: "ZC Text-to-Image (Qwen Pro / WAN Pro) = 2 分",
     sortOrder: 20,
-    defaultInputs: { size: "2048*2048", enable_base64_output: false },
+    defaultInputs: { enable_base64_output: false },
   },
   {
     tier: "high",
@@ -84,7 +87,7 @@ const IMAGE_TIERS: ImageTierSpec[] = [
     refCredits: 4,
     refLabel: "ZC Image Editor (Nano Banana 2) = 4 分",
     sortOrder: 30,
-    defaultInputs: { size: "4096*4096", enable_base64_output: false },
+    defaultInputs: { enable_base64_output: false },
   },
 ];
 

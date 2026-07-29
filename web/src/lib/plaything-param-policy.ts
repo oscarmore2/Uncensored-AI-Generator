@@ -1,4 +1,5 @@
 /** 玩物专区参数策略：敏感档位 + 媒体约束（前后端共用） */
+import { parseSizeValue } from "./param-controls";
 
 export type MediaFieldPolicy = {
   maxItems?: number;
@@ -30,13 +31,17 @@ export type PlaythingParamPolicy = {
   [key: string]: TierFieldPolicy | MediaFieldPolicy | undefined;
 };
 
+/**
+ * 「size」不放在这个集合里：它是自由的宽高组合值（如 "1024*1536"），
+ * 不是从一组固定档位里选一个，校验逻辑在 assertTierValue 里单独处理
+ * （按 schema 的 minimum/maximum 校验，而不是比对预设档位）。
+ */
 export const SENSITIVE_TIER_KEYS = new Set([
   "duration",
   "num_frames",
   "frames",
   "video_length",
   "length",
-  "size",
   "resolution",
   "aspect_ratio",
   "aspect",
@@ -136,6 +141,13 @@ export type ResolvedControl =
       kind: "text";
       key: string;
       defaultValue: string;
+    }
+  | {
+      kind: "size";
+      key: string;
+      defaultValue: string;
+      min?: number;
+      max?: number;
     };
 
 const MEDIA_KEY_HINTS = /^(image|images|image_url|mask|video|video_url|audio|audio_url|reference|references)/i;
@@ -243,6 +255,20 @@ export function resolveParamControls(
       continue;
     }
 
+    // 组合尺寸字段（如 "1024*1536"）：优先于下面的档位兜底逻辑判断，
+    // 否则会被 SENSITIVE_TIER_KEYS 误当成「5 秒/10 秒」这类时长档位。
+    // 默认留空＝保持原图尺寸，不同模型的宽高上限差异很大，不敢帮它填一个可能超界的默认值。
+    if (/^size$/i.test(key) && (!meta.type || meta.type === "string") && !meta.enum?.length) {
+      controls.push({
+        kind: "size",
+        key,
+        defaultValue: "",
+        min: meta.minimum,
+        max: meta.maximum,
+      });
+      continue;
+    }
+
     if (SENSITIVE_TIER_KEYS.has(key) || policy[key]) {
       const tier = tierFromPolicyOrDefault(key, policy, meta);
       if (tier?.tiers?.length) {
@@ -294,8 +320,25 @@ export function assertTierValue(
   properties: Record<string, SchemaProp>,
   policyRaw: string | null | undefined
 ): string | null {
-  if (!SENSITIVE_TIER_KEYS.has(key) && !parseParamPolicy(policyRaw)[key]) return null;
   const meta = properties[key] ?? {};
+
+  // size 是自由宽高组合值，不比对预设档位：按 schema 声明的 minimum/maximum 校验范围。
+  // 前端编辑器已经会做同样的钳制，这里是防止绕过前端直接调接口的兜底。
+  if (/^size$/i.test(key) && !meta.enum?.length) {
+    if (value === "" || value == null) return null; // 空值＝保持原图尺寸，合法
+    const parsed = parseSizeValue(String(value));
+    if (!parsed) return `${key} 格式应为 宽*高（如 1024*1536）`;
+    const { width, height } = parsed;
+    if (typeof meta.minimum === "number" && (width < meta.minimum || height < meta.minimum)) {
+      return `${key} 不能小于 ${meta.minimum}px`;
+    }
+    if (typeof meta.maximum === "number" && (width > meta.maximum || height > meta.maximum)) {
+      return `${key} 不能大于 ${meta.maximum}px`;
+    }
+    return null;
+  }
+
+  if (!SENSITIVE_TIER_KEYS.has(key) && !parseParamPolicy(policyRaw)[key]) return null;
   if (meta.enum?.length) {
     const ok = meta.enum.some((e) => String(e) === String(value));
     return ok ? null : `${key} 不在允许枚举内`;
