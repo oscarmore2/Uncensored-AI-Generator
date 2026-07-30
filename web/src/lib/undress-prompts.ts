@@ -57,9 +57,11 @@ function buildBasePrompt(gender: UndressGender, extras: ReturnType<typeof collec
     ? "Allowed body edits are limited strictly to the attributes listed below; do not change unrelated body parts."
     : "Do not redesign, restyle, or modify body shape.";
 
-  const clothingRule = extras.addsClothing
-    ? "After undressing, apply only the listed clothing or footwear items; do not add any other garments or accessories."
-    : "Only undress; do not add clothes, accessories, or footwear.";
+  const clothingRule = extras.wearsPanties
+    ? "After undressing, keep only the specified panties plus any listed hosiery or footwear; do not add other garments."
+    : extras.addsClothing
+      ? "After undressing, apply only the listed hosiery or footwear; no panties and no underwear; genitals remain fully exposed; do not add any other garments."
+      : "Only undress completely; no panties, no underwear; genitals fully exposed; do not add clothes, accessories, or footwear.";
 
   const coupleExtra =
     gender === "couple"
@@ -96,6 +98,12 @@ function buildNegative(
     );
   } else {
     parts.push("add unrelated clothes, extra jackets, coats, shirts, pants beyond specified items");
+  }
+
+  if (!extras.wearsPanties) {
+    parts.push(
+      "panties, underwear, briefs, thong, covered crotch, clothed genitals, hidden genitals"
+    );
   }
 
   if (gender === "couple") {

@@ -163,12 +163,24 @@ const UNDERWEAR_COLOR_WORD: Record<UndressUnderwearColor, string> = {
   red: "red",
 };
 
-const UNDERWEAR_COLOR_PROMPT: Record<UndressUnderwearColor, string> = {
-  skin: "wearing skin-tone panties",
-  black: "wearing black panties",
-  white: "wearing white panties",
-  red: "wearing red panties",
-};
+/** 连裤袜颜色写法：肤色用 nude skin-like；其它色按色名写 */
+function pantyhoseColorPhrase(color: UndressUnderwearColor): string {
+  switch (color) {
+    case "skin":
+      return "ultra sheer nude pantyhose, color skin-like";
+    case "black":
+      return "black sheer pantyhose in black";
+    case "white":
+      return "white sheer pantyhose in white";
+    case "red":
+      return "sheer pantyhose in red color";
+  }
+}
+
+/** 连裤袜固定结构：腰头在肚脐下方，布料只从脚到腰头 */
+const PANTYHOSE_FIT =
+  "waistband sitting on the waist just below the navel, " +
+  "pantyhose fabric covering only from the feet up to that waistband and nowhere above";
 
 /** 下身穿着细节：颜色来自内衣颜色选项；默认项不会走到这里 */
 function lowerWearPrompt(
@@ -178,20 +190,12 @@ function lowerWearPrompt(
   const c = UNDERWEAR_COLOR_WORD[color];
   switch (wear) {
     case "pantyhose":
-      // 肉丝：丝袜本体几乎贴近肤色；腰头可用所选颜色落在肚脐下方
-      return (
-        `wearing ultra-sheer flesh-tone pantyhose (nude sheer / natural skin-colored hosiery) ` +
-        `whose color nearly matches the skin so legs look almost bare with only a soft glossy sheen, ` +
-        `with a matching ${c} waistband sitting on the waist just below the navel`
-      );
+      return `wearing ${pantyhoseColorPhrase(color)}, ${PANTYHOSE_FIT}`;
     case "thigh_highs":
-      // 长筒袜一律带花边袜口
       return `wearing ${c} thigh-high stockings with decorative lace tops`;
     case "fishnets":
-      // 渔网袜 = 带蕾丝的长筒渔网袜
       return `wearing ${c} lace-trimmed thigh-high fishnet stockings`;
     case "cotton_socks":
-      // 棉袜一律短袜
       return `wearing ${c} short ankle-length cotton socks`;
   }
 }
@@ -216,8 +220,8 @@ function barefootPrompt(
 ): string {
   if (lowerWear === "pantyhose") {
     return (
-      "barefoot with no shoes, toes and feet wrapped in the ultra-sheer flesh-tone pantyhose, " +
-      "toenails faintly visible through the skin-matching sheer fabric"
+      `barefoot with no shoes, toes and feet wrapped in the ${pantyhoseColorPhrase(color)}, ` +
+      `toenails visible through the sheer pantyhose`
     );
   }
   if (isSheerHosiery(lowerWear)) {
@@ -233,16 +237,25 @@ function barefootPrompt(
   return "barefoot with no shoes, bare toes and soles visible";
 }
 
-/** 阴毛 + 连裤袜：阴毛被肉丝压住，仅透过薄层隐约可见 */
+/** 未穿内裤 + 连裤袜：私处隔着丝袜可见 */
+function genitalsThroughPantyhosePrompt(color: UndressUnderwearColor): string {
+  return (
+    `no panties under the pantyhose, genitals and pubic area clearly visible through the sheer pantyhose ` +
+    `(${pantyhoseColorPhrase(color)}), private parts seen only through the thin sheer layer`
+  );
+}
+
+/** 阴毛 + 连裤袜：阴毛被丝袜压住，仅透过薄层可见 */
 function pubicHairUnderPantyhosePrompt(
-  pubicType: "light_hair" | "heavy_hair"
+  pubicType: "light_hair" | "heavy_hair",
+  color: UndressUnderwearColor
 ): string {
   const hair =
     pubicType === "heavy_hair"
       ? "thick dense bushy pubic hair"
       : "light sparse pubic hair";
   return (
-    `${hair} pressed flat under the ultra-sheer flesh-tone pantyhose, ` +
+    `${hair} pressed flat under the ${pantyhoseColorPhrase(color)}, ` +
     `only faintly visible as a soft shadow through the thin sheer layer of the pantyhose, ` +
     `not floating above the fabric`
   );
@@ -302,22 +315,23 @@ export type UndressPromptExtras = {
   altersBody: boolean;
   /** 是否追加穿着（需放宽 “不要加衣服”） */
   addsClothing: boolean;
+  /** 仅私处类型选「内裤」时为 true；否则一律裸露不穿内裤 */
+  wearsPanties: boolean;
 };
 
-/** 把非默认选项收成 prompt 片段；默认项全部跳过 */
+/** 把非默认选项收成 prompt 片段；默认项全部跳过（私处除外：未选内裤也要显式裸露） */
 export function collectUndressPromptExtras(
   options: UndressAdvancedOptions
 ): UndressPromptExtras {
   const additions: string[] = [];
   let altersBody = false;
   let addsClothing = false;
+  const wearsPanties = options.pubic_type === "panties";
 
   if (options.lower_wear !== "default") {
     additions.push(lowerWearPrompt(options.lower_wear, options.underwear_color));
     addsClothing = true;
-    if (showsUnderwearColor(options.lower_wear)) {
-      additions.push(UNDERWEAR_COLOR_PROMPT[options.underwear_color]);
-    }
+    // 内衣颜色只影响丝袜/腰头等，不再自动加内裤；内裤只由私处类型「内裤」决定
   }
 
   if (options.footwear === "barefoot") {
@@ -346,20 +360,30 @@ export function collectUndressPromptExtras(
     altersBody = true;
   }
 
-  if (options.pubic_type !== "default") {
-    if (options.pubic_type === "panties") {
-      const c = UNDERWEAR_COLOR_WORD[options.underwear_color];
+  if (wearsPanties) {
+    const c = UNDERWEAR_COLOR_WORD[options.underwear_color];
+    additions.push(
+      `wearing ${c} panties covering the genitals, private area covered by ${c} panties`
+    );
+    addsClothing = true;
+  } else if (options.lower_wear === "pantyhose") {
+    // 连裤袜且未选内裤：一律可隔着连裤袜看到私处
+    additions.push(genitalsThroughPantyhosePrompt(options.underwear_color));
+    if (options.pubic_type === "light_hair" || options.pubic_type === "heavy_hair") {
       additions.push(
-        `private area covered by ${c} panties, wearing ${c} panties over the genitals`
+        pubicHairUnderPantyhosePrompt(options.pubic_type, options.underwear_color)
       );
-      addsClothing = true;
-    } else if (
-      options.lower_wear === "pantyhose" &&
-      (options.pubic_type === "light_hair" || options.pubic_type === "heavy_hair")
-    ) {
-      additions.push(pubicHairUnderPantyhosePrompt(options.pubic_type));
       altersBody = true;
-    } else {
+    } else if (options.pubic_type === "hairless") {
+      additions.push(PUBIC_TYPE_PROMPT.hairless);
+      altersBody = true;
+    }
+  } else {
+    // 非连裤袜：默认 / 毛发选项一律不穿内裤、私处裸露
+    additions.push(
+      "no panties, no underwear, crotch fully exposed and bare, genitals uncovered"
+    );
+    if (options.pubic_type !== "default") {
       additions.push(PUBIC_TYPE_PROMPT[options.pubic_type]);
       altersBody = true;
     }
@@ -375,7 +399,7 @@ export function collectUndressPromptExtras(
     altersBody = true;
   }
 
-  return { additions, altersBody, addsClothing };
+  return { additions, altersBody, addsClothing, wearsPanties };
 }
 
 /** VIP2：有效 VIP 且等级 code 为 vip2（或更高代号 vip3+） */
