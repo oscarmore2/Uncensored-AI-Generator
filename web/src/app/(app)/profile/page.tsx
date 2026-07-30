@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { api, type ApiGeneration } from "@/lib/client";
+import { clearAllDrafts } from "@/lib/draft-store";
 import { useApp } from "@/components/AppContext";
 import { AdultModeSettings } from "@/components/AdultModeSettings";
 import { useLocale, useTranslations } from "next-intl";
@@ -23,6 +24,8 @@ export default function ProfilePage() {
 
   async function logout() {
     await api("/api/auth/logout", { method: "POST" }).catch(() => {});
+    // 未提交的提示词与参考图不留给下一个登录的人
+    await clearAllDrafts().catch(() => {});
     toast(t("loggedOut"));
     router.push("/login");
     router.refresh();

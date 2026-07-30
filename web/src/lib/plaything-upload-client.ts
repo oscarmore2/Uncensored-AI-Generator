@@ -148,6 +148,28 @@ export async function createPendingMedia(opts: {
   };
 }
 
+/**
+ * 存草稿用的形态：去掉 previewUrl —— 那是 URL.createObjectURL 的产物，
+ * 只在当前文档存活，刷新后一定是死链，必须由 File 重新生成。
+ */
+export type StoredMedia = Omit<PendingMedia, "previewUrl">;
+
+export function toStoredMedia(items: PendingMedia[]): StoredMedia[] {
+  return items.map(({ id, file, kind, meta }) => ({ id, file, kind, meta }));
+}
+
+/** 从草稿恢复：重新挂 objectURL，其余原样带回 */
+export function restorePendingMedia(items: StoredMedia[]): PendingMedia[] {
+  const out: PendingMedia[] = [];
+  for (const it of items) {
+    // 结构化克隆理论上还原得出 File，但存进去的是别的东西时不要让整页崩掉
+    const file: unknown = it?.file;
+    if (!(file instanceof Blob)) continue;
+    out.push({ ...it, previewUrl: URL.createObjectURL(file) });
+  }
+  return out;
+}
+
 export function revokePendingMedia(items: PendingMedia[]) {
   for (const m of items) {
     try {

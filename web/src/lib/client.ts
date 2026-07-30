@@ -3,6 +3,8 @@
 // 同源 API 封装：Cookie 会话自动携带，无需手动附加 token
 export interface ApiUser {
   id: number;
+  /** 服务端这一代的标识，用于让本地草稿在重新部署后失效 */
+  server_boot_id?: string;
   username: string;
   email: string | null;
   email_verified: boolean;

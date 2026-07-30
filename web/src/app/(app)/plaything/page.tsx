@@ -20,7 +20,14 @@ import {
 } from "@/components/plaything/DynamicParamForm";
 import { GenerateBar } from "@/components/plaything/GenerateBar";
 import { MediaBrowser } from "@/components/plaything/MediaBrowser";
-import { uploadAllPending, uploadPendingMediaCached } from "@/lib/plaything-upload-client";
+import {
+  restorePendingMedia,
+  toStoredMedia,
+  uploadAllPending,
+  uploadPendingMediaCached,
+  type StoredMedia,
+} from "@/lib/plaything-upload-client";
+import { useDraft } from "@/lib/use-draft";
 import type {
   Phase,
   PlaythingCategorySummary,
@@ -28,6 +35,16 @@ import type {
   PlaythingProduct,
 } from "@/components/plaything/types";
 import { useTranslations } from "next-intl";
+
+/** 刷新后要原样带回来的编辑内容；媒体存 File，靠 IndexedDB 落盘 */
+type PlaythingDraft = {
+  category: PlaythingCategoryId | null;
+  selectedId: number | null;
+  prompt: string;
+  negativePrompt: string;
+  fields: Record<string, string>;
+  media: Record<string, StoredMedia[]>;
+};
 
 export default function PlaythingPage() {
   const t = useTranslations("Plaything");
@@ -53,6 +70,13 @@ export default function PlaythingPage() {
   const quoteTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   // PendingMedia.id → 已上传 URL；优化提示词时抢先传的参考图，真正提交生成时复用，不重复上传
   const uploadedUrlCache = useRef(new Map<string, string>());
+  /**
+   * 草稿里的表单内容先搁这儿：目录还没到时算不出该套用到哪个产品，
+   * 等下面按 selected 重置表单的 effect 跑到对应产品时再顶上去。
+   */
+  const pendingDraftRef = useRef<PlaythingDraft | null>(null);
+  /** 草稿读回来后 +1，用来把上面的 ref 交给下面按产品重置表单的 effect 去消费 */
+  const [draftEpoch, setDraftEpoch] = useState(0);
 
   const loadCatalog = useCallback(async () => {
     try {
@@ -115,14 +139,62 @@ export default function PlaythingPage() {
   );
 
   useEffect(() => {
+    const draft = pendingDraftRef.current;
+    const useDraftForm = draft != null && selected != null && draft.selectedId === selected.id;
+
     setForm((prev) => {
       releaseFormMedia(prev);
-      return defaultsFromProduct(selected);
+      if (!useDraftForm) return defaultsFromProduct(selected);
+      // 以当前产品的默认值打底，再盖上草稿：产品参数改过之后
+      // 草稿里已消失的字段不会漏、多出来的字段也不会带进来
+      const base = defaultsFromProduct(selected);
+      const mediaFiles = { ...base.mediaFiles };
+      for (const key of Object.keys(mediaFiles)) {
+        mediaFiles[key] = restorePendingMedia(draft.media?.[key] ?? []);
+      }
+      const fields = { ...base.fields };
+      for (const [k, v] of Object.entries(draft.fields ?? {})) {
+        if (k in fields) fields[k] = v;
+      }
+      return { prompt: draft.prompt, negativePrompt: draft.negativePrompt, fields, mediaFiles };
     });
+
+    if (useDraftForm || (pendingDraftRef.current && products.length > 0 && selected)) {
+      // 用掉了，或者草稿指向的产品已经下架 —— 两种情况都不该再等下去
+      pendingDraftRef.current = null;
+    }
+
     setQuoteCost(selected?.credit_cost ?? null);
     setQuoteSource(null);
     uploadedUrlCache.current.clear();
-  }, [selected?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [selected?.id, products.length, draftEpoch]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const { save: saveDraft } = useDraft<PlaythingDraft>("plaything", (d) => {
+    pendingDraftRef.current = d;
+    if (d.category) setCategory(d.category);
+    if (d.selectedId != null) setSelectedId(d.selectedId);
+    // 草稿是异步读回来的，此时上面那个 effect 早就跑完了。若草稿里的
+    // 分类/模型跟当前一致，不会有任何 state 变化，effect 也就不会重跑，
+    // 于是 pendingDraftRef 永远消不掉、回写被一直挡住。用它显式再踢一次。
+    setDraftEpoch((e) => e + 1);
+  });
+
+  useEffect(() => {
+    // 草稿还没落到具体产品上时别回写，否则会用空表单把它盖掉
+    if (pendingDraftRef.current) return;
+    const media: Record<string, StoredMedia[]> = {};
+    for (const [field, items] of Object.entries(form.mediaFiles)) {
+      media[field] = toStoredMedia(items);
+    }
+    saveDraft({
+      category,
+      selectedId,
+      prompt: form.prompt,
+      negativePrompt: form.negativePrompt,
+      fields: form.fields,
+      media,
+    });
+  }, [saveDraft, category, selectedId, form]);
 
   const mediaKind: PlaythingMediaKind =
     selected?.media_kind ?? (category ? categoryMeta(category).mediaKind : "image");

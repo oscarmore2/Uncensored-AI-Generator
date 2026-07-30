@@ -23,11 +23,29 @@ import { UndressAdvancedPanel } from "@/components/UndressAdvancedPanel";
 import { ParamControlGrid } from "@/components/ParamControls";
 import type { ParamControl } from "@/lib/param-controls";
 import { useApp } from "@/components/AppContext";
+import { useDraft } from "@/lib/use-draft";
 import { AdaptiveMedia } from "@/components/WorkMedia";
 import { MediaExpiryBadge } from "@/components/MediaExpiryBadge";
 import { useTranslations } from "next-intl";
 
 type Phase = "idle" | "submitting" | "polling";
+
+/** 刷新后要原样带回来的编辑内容 */
+type MakeDraft = {
+  mode: string;
+  tier: string;
+  spicy: boolean;
+  prompt: string;
+  negative: string;
+  gender: string;
+  undressOptions: UndressAdvancedOptions;
+  ratio: string;
+  batch: number;
+  duration: string;
+  advancedOpen: boolean;
+  imageBase64: string | null;
+  extraParams: Record<string, string>;
+};
 
 function MakePageInner() {
   const t = useTranslations("Make");
@@ -69,6 +87,75 @@ function MakePageInner() {
   const [extraParams, setExtraParams] = useState<Record<string, string>>({});
   const pollingRef = useRef(false);
   const remixLoadedRef = useRef(false);
+
+  /**
+   * URL 显式带了内容（分享链接、二次创作）时不恢复草稿：
+   * 用户是冲着链接里的那份提示词来的，草稿盖上去等于把链接吃掉。
+   */
+  const deepLinked = Boolean(
+    searchParams.get("prompt") ??
+      searchParams.get("negative") ??
+      searchParams.get("remix_work")
+  );
+
+  const { save: saveDraft } = useDraft<MakeDraft>(
+    "make",
+    (d) => {
+      if (isGenerationMode(d.mode)) setMode(d.mode);
+      if (typeof d.tier === "string") setTier(d.tier);
+      setSpicy(Boolean(d.spicy));
+      setPrompt(d.prompt ?? "");
+      if (typeof d.negative === "string") setNegative(d.negative);
+      if ((UNDRESS_GENDERS as readonly string[]).includes(d.gender)) {
+        setGender(d.gender as UndressGender);
+      }
+      if (d.undressOptions) setUndressOptions(normalizeUndressAdvanced(d.undressOptions));
+      if (typeof d.ratio === "string") setRatio(d.ratio);
+      if (d.batch === 1 || d.batch === 2 || d.batch === 4) setBatch(d.batch);
+      if (typeof d.duration === "string") setDuration(d.duration);
+      setAdvancedOpen(Boolean(d.advancedOpen));
+      setImageBase64(d.imageBase64 ?? null);
+      setExtraParams(d.extraParams ?? {});
+    },
+    {
+      enabled: !deepLinked,
+      // 参考图是 base64 大字符串，配额写满时先保住提示词
+      stripMedia: (d) => ({ ...d, imageBase64: null }),
+    }
+  );
+
+  useEffect(() => {
+    saveDraft({
+      mode,
+      tier,
+      spicy,
+      prompt,
+      negative,
+      gender,
+      undressOptions,
+      ratio,
+      batch,
+      duration,
+      advancedOpen,
+      imageBase64,
+      extraParams,
+    });
+  }, [
+    saveDraft,
+    mode,
+    tier,
+    spicy,
+    prompt,
+    negative,
+    gender,
+    undressOptions,
+    ratio,
+    batch,
+    duration,
+    advancedOpen,
+    imageBase64,
+    extraParams,
+  ]);
 
   const meta = MODE_META[mode];
   const isVip = Boolean(catalog?.user_vip.is_active);

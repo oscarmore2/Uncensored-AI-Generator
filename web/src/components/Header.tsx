@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useApp } from "./AppContext";
 import { api } from "@/lib/client";
+import { clearAllDrafts } from "@/lib/draft-store";
 import { BrandLogo } from "./BrandLogo";
 import { LanguageSwitcher } from "./LanguageSwitcher";
 import { useTranslations } from "next-intl";
@@ -53,6 +54,8 @@ export function Header() {
 
   async function logout() {
     await api("/api/auth/logout", { method: "POST" }).catch(() => {});
+    // 未提交的提示词与参考图不留给下一个登录的人
+    await clearAllDrafts().catch(() => {});
     toast(t("loggedOut"));
     router.push("/login");
     router.refresh();
