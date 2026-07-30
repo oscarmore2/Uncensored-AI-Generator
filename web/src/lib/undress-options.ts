@@ -237,13 +237,18 @@ function barefootPrompt(
   return "barefoot with no shoes, bare toes and soles visible";
 }
 
-/** 未穿内裤 + 连裤袜：私处隔着丝袜可见 */
+/** 未穿内裤 + 连裤袜：阴蒂隔着一层丝袜布料可见 */
 function genitalsThroughPantyhosePrompt(color: UndressUnderwearColor): string {
   return (
-    `no panties under the pantyhose, genitals and pubic area clearly visible through the sheer pantyhose ` +
-    `(${pantyhoseColorPhrase(color)}), private parts seen only through the thin sheer layer`
+    `no panties under the pantyhose, female clitoris clearly visible through one layer of sheer pantyhose fabric ` +
+    `(${pantyhoseColorPhrase(color)}), clitoris seen under the thin pantyhose material, ` +
+    `genitals and pubic area visible only through the sheer pantyhose cloth`
   );
 }
+
+/** 未穿内裤且无连裤袜：阴蒂直接可见 */
+const EXPOSED_CLITORIS_PROMPT =
+  "no panties, no underwear, crotch fully exposed and bare, female clitoris directly visible and uncovered";
 
 /** 阴毛 + 连裤袜：阴毛被丝袜压住，仅透过薄层可见 */
 function pubicHairUnderPantyhosePrompt(
@@ -379,10 +384,8 @@ export function collectUndressPromptExtras(
       altersBody = true;
     }
   } else {
-    // 非连裤袜：默认 / 毛发选项一律不穿内裤、私处裸露
-    additions.push(
-      "no panties, no underwear, crotch fully exposed and bare, genitals uncovered"
-    );
+    // 非连裤袜：默认 / 毛发选项一律不穿内裤，阴蒂直接可见
+    additions.push(EXPOSED_CLITORIS_PROMPT);
     if (options.pubic_type !== "default") {
       additions.push(PUBIC_TYPE_PROMPT[options.pubic_type]);
       altersBody = true;
