@@ -55,6 +55,13 @@ async function tableExists(name) {
   return Boolean(rows[0]?.exists);
 }
 
+async function hasLegacyMediaChannels() {
+  const rows = await db.$queryRawUnsafe(
+    `SELECT COUNT(*)::int AS "n" FROM "MediaCleanupPolicy" WHERE "channel" IN ('zen', 'wavespeed')`
+  );
+  return Number(rows[0]?.n ?? 0) > 0;
+}
+
 async function columnExists(table, column) {
   const rows = await db.$queryRawUnsafe(
     `SELECT COUNT(*)::int AS "n"
@@ -96,16 +103,19 @@ try {
     if (await tableExists("GenerationProduct") && (await columnExists("GenerationProduct", "zenModel"))) {
       await db.$executeRawUnsafe(`DROP TABLE IF EXISTS "GenerationProduct" CASCADE`);
       console.log("[migration] 已重建 GenerationProduct（旧 zenModel 结构）");
-      // 重建后必须让播种重新跑一遍，否则档位表会是空的
-      if (await tableExists("AppSetting")) {
-        await db.$executeRawUnsafe(
-          `DELETE FROM "AppSetting" WHERE "key" = 'generation_catalog_seed_version'`
-        );
-      }
     }
 
-    // 4) 媒体清理策略里的渠道标识与生成端保持一致
-    if (await tableExists("MediaCleanupPolicy")) {
+    // 播种已改为「表空才建、只补不改」，不再需要版本号闸门；
+    // 清掉遗留键，避免以后有人误以为它还在控制播种。
+    if (await tableExists("AppSetting")) {
+      await db.$executeRawUnsafe(
+        `DELETE FROM "AppSetting" WHERE "key" = 'generation_catalog_seed_version'`
+      );
+    }
+
+    // 4) 媒体清理策略里的渠道标识与生成端保持一致。
+    //    只在确实还有旧渠道行时才动手，否则每次部署都白跑一遍并打出误导性日志。
+    if ((await tableExists("MediaCleanupPolicy")) && (await hasLegacyMediaChannels())) {
       await db.$executeRawUnsafe(
         `DELETE FROM "MediaCleanupPolicy"
           WHERE "channel" = 'main'

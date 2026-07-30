@@ -395,7 +395,9 @@
       "strength": "Strength",
       "audio": "Generate audio"
     },
-    "noExtraParams": "This tier has no adjustable parameters."
+    "noExtraParams": "This tier has no adjustable parameters.",
+    "insufficientCredits": "Not enough credits: this costs {cost}, balance is {balance}",
+    "insufficientShort": "Not enough credits"
   },
   "Profile": {
     "title": "Profile",
@@ -497,7 +499,9 @@
       "anime": "Anime",
       "realistic": "Realistic"
     },
-    "threeDLoadWarning": "Some model resources failed to load — textures may be missing"
+    "threeDLoadWarning": "Some model resources failed to load — textures may be missing",
+    "insufficientCredits": "Not enough credits: this costs {cost}, balance is {balance}",
+    "insufficientShort": "Not enough credits"
   },
   "Cookie": {
     "aria": "Cookie collection notice",

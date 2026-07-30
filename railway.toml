@@ -6,6 +6,7 @@ dockerfilePath = "Dockerfile"
 watchPatterns = ["web/**"]
 
 [deploy]
+# 迁移的唯一入口：release 阶段跑一次，容器启动不再重复跑 db push
 releaseCommand = "npm run db:deploy"
 restartPolicyType = "ON_FAILURE"
 restartPolicyMaxRetries = 10

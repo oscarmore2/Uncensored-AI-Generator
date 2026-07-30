@@ -5,7 +5,7 @@ dockerfilePath = "Dockerfile"
 watchPatterns = ["**"]
 
 [deploy]
-# Sync schema before traffic switches (also runs again via npm start)
+# 迁移的唯一入口：release 阶段跑一次，容器启动不再重复跑 db push
 releaseCommand = "npm run db:deploy"
 startCommand = "npm start"
 restartPolicyType = "ON_FAILURE"

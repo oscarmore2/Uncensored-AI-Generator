@@ -5,6 +5,39 @@ import { useMemo, useState } from "react";
 import { api, type CatalogPackage, type CatalogVipPlan } from "@/lib/client";
 import { useTranslations } from "next-intl";
 
+/**
+ * 卡片布局按数量自适应（Tailwind 需要静态类名，所以用查表而非拼接）：
+ *   ≤3 个 —— 单行横排，每张卡片拉宽，内部改成左右布局（点数 / 价格分列）
+ *    4 个 —— 2×2，卡片更大、字号更大
+ *   ≥5 个 —— 一行最多三个，自动换行，末行居中（用 flex 而非 grid 才能居中孤行）
+ */
+type CardLayout = "row" | "quad" | "grid";
+
+function cardLayoutFor(count: number): CardLayout {
+  if (count <= 3) return "row";
+  if (count === 4) return "quad";
+  return "grid";
+}
+
+const LAYOUT_CONTAINER: Record<CardLayout, string> = {
+  row: "flex flex-wrap justify-center gap-4",
+  quad: "mx-auto flex max-w-4xl flex-wrap justify-center gap-5",
+  grid: "flex flex-wrap justify-center gap-4",
+};
+
+const LAYOUT_ITEM: Record<CardLayout, string> = {
+  // 上限避免只有 1~2 档时卡片被 flex-1 拉成满屏宽
+  row: "basis-full sm:min-w-[17rem] sm:max-w-[26rem] sm:flex-1",
+  quad: "basis-full sm:basis-[calc(50%-0.625rem)]",
+  grid: "basis-full sm:basis-[calc(50%-0.5rem)] lg:basis-[calc(33.333%-0.667rem)]",
+};
+
+const LAYOUT_PADDING: Record<CardLayout, string> = {
+  row: "p-7",
+  quad: "p-8",
+  grid: "p-6",
+};
+
 export function PricingClient({
   packages,
   vipPlans,
@@ -28,6 +61,8 @@ export function PricingClient({
     () => packages.find((item) => item.credits === selected),
     [packages, selected]
   );
+  const pkgLayout = cardLayoutFor(packages.length);
+  const vipLayout = cardLayoutFor(vipPlans.length);
 
   function requireLogin(next = "/pricing") {
     if (signedIn) return true;
@@ -112,16 +147,19 @@ export function PricingClient({
 
       {tab === "credits" ? (
         <div>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div className={LAYOUT_CONTAINER[pkgLayout]}>
             {packages.map((item) => {
               const active = selected === item.credits;
+              const price = `$${(item.price_cents / 100).toFixed(2)}`;
               return (
                 <button
                   type="button"
                   key={item.id}
                   onClick={() => setSelected(item.credits)}
-                  className={`relative rounded-3xl border p-6 text-left transition ${
-                    active ? "border-violet-400 bg-violet-500/10 ring-1 ring-violet-400" : "border-white/10 bg-white/[0.035] hover:border-white/25"
+                  className={`relative rounded-3xl border text-left transition ${LAYOUT_ITEM[pkgLayout]} ${LAYOUT_PADDING[pkgLayout]} ${
+                    active
+                      ? "border-violet-400 bg-violet-500/10 ring-1 ring-violet-400"
+                      : "border-white/10 bg-white/[0.035] hover:border-white/25"
                   }`}
                 >
                   {item.badge && (
@@ -129,12 +167,31 @@ export function PricingClient({
                       {item.badge}
                     </span>
                   )}
-                  <div className="text-sm text-gray-400">{item.label}</div>
-                  <div className="mt-4 text-4xl font-black">
-                    {item.credits}
-                    <span className="ml-2 text-sm font-normal text-gray-500">{t("credits")}</span>
-                  </div>
-                  <div className="mt-5 text-2xl font-bold">${(item.price_cents / 100).toFixed(2)}</div>
+
+                  {pkgLayout === "row" ? (
+                    // 卡片被拉宽后，点数与价格分列左右，避免大片留白
+                    <div className="flex items-end justify-between gap-4">
+                      <div>
+                        <div className="text-sm text-gray-400">{item.label}</div>
+                        <div className="mt-3 text-4xl font-black">
+                          {item.credits}
+                          <span className="ml-2 text-sm font-normal text-gray-500">{t("credits")}</span>
+                        </div>
+                      </div>
+                      <div className="shrink-0 text-3xl font-bold">{price}</div>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="text-sm text-gray-400">{item.label}</div>
+                      <div className={`mt-4 font-black ${pkgLayout === "quad" ? "text-5xl" : "text-4xl"}`}>
+                        {item.credits}
+                        <span className="ml-2 text-sm font-normal text-gray-500">{t("credits")}</span>
+                      </div>
+                      <div className={`mt-5 font-bold ${pkgLayout === "quad" ? "text-3xl" : "text-2xl"}`}>
+                        {price}
+                      </div>
+                    </>
+                  )}
                 </button>
               );
             })}
@@ -159,9 +216,12 @@ export function PricingClient({
           </div>
         </div>
       ) : (
-        <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+        <div className={LAYOUT_CONTAINER[vipLayout]}>
           {vipPlans.map((plan) => (
-            <article key={plan.id} className="flex flex-col rounded-3xl border border-amber-400/20 bg-gradient-to-b from-amber-400/10 to-white/[0.025] p-7">
+            <article
+              key={plan.id}
+              className={`flex flex-col rounded-3xl border border-amber-400/20 bg-gradient-to-b from-amber-400/10 to-white/[0.025] ${LAYOUT_ITEM[vipLayout]} ${LAYOUT_PADDING[vipLayout]}`}
+            >
               <i className="fas fa-crown text-2xl text-amber-300" />
               <h2 className="mt-4 text-2xl font-bold">{plan.label}</h2>
               <p className="mt-1 text-sm text-gray-400">{plan.tier.name}</p>

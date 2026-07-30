@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "npm run db:deploy && next start",
+    "start": "next start",
     "postinstall": "prisma generate",
     "db:push": "prisma db push",
     "db:deploy": "node scripts/migrate-wavespeed-bridge.mjs && prisma db push",

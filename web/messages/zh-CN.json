@@ -395,7 +395,9 @@
       "strength": "重绘强度",
       "audio": "生成音轨"
     },
-    "noExtraParams": "该档位没有可调参数，直接生成即可"
+    "noExtraParams": "该档位没有可调参数，直接生成即可",
+    "insufficientCredits": "点数不足：本次需 {cost} 点，当前余额 {balance} 点",
+    "insufficientShort": "点数不足，请先充值"
   },
   "Profile": {
     "title": "个人中心",
@@ -497,7 +499,9 @@
       "anime": "动漫",
       "realistic": "超写实"
     },
-    "threeDLoadWarning": "模型部分资源加载失败，可能导致贴图缺失"
+    "threeDLoadWarning": "模型部分资源加载失败，可能导致贴图缺失",
+    "insufficientCredits": "点数不足：本次需 {cost} 点，当前余额 {balance} 点",
+    "insufficientShort": "点数不足，请先充值"
   },
   "Cookie": {
     "aria": "Cookie 数据收集提示",

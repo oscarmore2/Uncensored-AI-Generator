@@ -253,6 +253,10 @@ function MakePageInner() {
     discountBps: catalog?.user_vip.is_active ? (catalog.user_vip.tier?.discount_bps ?? 0) : 0,
   });
 
+  const balance = user?.balance ?? 0;
+  // 本次预估扣点超过余额；档位/时长/批量任何改动都会实时重算
+  const insufficientCredits = Boolean(selectedProduct) && cost > balance;
+
   function handleImageUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -307,6 +311,13 @@ function MakePageInner() {
     if (isUndress && !adultEnabled) return toast(t("undressNeedsAdult"), true);
     if (phase !== "idle") return;
     if (!selectedProduct) return toast(t("tierUnavailable"), true);
+    // 余额不足直接拦在本地：服务端扣费是原子的、必然拒绝，
+    // 提前拦住可以避免把最多 14MB 的 base64 参考图白传一遍。
+    if (insufficientCredits) {
+      toast(t("insufficientCredits", { cost, balance }), true);
+      router.push("/pricing");
+      return;
+    }
 
     setPhase("submitting");
     setResult(null);
@@ -740,15 +751,28 @@ function MakePageInner() {
             </div>
           </div>
 
+          {insufficientCredits && phase === "idle" && (
+            <div className="mb-3 rounded-2xl bg-amber-500/10 border border-amber-500/25 px-4 py-2.5 text-xs text-amber-200 flex items-start gap-2">
+              <i className="fas fa-coins mt-0.5 shrink-0" />
+              <span>{t("insufficientCredits", { cost, balance })}</span>
+            </div>
+          )}
+
           <button
             onClick={startGeneration}
-            disabled={phase !== "idle" || !selectedProduct}
-            className="generate-btn w-full py-4 text-white font-bold text-lg rounded-3xl flex items-center justify-center gap-x-3 shadow-xl active:scale-[0.985] disabled:opacity-60"
+            disabled={phase !== "idle" || !selectedProduct || insufficientCredits}
+            className="generate-btn w-full py-4 text-white font-bold text-lg rounded-3xl flex items-center justify-center gap-x-3 shadow-xl active:scale-[0.985] disabled:opacity-60 disabled:cursor-not-allowed"
           >
             {phase === "idle" ? (
-              <>
-                <i className="fas fa-magic" /> <span>{t("generate")}</span>
-              </>
+              insufficientCredits ? (
+                <>
+                  <i className="fas fa-coins" /> <span>{t("insufficientShort")}</span>
+                </>
+              ) : (
+                <>
+                  <i className="fas fa-magic" /> <span>{t("generate")}</span>
+                </>
+              )
             ) : (
               <>
                 <i className="fas fa-spinner fa-spin" />
@@ -760,7 +784,11 @@ function MakePageInner() {
           <div className="mt-3 text-center">
             <button
               onClick={() => router.push("/pricing")}
-              className="text-xs text-gray-400 hover:text-rose-400 flex items-center justify-center gap-x-1 mx-auto"
+              className={`text-xs flex items-center justify-center gap-x-1 mx-auto ${
+                insufficientCredits
+                  ? "text-amber-300 hover:text-amber-200 font-semibold"
+                  : "text-gray-400 hover:text-rose-400"
+              }`}
             >
               <i className="fas fa-coins fa-sm" /> <span>{t("recharge")}</span>
             </button>

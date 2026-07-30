@@ -34,11 +34,15 @@ const DEFAULT_SHELF: Array<{
 ];
 
 /**
- * 在 catalog 已同步后，确保推荐模型有 Product。
- * Seedance Spicy I2V：按关键词在 catalog 中解析真实 model_id。
- * 返回新创建的 Product 数量。
+ * 首次同步 catalog 后铺一批默认上架产品，返回新建数量。
+ *
+ * 只在「货架整张表为空」时播种：否则管理端主动下架 / 删掉的默认产品
+ * 会在每次点同步时被重新创建出来（连 isActive、isRecommended 一起复活），
+ * 这也是一种配置被重置。货架内容之后完全以管理端为准。
  */
 export async function ensureDefaultPlaythingProducts(): Promise<number> {
+  if ((await db.waveSpeedProduct.count()) > 0) return 0;
+
   let created = 0;
 
   for (const item of DEFAULT_SHELF) {

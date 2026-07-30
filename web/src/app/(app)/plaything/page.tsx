@@ -263,9 +263,11 @@ export default function PlaythingPage() {
       toast(payload.error);
       return;
     }
+    // 余额不足在上传媒体之前就拦住：否则文件已进 OSS、服务端才拒绝，留下孤儿文件
     const cost = quoteCost ?? selected.credit_cost;
-    if ((user?.balance ?? 0) < cost) {
-      toast(t("insufficient"));
+    const balance = user?.balance ?? 0;
+    if (balance < cost) {
+      toast(t("insufficientCredits", { cost, balance }), true);
       router.push("/pricing");
       return;
     }
