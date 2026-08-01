@@ -4,6 +4,8 @@ import { getCurrentUser } from "@/lib/auth";
 import { hasPlaythingAccess } from "@/lib/plaything-access";
 import { rateLimit } from "@/lib/rate-limit";
 import { optimizePrompt, promptOptimizerConfigured } from "@/lib/prompt-optimizer";
+import { generateNegativePrompt } from "@/lib/negative-prompt";
+import { hasAdultAccess } from "@/lib/adult-access";
 
 /**
  * 玩物专区专属的提示词优化（WaveSpeed prompt-optimizer）。
@@ -18,6 +20,9 @@ const bodySchema = z.object({
   style: z
     .enum(["default", "artistic", "photographic", "technical", "anime", "realistic"])
     .optional(),
+  /** 所选模型的 schema 里有 negative_prompt 字段时，顺带把反向也生成出来 */
+  want_negative: z.boolean().optional(),
+  negative_text: z.string().max(4000).optional(),
 });
 
 export async function POST(req: Request) {
@@ -49,7 +54,22 @@ export async function POST(req: Request) {
       mode: d.mode,
       style: d.style,
     });
-    return NextResponse.json({ ok: true, prompt });
+
+    // 反向提示词基于「优化后的正向」来写，才对得上最终送去生成的内容
+    const negative = d.want_negative
+      ? await generateNegativePrompt({
+          positivePrompt: prompt,
+          kind: d.mode,
+          existing: d.negative_text,
+          allowSensitive: hasAdultAccess(user),
+        })
+      : null;
+
+    return NextResponse.json({
+      ok: true,
+      prompt,
+      negative_prompt: negative?.negative_prompt ?? null,
+    });
   } catch (err) {
     return NextResponse.json(
       { error: err instanceof Error ? err.message : "提示词优化失败" },

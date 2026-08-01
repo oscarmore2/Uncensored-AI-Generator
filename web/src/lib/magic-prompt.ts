@@ -1,5 +1,6 @@
 import "server-only";
 import { getActiveHfCredentials } from "./hf";
+import { buildLocalNegative, type NegativeKind } from "./negative-prompt";
 import {
   PROMPT_FORMAT_RULES,
   resolvePromptTarget,
@@ -137,6 +138,22 @@ function buildUserMessage(input: MagicPromptInput, meta: MagicPromptTaskMetadata
     .join("\n");
 }
 
+function negativeKindOf(target: PromptTarget): NegativeKind {
+  return target.formatId === "video_t2v" || target.formatId === "video_i2v" ? "video" : "image";
+}
+
+/** 支持反向的档位一律给出反向提示词，不支持的一律不给 */
+function negativeFor(
+  target: PromptTarget,
+  input: MagicPromptInput,
+  fromLlm?: string
+): string | undefined {
+  if (!target.supportsNegative) return undefined;
+  const trimmed = fromLlm?.trim();
+  if (trimmed) return trimmed;
+  return buildLocalNegative(negativeKindOf(target), input.negative_prompt);
+}
+
 function stripBoilerplate(text: string): string {
   return text
     .replace(
@@ -214,7 +231,10 @@ export function enhancePromptLocal(input: MagicPromptInput): MagicPromptResult {
     ]
       .filter(Boolean)
       .join(", ");
-    return withTarget({ prompt, source: "local" }, target);
+    return withTarget(
+      { prompt, negative_prompt: negativeFor(target, input), source: "local" },
+      target
+    );
   }
 
   if (target.formatId === "video_i2v") {
@@ -226,7 +246,10 @@ export function enhancePromptLocal(input: MagicPromptInput): MagicPromptResult {
     ]
       .filter(Boolean)
       .join(", ");
-    return withTarget({ prompt, source: "local" }, target);
+    return withTarget(
+      { prompt, negative_prompt: negativeFor(target, input), source: "local" },
+      target
+    );
   }
 
   if (target.formatId === "image_i2i" || target.formatId === "image_edit") {
@@ -238,7 +261,10 @@ export function enhancePromptLocal(input: MagicPromptInput): MagicPromptResult {
     ]
       .filter(Boolean)
       .join(", ");
-    return withTarget({ prompt, source: "local" }, target);
+    return withTarget(
+      { prompt, negative_prompt: negativeFor(target, input), source: "local" },
+      target
+    );
   }
 
   // image_t2i fallback
@@ -259,9 +285,7 @@ export function enhancePromptLocal(input: MagicPromptInput): MagicPromptResult {
   return withTarget(
     {
       prompt: enriched,
-      negative_prompt: target.supportsNegative
-        ? "低质量, 模糊, 变形, 多余肢体, 文字, watermark, 丑陋, 过曝, 欠曝, 塑料感皮肤"
-        : undefined,
+      negative_prompt: negativeFor(target, input),
       source: "local",
     },
     target
@@ -313,7 +337,8 @@ async function enhancePromptDolphin(
   return withTarget(
     {
       prompt: parsed.prompt,
-      negative_prompt: target.supportsNegative ? parsed.negative_prompt : undefined,
+      // 模型偶尔只回正向；支持反向的档位就用规则模板补齐，别让输入框空着
+      negative_prompt: negativeFor(target, input, parsed.negative_prompt),
       source: "dolphin",
     },
     target

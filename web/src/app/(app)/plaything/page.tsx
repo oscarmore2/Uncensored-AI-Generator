@@ -279,11 +279,29 @@ export default function PlaythingPage() {
       }
 
       const mode = selected.media_kind === "video" ? "video" : "image";
-      const res = await api<{ prompt: string }>("/api/plaything/prompt-optimize", {
-        method: "POST",
-        body: JSON.stringify({ text, image_url: imageUrl, mode, style }),
-      });
-      setForm((prev) => ({ ...prev, prompt: res.prompt }));
+      // 模型 schema 里有 negative_prompt 才要反向，否则生成了也没地方填
+      const wantNegative = Boolean(selected.param_schema?.properties?.negative_prompt);
+      const res = await api<{ prompt: string; negative_prompt: string | null }>(
+        "/api/plaything/prompt-optimize",
+        {
+          method: "POST",
+          body: JSON.stringify({
+            text,
+            image_url: imageUrl,
+            mode,
+            style,
+            want_negative: wantNegative,
+            ...(wantNegative && form.negativePrompt.trim()
+              ? { negative_text: form.negativePrompt.trim() }
+              : {}),
+          }),
+        }
+      );
+      setForm((prev) => ({
+        ...prev,
+        prompt: res.prompt,
+        ...(res.negative_prompt ? { negativePrompt: res.negative_prompt } : {}),
+      }));
       toast(t("optimizeDone"));
     } catch (e) {
       toast(e instanceof ApiError ? e.message : t("optimizeFailed"), true);
