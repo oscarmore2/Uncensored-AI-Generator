@@ -215,7 +215,7 @@ export function ExploreGallery({
               <button
                 type="button"
                 onClick={() => remix(selected)}
-                className="mt-6 w-full rounded-2xl bg-violet-500 py-3 font-bold text-white hover:bg-violet-400"
+                className="mt-6 w-full rounded-2xl bg-teal-500 py-3 font-bold text-white hover:bg-teal-400"
               >
                 <i className="fas fa-copy mr-2" />
                 {signedIn ? t("copyToGenerator") : t("registerToCopy")}

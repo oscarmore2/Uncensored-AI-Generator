@@ -86,7 +86,7 @@ export async function sendVerificationEmail(params: {
           <p>你好 ${safeName}，请点击下方按钮验证邮箱。链接将在 24 小时后失效。</p>
           <p>Hello ${safeName}, verify your email using the button below. This link expires in 24 hours.</p>
           <p style="margin:28px 0">
-            <a href="${verificationUrl}" style="display:inline-block;background:#7c3aed;color:white;text-decoration:none;padding:12px 20px;border-radius:12px">验证邮箱 / Verify email</a>
+            <a href="${verificationUrl}" style="display:inline-block;background:#f97316;color:white;text-decoration:none;padding:12px 20px;border-radius:12px">验证邮箱 / Verify email</a>
           </p>
           <p style="font-size:12px;color:#71717a;word-break:break-all">${verificationUrl}</p>
           <p style="font-size:12px;color:#71717a">如果你没有创建账户，可以忽略本邮件。</p>

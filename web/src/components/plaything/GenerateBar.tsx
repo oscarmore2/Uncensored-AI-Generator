@@ -51,14 +51,14 @@ export function GenerateBar({
         type="button"
         disabled={busy || disabled || quoting || insufficient}
         onClick={onGenerate}
-        className="w-full py-3 rounded-2xl text-sm font-semibold bg-rose-600 hover:bg-rose-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+        className="w-full py-3 rounded-2xl text-sm font-semibold bg-orange-600 hover:bg-orange-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
       >
         {label}
       </button>
       {phase === "polling" && (
         <div className="h-1.5 rounded-full bg-white/10 overflow-hidden">
           <div
-            className="h-full bg-rose-500 transition-all"
+            className="h-full bg-orange-500 transition-all"
             style={{ width: `${Math.max(5, progress)}%` }}
           />
         </div>
@@ -73,7 +73,7 @@ export function GenerateBar({
             <span className="text-amber-500/80 ml-1">· {t("basePrice")}</span>
           )}
         </span>
-        <button type="button" onClick={onTopUp} className="text-rose-400 hover:text-rose-300 shrink-0">
+        <button type="button" onClick={onTopUp} className="text-orange-400 hover:text-orange-300 shrink-0">
           {t("topUp")}
         </button>
       </div>

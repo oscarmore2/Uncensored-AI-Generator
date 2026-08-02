@@ -37,7 +37,7 @@ export default function ProfilePage() {
 
       <div className="glass rounded-3xl p-8 mb-6">
         <div className="flex items-center gap-x-6">
-          <div className="w-20 h-20 rounded-3xl bg-gradient-to-br from-rose-700 to-pink-900 border-2 border-white/20 flex-shrink-0 flex items-center justify-center text-2xl font-black uppercase">
+          <div className="w-20 h-20 rounded-3xl bg-gradient-to-br from-orange-600 to-amber-800 border-2 border-white/20 flex-shrink-0 flex items-center justify-center text-2xl font-black uppercase">
             {user?.username.slice(0, 2) ?? "?"}
           </div>
           <div className="flex-1">
@@ -71,7 +71,7 @@ export default function ProfilePage() {
 
       <div className="grid grid-cols-3 gap-4 mb-6">
         <div className="glass rounded-3xl p-5 text-center">
-          <div className="text-4xl font-mono font-bold text-rose-400 stat-number">{totalGens ?? "—"}</div>
+          <div className="text-4xl font-mono font-bold text-orange-400 stat-number">{totalGens ?? "—"}</div>
           <div className="text-xs text-gray-400 mt-1">{t("creations")}</div>
         </div>
         <div className="glass rounded-3xl p-5 text-center">

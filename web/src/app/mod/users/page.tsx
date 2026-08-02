@@ -57,7 +57,7 @@ export default function ModUsersPage() {
           setPage(1);
         }}
         placeholder="搜索用户名..."
-        className="w-full max-w-sm mb-5 bg-[#111] border border-white/10 focus:border-rose-500/60 rounded-2xl px-4 py-2.5 text-sm outline-none"
+        className="w-full max-w-sm mb-5 bg-[#111] border border-white/10 focus:border-orange-500/60 rounded-2xl px-4 py-2.5 text-sm outline-none"
       />
 
       {error && <p className="mb-4 text-sm text-red-400">{error}</p>}
@@ -84,7 +84,7 @@ export default function ModUsersPage() {
                   <span
                     className={`text-xs px-2 py-0.5 rounded-full ${
                       u.role === "admin"
-                        ? "bg-rose-500/15 text-rose-300"
+                        ? "bg-orange-500/15 text-orange-300"
                         : u.role === "moderator"
                           ? "bg-amber-500/15 text-amber-300"
                           : "bg-white/10 text-gray-300"
@@ -99,7 +99,7 @@ export default function ModUsersPage() {
                   {new Date(u.created_at).toLocaleDateString("zh-CN")}
                 </td>
                 <td className="px-5 py-3 text-right">
-                  <Link href={`/mod/users/${u.id}`} className="text-xs text-rose-400 hover:text-rose-300">
+                  <Link href={`/mod/users/${u.id}`} className="text-xs text-orange-400 hover:text-orange-300">
                     查看作品 <i className="fas fa-arrow-right ml-1" />
                   </Link>
                 </td>

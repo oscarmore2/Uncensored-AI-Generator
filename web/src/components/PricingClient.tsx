@@ -126,7 +126,7 @@ export function PricingClient({
         <button
           type="button"
           onClick={() => setTab("credits")}
-          className={`rounded-xl px-5 py-3 text-sm font-semibold ${tab === "credits" ? "bg-violet-500 text-white" : "text-gray-400"}`}
+          className={`rounded-xl px-5 py-3 text-sm font-semibold ${tab === "credits" ? "bg-teal-500 text-white" : "text-gray-400"}`}
         >
           {t("creditsTab")}
         </button>
@@ -158,12 +158,12 @@ export function PricingClient({
                   onClick={() => setSelected(item.credits)}
                   className={`relative rounded-3xl border text-left transition ${LAYOUT_ITEM[pkgLayout]} ${LAYOUT_PADDING[pkgLayout]} ${
                     active
-                      ? "border-violet-400 bg-violet-500/10 ring-1 ring-violet-400"
+                      ? "border-teal-400 bg-teal-500/10 ring-1 ring-teal-400"
                       : "border-white/10 bg-white/[0.035] hover:border-white/25"
                   }`}
                 >
                   {item.badge && (
-                    <span className="absolute right-4 top-4 rounded-full bg-violet-500 px-3 py-1 text-[10px] font-bold text-white">
+                    <span className="absolute right-4 top-4 rounded-full bg-teal-500 px-3 py-1 text-[10px] font-bold text-white">
                       {item.badge}
                     </span>
                   )}

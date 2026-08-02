@@ -96,7 +96,7 @@ export default function AdminUsersPage() {
           setPage(1);
         }}
         placeholder="搜索用户名或邮箱..."
-        className="w-full max-w-sm mb-5 bg-[#111] border border-white/10 focus:border-rose-500/60 rounded-2xl px-4 py-2.5 text-sm outline-none"
+        className="w-full max-w-sm mb-5 bg-[#111] border border-white/10 focus:border-orange-500/60 rounded-2xl px-4 py-2.5 text-sm outline-none"
       />
 
       {msg && <p className="mb-4 text-sm text-amber-300">{msg}</p>}
@@ -122,7 +122,7 @@ export default function AdminUsersPage() {
               <tr key={u.id} className={`border-b border-white/5 hover:bg-white/[0.02] ${u.disabled_at ? "opacity-60" : ""}`}>
                 <td className="px-4 py-3 font-mono text-gray-400">#{u.id}</td>
                 <td className="px-4 py-3 font-medium">
-                  <Link href={`/admin/users/${u.id}`} className="hover:text-rose-300">
+                  <Link href={`/admin/users/${u.id}`} className="hover:text-orange-300">
                     {u.username}
                   </Link>
                   {u.email && <div className="mt-0.5 text-[10px] font-normal text-gray-600">{u.email}</div>}

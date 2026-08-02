@@ -40,7 +40,7 @@ export default async function PricingPage({
       <GuestHeader />
       <main className="mx-auto max-w-7xl px-6 py-12">
         <div className="mb-10 text-center">
-          <p className="text-sm font-semibold uppercase tracking-[0.25em] text-violet-300">{t("eyebrow")}</p>
+          <p className="text-sm font-semibold uppercase tracking-[0.25em] text-teal-300">{t("eyebrow")}</p>
           <h1 className="mt-3 text-4xl font-black tracking-tight sm:text-5xl">{t("title")}</h1>
           <p className="mx-auto mt-4 max-w-2xl text-gray-400">
             {t("description")}

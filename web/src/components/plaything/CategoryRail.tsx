@@ -29,7 +29,7 @@ export function CategoryRail({
             title={`${c.label} (${c.count})`}
             className={`flex flex-col items-center justify-center gap-1 min-w-[64px] lg:min-w-0 px-2 py-3 rounded-2xl text-[10px] font-medium transition-colors ${
               selected
-                ? "bg-rose-600/20 text-rose-200 border border-rose-500/40"
+                ? "bg-orange-600/20 text-orange-200 border border-orange-500/40"
                 : "text-gray-400 hover:text-white hover:bg-white/5 border border-transparent"
             }`}
           >

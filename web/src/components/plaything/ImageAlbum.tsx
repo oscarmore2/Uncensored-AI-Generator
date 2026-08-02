@@ -50,7 +50,7 @@ export function ImageAlbum({
                 setLbIndex(0);
               }}
               className={`relative aspect-square rounded-2xl overflow-hidden border bg-[#111] ${
-                active ? "border-rose-500/60 ring-1 ring-rose-500/30" : "border-white/10 hover:border-white/25"
+                active ? "border-orange-500/60 ring-1 ring-orange-500/30" : "border-white/10 hover:border-white/25"
               }`}
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -97,7 +97,7 @@ function StatusRow({ g }: { g: PlaythingGen }) {
       <span>
         #{g.id} · {g.product_label || g.model_id} · {g.status}
       </span>
-      <span className="font-mono text-rose-300">{g.progress}%</span>
+      <span className="font-mono text-orange-300">{g.progress}%</span>
     </div>
   );
 }

@@ -95,7 +95,7 @@ export default function AdminStripeAccountsPage() {
         </div>
         <button
           onClick={() => setFormOpen((v) => !v)}
-          className="px-5 py-2.5 text-sm font-semibold bg-rose-600 hover:bg-rose-500 rounded-2xl"
+          className="px-5 py-2.5 text-sm font-semibold bg-orange-600 hover:bg-orange-500 rounded-2xl"
         >
           <i className="fas fa-plus mr-2" />
           添加账户
@@ -127,7 +127,7 @@ export default function AdminStripeAccountsPage() {
 
       <div className="glass rounded-3xl p-4 mb-6 text-xs text-gray-400 space-y-1">
         <p>
-          <i className="fas fa-circle-info mr-2 text-rose-400" />
+          <i className="fas fa-circle-info mr-2 text-orange-400" />
           在 Stripe Dashboard → Developers → API keys 获取 Secret Key；在 Webhooks 添加端点{" "}
           <code className="text-gray-300">/api/payments/webhook</code>，事件选{" "}
           <code className="text-gray-300">checkout.session.completed</code>，复制 Signing secret（whsec_…）。
@@ -190,7 +190,7 @@ export default function AdminStripeAccountsPage() {
             <button
               type="submit"
               disabled={busy}
-              className="px-6 py-2.5 text-sm font-semibold bg-rose-600 hover:bg-rose-500 rounded-2xl disabled:opacity-50"
+              className="px-6 py-2.5 text-sm font-semibold bg-orange-600 hover:bg-orange-500 rounded-2xl disabled:opacity-50"
             >
               {busy ? "保存中..." : "确认添加"}
             </button>

@@ -98,7 +98,7 @@ export default function HistoryPage() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder={t("search")}
-            className="bg-[#111] border border-white/10 px-4 py-2 rounded-2xl text-sm w-64 focus:border-rose-500/50 outline-none"
+            className="bg-[#111] border border-white/10 px-4 py-2 rounded-2xl text-sm w-64 focus:border-orange-500/50 outline-none"
           />
           <button
             onClick={load}
@@ -248,7 +248,7 @@ export default function HistoryPage() {
                 <button
                   onClick={() => void openInMake(selected, true)}
                   disabled={checking}
-                  className="flex-1 py-3 bg-rose-600 hover:bg-rose-500 rounded-2xl font-semibold flex items-center justify-center gap-x-2 disabled:opacity-40"
+                  className="flex-1 py-3 bg-orange-600 hover:bg-orange-500 rounded-2xl font-semibold flex items-center justify-center gap-x-2 disabled:opacity-40"
                 >
                   <i className="fas fa-rotate-right" /> {t("retry")}
                 </button>

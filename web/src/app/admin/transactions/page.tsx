@@ -36,7 +36,7 @@ const TYPE_COLORS: Record<string, string> = {
   recharge: "bg-emerald-500/15 text-emerald-300",
   refund: "bg-amber-500/15 text-amber-300",
   vip: "bg-purple-500/15 text-purple-300",
-  admin_adjust: "bg-rose-500/15 text-rose-300",
+  admin_adjust: "bg-orange-500/15 text-orange-300",
 };
 
 export default function AdminTransactionsPage() {
@@ -177,7 +177,7 @@ export default function AdminTransactionsPage() {
               <tr key={t.id} className="border-b border-white/5 hover:bg-white/[0.02]">
                 <td className="px-4 py-3 font-mono text-gray-400">#{t.id}</td>
                 <td className="px-4 py-3">
-                  <Link href={`/admin/users/${t.user_id}`} className="hover:text-rose-300">
+                  <Link href={`/admin/users/${t.user_id}`} className="hover:text-orange-300">
                     {t.username}
                   </Link>{" "}
                   <span className="text-gray-500 text-xs">#{t.user_id}</span>

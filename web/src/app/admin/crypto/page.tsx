@@ -153,7 +153,7 @@ export default function AdminCryptoPage() {
                   </div>
                 </td>
                 <td className="px-4 py-3">
-                  <Link href={`/admin/users/${p.user_id}`} className="hover:text-rose-300">
+                  <Link href={`/admin/users/${p.user_id}`} className="hover:text-orange-300">
                     {p.username}
                   </Link>{" "}
                   <span className="text-gray-500 text-xs">#{p.user_id}</span>

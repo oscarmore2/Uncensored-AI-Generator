@@ -255,7 +255,7 @@ export default function AdminPricingPage() {
             onClick={() => setTab(t.id)}
             className={`px-4 py-2 text-sm rounded-2xl border ${
               tab === t.id
-                ? "bg-rose-600 border-rose-500 text-white"
+                ? "bg-orange-600 border-orange-500 text-white"
                 : "bg-white/5 border-white/10 text-gray-300"
             }`}
           >
@@ -669,7 +669,7 @@ export default function AdminPricingPage() {
             <button
               type="submit"
               disabled={busy}
-              className="md:col-span-2 px-4 py-2.5 text-sm font-semibold bg-rose-600 rounded-2xl disabled:opacity-50"
+              className="md:col-span-2 px-4 py-2.5 text-sm font-semibold bg-orange-600 rounded-2xl disabled:opacity-50"
             >
               添加映射
             </button>
@@ -766,7 +766,7 @@ export default function AdminPricingPage() {
             <button
               type="submit"
               disabled={busy}
-              className="px-4 py-2 text-sm font-semibold bg-rose-600 rounded-2xl disabled:opacity-50"
+              className="px-4 py-2 text-sm font-semibold bg-orange-600 rounded-2xl disabled:opacity-50"
             >
               添加
             </button>
@@ -877,7 +877,7 @@ export default function AdminPricingPage() {
             <button
               type="submit"
               disabled={busy}
-              className="px-4 py-2 text-sm font-semibold bg-rose-600 rounded-2xl disabled:opacity-50"
+              className="px-4 py-2 text-sm font-semibold bg-orange-600 rounded-2xl disabled:opacity-50"
             >
               添加等级
             </button>
@@ -1013,7 +1013,7 @@ export default function AdminPricingPage() {
             <button
               type="submit"
               disabled={busy}
-              className="px-4 py-2 text-sm font-semibold bg-rose-600 rounded-2xl disabled:opacity-50"
+              className="px-4 py-2 text-sm font-semibold bg-orange-600 rounded-2xl disabled:opacity-50"
             >
               添加套餐
             </button>

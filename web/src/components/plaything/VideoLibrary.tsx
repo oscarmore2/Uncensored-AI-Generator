@@ -62,7 +62,7 @@ export function VideoLibrary({
               type="button"
               onClick={() => onSelect(g.id)}
               className={`w-full text-left rounded-xl border overflow-hidden ${
-                active ? "border-rose-500/50" : "border-white/10 hover:border-white/25"
+                active ? "border-orange-500/50" : "border-white/10 hover:border-white/25"
               }`}
             >
               <div className="aspect-video bg-[#111] relative">

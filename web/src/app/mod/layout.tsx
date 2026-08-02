@@ -50,7 +50,7 @@ export default async function ModLayout({ children }: { children: React.ReactNod
             <div className="text-amber-400">{mod.role}</div>
           </div>
           {mod.role === "admin" && (
-            <Link href="/admin" className="block text-rose-300 hover:text-rose-200">
+            <Link href="/admin" className="block text-orange-300 hover:text-orange-200">
               <i className="fas fa-chart-line mr-1" /> 管理端
             </Link>
           )}

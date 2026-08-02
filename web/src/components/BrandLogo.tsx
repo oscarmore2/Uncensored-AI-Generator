@@ -8,18 +8,14 @@ type BrandLogoProps = {
 
 export function BrandMark({ className = "" }: { className?: string }) {
   return (
-    <span
-      className={`relative inline-flex items-center justify-center rounded-2xl bg-gradient-to-br from-violet-500 via-fuchsia-500 to-cyan-400 shadow-lg shadow-violet-950/30 ${className}`}
+    // 直接用站点图标本体（奶油底橘色扭蛋），避免站内 logo 与浏览器标签/桌面图标是两个东西
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src="/icon-192.png"
+      alt=""
       aria-hidden="true"
-    >
-      <svg viewBox="0 0 40 40" fill="none" className="h-[70%] w-[70%]">
-        <path
-          d="M20 5.5 22.8 15l9.7 2.8-9.7 2.8L20 30l-2.8-9.4-9.7-2.8 9.7-2.8L20 5.5Z"
-          fill="white"
-        />
-        <path d="m29.6 26 .9 3.2 3.2.9-3.2.9-.9 3.2-.9-3.2-3.2-.9 3.2-.9.9-3.2Z" fill="white" opacity=".8" />
-      </svg>
-    </span>
+      className={`inline-block rounded-2xl object-cover shadow-lg shadow-orange-950/30 ${className}`}
+    />
   );
 }
 

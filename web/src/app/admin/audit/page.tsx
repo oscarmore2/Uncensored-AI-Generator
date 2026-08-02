@@ -94,7 +94,7 @@ export default function AdminAuditPage() {
                 <td className="px-4 py-3 text-xs text-gray-500">{new Date(l.created_at).toLocaleString("zh-CN")}</td>
                 <td className="px-4 py-3">{l.admin_username}</td>
                 <td className="px-4 py-3">
-                  <span className="text-xs px-2 py-0.5 bg-rose-500/15 text-rose-300 rounded-full">
+                  <span className="text-xs px-2 py-0.5 bg-orange-500/15 text-orange-300 rounded-full">
                     {ACTION_LABELS[l.action] ?? l.action}
                   </span>
                 </td>

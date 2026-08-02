@@ -312,7 +312,7 @@ export default function AdminUserDetailPage() {
         <div className="glass rounded-3xl p-5">
           <div className="mb-3 flex items-center justify-between">
             <div className="text-sm font-semibold">充值记录</div>
-            <Link href={`/admin/transactions?user_id=${u.id}&type=recharge`} className="text-xs text-violet-300">
+            <Link href={`/admin/transactions?user_id=${u.id}&type=recharge`} className="text-xs text-teal-300">
               查看全部
             </Link>
           </div>

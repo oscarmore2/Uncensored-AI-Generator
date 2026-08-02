@@ -70,7 +70,7 @@ export default async function ExplorePage({
             <Link
               href="/explore"
               className={`px-4 py-2 text-sm rounded-2xl border ${
-                !mode ? "bg-rose-600 border-rose-600 text-white" : "border-white/10 text-gray-300 hover:bg-white/5"
+                !mode ? "bg-orange-600 border-orange-600 text-white" : "border-white/10 text-gray-300 hover:bg-white/5"
               }`}
             >
               {t("all")}
@@ -81,7 +81,7 @@ export default async function ExplorePage({
                 href={`/explore?mode=${key}`}
                 className={`px-4 py-2 text-sm rounded-2xl border ${
                   mode === key
-                    ? "bg-rose-600 border-rose-600 text-white"
+                    ? "bg-orange-600 border-orange-600 text-white"
                     : "border-white/10 text-gray-300 hover:bg-white/5"
                 }`}
               >

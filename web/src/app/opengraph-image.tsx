@@ -27,7 +27,7 @@ export default function OpenGraphImage() {
             left: -180,
             top: -260,
             borderRadius: 999,
-            background: "rgba(139,92,246,.34)",
+            background: "rgba(249,115,22,.32)",
           }}
         />
         <div
@@ -38,7 +38,7 @@ export default function OpenGraphImage() {
             right: -180,
             bottom: -300,
             borderRadius: 999,
-            background: "rgba(34,211,238,.22)",
+            background: "rgba(251,191,36,.18)",
           }}
         />
         <div style={{ display: "flex", alignItems: "center", gap: 54, padding: "84px 94px", zIndex: 1 }}>
@@ -50,19 +50,19 @@ export default function OpenGraphImage() {
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              background: "linear-gradient(135deg,#8b5cf6,#d946ef 52%,#22d3ee)",
-              boxShadow: "0 30px 90px rgba(139,92,246,.35)",
+              background: "linear-gradient(135deg,#fb923c,#f97316 55%,#ea580c)",
+              boxShadow: "0 30px 90px rgba(249,115,22,.35)",
             }}
           >
             <div style={{ fontSize: 142, lineHeight: 1, fontWeight: 900 }}>W</div>
           </div>
           <div style={{ display: "flex", flexDirection: "column", maxWidth: 710 }}>
             <div style={{ fontSize: 66, fontWeight: 900, letterSpacing: -2 }}>WANWAN KEWU</div>
-            <div style={{ marginTop: 14, fontSize: 42, fontWeight: 700, color: "#e9d5ff" }}>
-              AI Media Studio
+            <div style={{ marginTop: 14, fontSize: 42, fontWeight: 700, color: "#fed7aa" }}>
+              想得出，就玩得出
             </div>
             <div style={{ marginTop: 28, fontSize: 27, lineHeight: 1.45, color: "#a1a1aa" }}>
-              Text to image · Text to video · Image to video
+              Images · Video · Audio · 3D — say it, play it, make it
             </div>
           </div>
         </div>

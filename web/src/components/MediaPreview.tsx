@@ -264,7 +264,7 @@ function MediaStage({ url, kind }: { url: string; kind: PlaythingMediaKind }) {
             href={url}
             target="_blank"
             rel="noreferrer"
-            className="inline-block px-4 py-2 bg-white/10 hover:bg-white/20 rounded-xl text-rose-300 break-all"
+            className="inline-block px-4 py-2 bg-white/10 hover:bg-white/20 rounded-xl text-orange-300 break-all"
           >
             下载模型
           </a>
@@ -365,7 +365,7 @@ export function MediaPreviewModal({
                   key={`${u}-${i}`}
                   onClick={() => setIndex(i)}
                   className={`relative shrink-0 w-20 h-14 rounded-lg overflow-hidden border ${
-                    i === index ? "border-rose-500" : "border-white/10 hover:border-white/30"
+                    i === index ? "border-orange-500" : "border-white/10 hover:border-white/30"
                   }`}
                 >
                   <MediaThumb urls={[u]} mode={mode} />

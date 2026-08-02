@@ -4,7 +4,22 @@
 :root {
   --bg: #0a0a0a;
   --fg: #f1f1f1;
-  --accent: #e11d48;
+
+  /**
+   * 品牌主色：暖橘。
+   * 原来的玫红 #e11d48 配纯黑底会读出夜场/成人站的气质，而站点本身是创作工具，
+   * 换成暖橘后同样醒目，观感变成「明快、好玩」。深色底本身没问题——
+   * 参照物 Artlist 也是纯黑底配暖黄。与站内图标（奶油底橘色扭蛋）同一色系。
+   */
+  --accent: #f97316;
+  --accent-hover: #fb923c;
+  --accent-strong: #ea580c;
+  --accent-soft: rgba(249, 115, 22, 0.12);
+
+  /** 点数/充值：与主色互补的青碧，跟「会员金」区分开 */
+  --credit: #2dd4bf;
+  /** 会员专属 */
+  --vip: #fbbf24;
 }
 
 body {
@@ -46,16 +61,16 @@ body {
 .mode-tab.active {
   background-color: var(--accent);
   color: white;
-  box-shadow: 0 10px 15px -3px rgb(225 29 72 / 0.2);
+  box-shadow: 0 10px 15px -3px rgb(249 115 22 / 0.25);
 }
 
 .generate-btn {
-  background: linear-gradient(90deg, #e11d48, #be123c);
+  background: linear-gradient(90deg, var(--accent-hover), var(--accent-strong));
   transition: all 0.3s ease;
 }
 .generate-btn:hover {
   transform: translateY(-2px);
-  box-shadow: 0 20px 25px -5px rgb(225 29 72 / 0.3);
+  box-shadow: 0 20px 25px -5px rgb(249 115 22 / 0.35);
 }
 
 .result-card {
@@ -70,20 +85,20 @@ body {
   min-height: 120px;
 }
 
-/* 魔法指令：参考 Magic Prompt 紫色胶囊按钮 */
+/* 魔法指令：暖金胶囊按钮（原为紫色，与新品牌色系不符） */
 .magic-prompt-btn {
-  background: #8b70b1;
-  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.12) inset, 0 4px 12px rgba(139, 112, 177, 0.25);
+  background: #e8a33d;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.2) inset, 0 4px 12px rgba(232, 163, 61, 0.28);
 }
 .magic-prompt-btn:hover:not(:disabled) {
-  background: #9a80be;
+  background: #f2b155;
 }
 .magic-prompt-btn:active:not(:disabled) {
-  background: #7a609c;
+  background: #cf8f2f;
 }
 
 .media-badge {
-  background: linear-gradient(90deg, #7c3aed, #0891b2);
+  background: linear-gradient(90deg, var(--accent-strong), var(--credit));
   color: white;
   font-size: 10px;
   padding: 1px 8px;
@@ -131,8 +146,8 @@ body {
     45deg,
     transparent,
     transparent 10px,
-    rgba(225, 29, 72, 0.06) 10px,
-    rgba(225, 29, 72, 0.06) 20px
+    rgba(249, 115, 22, 0.06) 10px,
+    rgba(249, 115, 22, 0.06) 20px
   );
 }
 

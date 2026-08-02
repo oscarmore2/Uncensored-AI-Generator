@@ -78,7 +78,7 @@ export default function AdminModsPage() {
         <button
           type="submit"
           disabled={busy || !username.trim()}
-          className="px-5 py-2.5 text-sm font-semibold bg-rose-600 hover:bg-rose-500 rounded-2xl disabled:opacity-50"
+          className="px-5 py-2.5 text-sm font-semibold bg-orange-600 hover:bg-orange-500 rounded-2xl disabled:opacity-50"
         >
           设为审核员
         </button>

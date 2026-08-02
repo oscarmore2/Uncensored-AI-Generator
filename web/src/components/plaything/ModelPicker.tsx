@@ -22,7 +22,7 @@ export function ModelPicker({
         <select
           value={selectedId ?? ""}
           onChange={(e) => onSelect(Number(e.target.value))}
-          className="w-full appearance-none bg-[#111] border border-white/10 rounded-2xl pl-3 pr-10 py-2.5 text-sm outline-none focus:border-rose-500/40"
+          className="w-full appearance-none bg-[#111] border border-white/10 rounded-2xl pl-3 pr-10 py-2.5 text-sm outline-none focus:border-orange-500/40"
         >
           {products.map((p) => (
             <option key={p.id} value={p.id}>

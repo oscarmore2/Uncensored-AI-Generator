@@ -53,7 +53,7 @@ export function AudioLibrary({
               onClick={() => onSelect(g.id)}
               className={`w-full text-left rounded-xl px-3 py-2.5 text-sm border ${
                 g.id === selected?.id
-                  ? "border-rose-500/40 bg-rose-500/10"
+                  ? "border-orange-500/40 bg-orange-500/10"
                   : "border-white/10 hover:border-white/25"
               }`}
             >

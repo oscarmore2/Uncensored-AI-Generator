@@ -135,7 +135,7 @@ export default function ModPublicPage() {
         </div>
         <button
           onClick={() => setFormOpen((v) => !v)}
-          className="px-5 py-2.5 text-sm font-semibold bg-rose-600 hover:bg-rose-500 rounded-2xl"
+          className="px-5 py-2.5 text-sm font-semibold bg-orange-600 hover:bg-orange-500 rounded-2xl"
         >
           <i className="fas fa-file-import mr-2" />
           采集导入
@@ -154,7 +154,7 @@ export default function ModPublicPage() {
                 required
                 value={form.prompt}
                 onChange={(e) => setForm({ ...form, prompt: e.target.value })}
-                className="w-full bg-[#111] border border-white/10 focus:border-rose-500/60 rounded-2xl p-3 text-sm outline-none min-h-20"
+                className="w-full bg-[#111] border border-white/10 focus:border-orange-500/60 rounded-2xl p-3 text-sm outline-none min-h-20"
               />
             </div>
             <div>
@@ -217,7 +217,7 @@ export default function ModPublicPage() {
             <button
               type="submit"
               disabled={busy}
-              className="px-6 py-2.5 text-sm font-semibold bg-rose-600 hover:bg-rose-500 rounded-2xl disabled:opacity-50"
+              className="px-6 py-2.5 text-sm font-semibold bg-orange-600 hover:bg-orange-500 rounded-2xl disabled:opacity-50"
             >
               {busy ? "导入中..." : "确认导入"}
             </button>

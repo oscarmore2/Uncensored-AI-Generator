@@ -96,7 +96,7 @@ export default function AdminWaveSpeedAccountsPage() {
           </Link>
           <button
             onClick={() => setFormOpen((v) => !v)}
-            className="px-5 py-2.5 text-sm font-semibold bg-rose-600 hover:bg-rose-500 rounded-2xl"
+            className="px-5 py-2.5 text-sm font-semibold bg-orange-600 hover:bg-orange-500 rounded-2xl"
           >
             <i className="fas fa-plus mr-2" />
             添加 Key
@@ -108,7 +108,7 @@ export default function AdminWaveSpeedAccountsPage() {
 
       {data?.note && (
         <div className="glass rounded-3xl p-4 mb-6 text-xs text-gray-400">
-          <i className="fas fa-circle-info mr-2 text-rose-400" />
+          <i className="fas fa-circle-info mr-2 text-orange-400" />
           {data.note}
         </div>
       )}
@@ -175,7 +175,7 @@ export default function AdminWaveSpeedAccountsPage() {
           <button
             type="submit"
             disabled={busy}
-            className="mt-4 px-5 py-2.5 text-sm font-semibold bg-rose-600 rounded-2xl disabled:opacity-50"
+            className="mt-4 px-5 py-2.5 text-sm font-semibold bg-orange-600 rounded-2xl disabled:opacity-50"
           >
             保存
           </button>

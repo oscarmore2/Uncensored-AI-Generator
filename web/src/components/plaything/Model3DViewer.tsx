@@ -73,7 +73,7 @@ export function Model3DViewer({
                     href={u}
                     target="_blank"
                     rel="noreferrer"
-                    className="text-rose-400 hover:underline break-all"
+                    className="text-orange-400 hover:underline break-all"
                   >
                     {u}
                   </a>
@@ -104,7 +104,7 @@ export function Model3DViewer({
             onClick={() => onSelect(g.id)}
             className={`w-full text-left rounded-xl px-3 py-2 text-xs border ${
               g.id === selected?.id
-                ? "border-rose-500/40 bg-rose-500/10"
+                ? "border-orange-500/40 bg-orange-500/10"
                 : "border-white/10 hover:border-white/25"
             }`}
           >

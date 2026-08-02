@@ -86,7 +86,7 @@ export function Header() {
           </div>
           <div
             onClick={() => router.push("/pricing")}
-            className="credit-display flex items-center gap-x-2 px-4 h-9 rounded-2xl cursor-pointer hover:border-rose-500/50 transition-colors"
+            className="credit-display flex items-center gap-x-2 px-4 h-9 rounded-2xl cursor-pointer hover:border-orange-500/50 transition-colors"
           >
             <div className="flex items-center gap-x-1.5">
               <i className="fas fa-coins text-amber-400" />
@@ -96,7 +96,7 @@ export function Header() {
           </div>
 
           <Link href="/profile" className="flex items-center gap-x-2 cursor-pointer">
-            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-rose-700 to-pink-900 border border-white/20 flex items-center justify-center text-xs font-bold uppercase">
+            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-orange-600 to-amber-800 border border-white/20 flex items-center justify-center text-xs font-bold uppercase">
               {user?.username.slice(0, 2) ?? "?"}
             </div>
             <div className="hidden md:block">

@@ -61,7 +61,7 @@ export function AdultModeSettings() {
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <div className="flex items-center gap-2">
-              <i className="fas fa-shield-halved text-violet-300" />
+              <i className="fas fa-shield-halved text-teal-300" />
               <h3 className="font-semibold">{t("title")}</h3>
               {user.adult_mode_enabled && (
                 <span className="rounded-full bg-red-500/15 px-2 py-0.5 text-[10px] font-bold text-red-300">
@@ -81,7 +81,7 @@ export function AdultModeSettings() {
               className={`shrink-0 rounded-2xl px-5 py-2.5 text-sm font-semibold disabled:opacity-50 ${
                 user.adult_mode_enabled
                   ? "border border-white/15 text-gray-200 hover:bg-white/5"
-                  : "bg-violet-500 text-white hover:bg-violet-400"
+                  : "bg-teal-500 text-white hover:bg-teal-400"
               }`}
             >
               {user.adult_mode_enabled ? t("disable") : t("enable")}

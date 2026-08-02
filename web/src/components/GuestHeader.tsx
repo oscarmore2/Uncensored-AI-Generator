@@ -28,14 +28,14 @@ export async function GuestHeader() {
             </Link>
           )}
           {session?.role === "admin" && (
-            <Link href="/admin" className="px-4 py-2 text-rose-300 hover:text-rose-200 font-medium">
+            <Link href="/admin" className="px-4 py-2 text-orange-300 hover:text-orange-200 font-medium">
               {t("admin")}
             </Link>
           )}
           {session ? (
             <Link
               href="/make"
-              className="px-5 py-2 bg-rose-600 hover:bg-rose-500 text-white font-semibold rounded-2xl transition-colors"
+              className="px-5 py-2 bg-orange-600 hover:bg-orange-500 text-white font-semibold rounded-2xl transition-colors"
             >
               {t("goCreate")}
             </Link>
@@ -46,7 +46,7 @@ export async function GuestHeader() {
               </Link>
               <Link
                 href="/login?mode=register"
-                className="px-5 py-2 bg-rose-600 hover:bg-rose-500 text-white font-semibold rounded-2xl transition-colors"
+                className="px-5 py-2 bg-orange-600 hover:bg-orange-500 text-white font-semibold rounded-2xl transition-colors"
               >
                 {t("register")}
               </Link>

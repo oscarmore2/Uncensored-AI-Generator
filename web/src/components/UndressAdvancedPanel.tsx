@@ -45,7 +45,7 @@ function OptionChips<T extends string>({
               onClick={() => onChange(v)}
               className={`px-3 py-1.5 rounded-xl border text-xs transition-colors ${
                 active
-                  ? "bg-rose-600/20 border-rose-500 text-rose-100"
+                  ? "bg-orange-600/20 border-orange-500 text-orange-100"
                   : "bg-white/5 border-white/10 text-gray-300 hover:border-white/25"
               }`}
             >
@@ -83,7 +83,7 @@ export function UndressAdvancedPanel({
   return (
     <div className="mb-5 space-y-4 rounded-2xl border border-white/10 bg-white/[0.03] p-4">
       <div className="flex items-center gap-2">
-        <span className="text-sm font-semibold text-rose-200">{t("undressAdvancedTitle")}</span>
+        <span className="text-sm font-semibold text-orange-200">{t("undressAdvancedTitle")}</span>
         <span className="text-[10px] px-1.5 py-px rounded bg-amber-500/20 text-amber-200">VIP2</span>
       </div>
       <p className="text-[11px] text-gray-500 leading-relaxed">{t("undressAdvancedHint")}</p>

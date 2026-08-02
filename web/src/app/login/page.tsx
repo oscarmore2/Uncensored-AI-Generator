@@ -213,7 +213,7 @@ function LoginForm() {
             </button>
             {resendMessage && <p className="mt-3 text-xs text-gray-400">{resendMessage}</p>}
             {devVerificationUrl && (
-              <a href={devVerificationUrl} className="mt-3 block text-xs text-violet-300 underline">
+              <a href={devVerificationUrl} className="mt-3 block text-xs text-teal-300 underline">
                 {t("demoVerifyLink")}
               </a>
             )}
@@ -243,7 +243,7 @@ function LoginForm() {
                 setTurnstileReset((n) => n + 1);
               }}
               className={`flex-1 py-2 text-sm font-semibold rounded-xl transition-colors ${
-                mode === m ? "bg-rose-600 text-white" : "text-gray-400 hover:text-white"
+                mode === m ? "bg-orange-600 text-white" : "text-gray-400 hover:text-white"
               }`}
             >
               {m === "login" ? t("login") : t("register")}
@@ -289,7 +289,7 @@ function LoginForm() {
               onChange={(e) => setUsername(e.target.value)}
               autoComplete="username"
               required
-              className="w-full mt-1 bg-[#111] border border-white/10 focus:border-rose-500 rounded-2xl px-4 py-3 outline-none"
+              className="w-full mt-1 bg-[#111] border border-white/10 focus:border-orange-500 rounded-2xl px-4 py-3 outline-none"
             />
           </div>
           {mode === "register" && (
@@ -302,7 +302,7 @@ function LoginForm() {
                 autoComplete="email"
                 required
                 maxLength={254}
-                className="w-full mt-1 bg-[#111] border border-white/10 focus:border-rose-500 rounded-2xl px-4 py-3 outline-none"
+                className="w-full mt-1 bg-[#111] border border-white/10 focus:border-orange-500 rounded-2xl px-4 py-3 outline-none"
               />
               <p className="mt-1 text-[10px] text-gray-500">{t("emailHint")}</p>
             </div>
@@ -316,7 +316,7 @@ function LoginForm() {
               autoComplete={mode === "login" ? "current-password" : "new-password"}
               required
               minLength={mode === "register" ? 8 : 1}
-              className="w-full mt-1 bg-[#111] border border-white/10 focus:border-rose-500 rounded-2xl px-4 py-3 outline-none"
+              className="w-full mt-1 bg-[#111] border border-white/10 focus:border-orange-500 rounded-2xl px-4 py-3 outline-none"
             />
             {mode === "register" && <p className="text-[10px] text-gray-500 mt-1">{t("passwordHint")}</p>}
           </div>
@@ -337,14 +337,14 @@ function LoginForm() {
                 type="checkbox"
                 checked={accepted}
                 onChange={(e) => setAccepted(e.target.checked)}
-                className="mt-1 h-4 w-4 accent-violet-500"
+                className="mt-1 h-4 w-4 accent-teal-500"
                 required
               />
               <span>
                 {t("agreePrefix")}
-                <Link href="/terms" target="_blank" className="mx-1 text-violet-300 underline">{t("terms")}</Link>
+                <Link href="/terms" target="_blank" className="mx-1 text-teal-300 underline">{t("terms")}</Link>
                 {t("and")}
-                <Link href="/content-policy" target="_blank" className="mx-1 text-violet-300 underline">{t("contentPolicy")}</Link>
+                <Link href="/content-policy" target="_blank" className="mx-1 text-teal-300 underline">{t("contentPolicy")}</Link>
               </span>
             </label>
           )}

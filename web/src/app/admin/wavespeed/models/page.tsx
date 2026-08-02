@@ -156,7 +156,7 @@ export default function AdminWaveSpeedModelsPage() {
                 "同步完成"
               )
             }
-            className="px-5 py-2.5 text-sm font-semibold bg-rose-600 hover:bg-rose-500 rounded-2xl disabled:opacity-50"
+            className="px-5 py-2.5 text-sm font-semibold bg-orange-600 hover:bg-orange-500 rounded-2xl disabled:opacity-50"
           >
             <i className="fas fa-rotate mr-2" />
             同步全库
@@ -274,7 +274,7 @@ export default function AdminWaveSpeedModelsPage() {
                   </div>
                   <div className="text-xs mt-1">
                     {active ? (
-                      <span className="text-rose-300 font-mono">{p!.credit_cost} 点 · 已上架</span>
+                      <span className="text-orange-300 font-mono">{p!.credit_cost} 点 · 已上架</span>
                     ) : p ? (
                       <span className="text-gray-500">已下架 · {p.credit_cost} 点</span>
                     ) : (
@@ -521,7 +521,7 @@ export default function AdminWaveSpeedModelsPage() {
               </button>
               <button
                 disabled={busy}
-                className="px-4 py-1.5 text-xs font-semibold bg-rose-600 hover:bg-rose-500 rounded-xl disabled:opacity-50"
+                className="px-4 py-1.5 text-xs font-semibold bg-orange-600 hover:bg-orange-500 rounded-xl disabled:opacity-50"
                 onClick={() => {
                   const modelId = tagEditFor.model_id;
                   const tags = splitTags(tagDraft);

@@ -143,7 +143,7 @@ export default function AdminNowPaymentsPage() {
         <button
           type="button"
           onClick={openCreate}
-          className="rounded-2xl bg-rose-600 px-5 py-2.5 text-sm font-semibold hover:bg-rose-500"
+          className="rounded-2xl bg-orange-600 px-5 py-2.5 text-sm font-semibold hover:bg-orange-500"
         >
           <i className="fas fa-plus mr-2" />
           添加配置
@@ -169,7 +169,7 @@ export default function AdminNowPaymentsPage() {
       <div className="glass mb-6 rounded-3xl p-5 text-xs text-gray-400">
         <p>
           IPN 回调：
-          <code className="ml-2 break-all text-violet-200">{data?.webhook_url ?? "加载中…"}</code>
+          <code className="ml-2 break-all text-teal-200">{data?.webhook_url ?? "加载中…"}</code>
         </p>
         <p className="mt-2">
           API Key 与 IPN Secret 会使用 AUTH_SECRET 派生的 AES-256-GCM 密钥加密后保存。切换配置后，
@@ -241,7 +241,7 @@ export default function AdminNowPaymentsPage() {
             <button
               type="submit"
               disabled={busy}
-              className="rounded-2xl bg-rose-600 px-6 py-2.5 text-sm font-semibold disabled:opacity-50"
+              className="rounded-2xl bg-orange-600 px-6 py-2.5 text-sm font-semibold disabled:opacity-50"
             >
               {busy ? "保存中…" : "保存"}
             </button>

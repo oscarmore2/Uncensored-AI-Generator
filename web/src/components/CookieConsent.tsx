@@ -33,7 +33,7 @@ export function CookieConsent() {
       <div className="mx-auto flex max-w-7xl flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <p className="max-w-4xl text-sm leading-6 text-gray-300">
           {t("message")}{" "}
-          <Link href="/privacy" className="text-violet-300 underline underline-offset-2">
+          <Link href="/privacy" className="text-teal-300 underline underline-offset-2">
             {t("policy")}
           </Link>
           。
@@ -49,7 +49,7 @@ export function CookieConsent() {
           <button
             type="button"
             onClick={() => choose("all")}
-            className="rounded-xl bg-violet-500 px-4 py-2 text-sm font-semibold text-white hover:bg-violet-400"
+            className="rounded-xl bg-teal-500 px-4 py-2 text-sm font-semibold text-white hover:bg-teal-400"
           >
             {t("accept")}
           </button>

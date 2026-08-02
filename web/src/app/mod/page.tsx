@@ -33,7 +33,7 @@ export default async function ModDashboardPage() {
 
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-10">
         {stats.map((s) => (
-          <Link key={s.label} href={s.href} className="glass rounded-3xl p-5 hover:border-rose-500/40 transition-colors">
+          <Link key={s.label} href={s.href} className="glass rounded-3xl p-5 hover:border-orange-500/40 transition-colors">
             <div className="text-3xl font-bold font-mono stat-number">{s.value}</div>
             <div className="text-xs text-gray-400 mt-1">{s.label}</div>
           </Link>
@@ -42,7 +42,7 @@ export default async function ModDashboardPage() {
 
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-xl font-bold">最近生成</h2>
-        <Link href="/mod/generations" className="text-sm text-rose-400 hover:text-rose-300">
+        <Link href="/mod/generations" className="text-sm text-orange-400 hover:text-orange-300">
           进入审核 <i className="fas fa-arrow-right ml-1" />
         </Link>
       </div>

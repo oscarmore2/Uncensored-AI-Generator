@@ -137,7 +137,7 @@ export function RetryConfirmDialog({
     >
       <div className="modal-pop w-full max-w-sm overflow-hidden rounded-3xl border border-white/10 bg-[#111]">
         <div className="p-6 text-center">
-          <i className="fas fa-rotate-right text-2xl text-rose-400" />
+          <i className="fas fa-rotate-right text-2xl text-orange-400" />
           <h2 className="mt-3 text-lg font-bold">{t("retryTitle")}</h2>
           <p className="mt-2 text-sm text-gray-400">{t("retryCost", { cost })}</p>
           <p className="mt-1 text-xs text-gray-500">{t("retryBalance", { balance })}</p>
@@ -159,7 +159,7 @@ export function RetryConfirmDialog({
             type="button"
             onClick={onConfirm}
             disabled={insufficient}
-            className="flex-1 rounded-2xl bg-rose-600 py-3 text-sm font-semibold hover:bg-rose-500 disabled:opacity-40"
+            className="flex-1 rounded-2xl bg-orange-600 py-3 text-sm font-semibold hover:bg-orange-500 disabled:opacity-40"
           >
             {t("retryConfirm")}
           </button>

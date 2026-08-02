@@ -66,7 +66,7 @@ function BarChart({
         {data.map((d) => (
           <div
             key={d.date}
-            className="flex-1 bg-rose-600/70 hover:bg-rose-500 rounded-t transition-colors min-h-[2px]"
+            className="flex-1 bg-orange-600/70 hover:bg-orange-500 rounded-t transition-colors min-h-[2px]"
             style={{ height: `${(d.value / max) * 100}%` }}
             title={`${d.date}: ${format ? format(d.value) : d.value}`}
           />
@@ -108,7 +108,7 @@ export default function AdminDashboardPage() {
       sub: (
         <>
           失败 {t.generations_failed}（{(t.failure_rate * 100).toFixed(1)}%）·{" "}
-          <Link href="/mod?status=failed" className="text-rose-400 hover:underline">
+          <Link href="/mod?status=failed" className="text-orange-400 hover:underline">
             查看
           </Link>
         </>
@@ -152,7 +152,7 @@ export default function AdminDashboardPage() {
                     </span>
                   </div>
                   <div className="h-1.5 bg-white/10 rounded-full overflow-hidden">
-                    <div className="h-full bg-rose-500 rounded-full" style={{ width: `${pct}%` }} />
+                    <div className="h-full bg-orange-500 rounded-full" style={{ width: `${pct}%` }} />
                   </div>
                 </div>
               );
@@ -177,7 +177,7 @@ export default function AdminDashboardPage() {
             ))}
           </div>
           <div className="mt-4 flex gap-3 text-xs">
-            <Link href="/mod" className="text-rose-400 hover:underline">
+            <Link href="/mod" className="text-orange-400 hover:underline">
               前往审核台
             </Link>
             {t.uncredited_crypto_count > 0 && (
@@ -192,7 +192,7 @@ export default function AdminDashboardPage() {
           <div className="text-sm font-semibold mb-3">审核队列摘要</div>
           <div className="text-3xl font-bold font-mono">{stats.mod_queue.pending_review}</div>
           <p className="text-xs text-gray-400 mt-1">成功生成、未删除、尚未精选入公共库</p>
-          <Link href="/mod" className="inline-block mt-3 text-xs text-rose-400 hover:underline">
+          <Link href="/mod" className="inline-block mt-3 text-xs text-orange-400 hover:underline">
             打开审核台 →
           </Link>
         </div>

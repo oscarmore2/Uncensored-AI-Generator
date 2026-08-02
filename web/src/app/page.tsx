@@ -76,11 +76,11 @@ export default async function LandingPage() {
       />
       <GuestHeader />
 
-      {/* Hero：品牌 + 一句卖点 + CTA，背景用玫红氛围光 */}
+      {/* Hero：品牌 + 广告语 + CTA，背景用暖橘氛围光 */}
       <section className="relative overflow-hidden">
         <div className="absolute inset-0 pointer-events-none">
-          <div className="absolute -top-40 left-1/2 -translate-x-1/2 w-[900px] h-[600px] rounded-full bg-rose-600/20 blur-[160px]" />
-          <div className="absolute bottom-0 right-0 w-[500px] h-[400px] rounded-full bg-pink-800/10 blur-[120px]" />
+          <div className="absolute -top-40 left-1/2 -translate-x-1/2 w-[900px] h-[600px] rounded-full bg-orange-600/20 blur-[160px]" />
+          <div className="absolute bottom-0 right-0 w-[500px] h-[400px] rounded-full bg-amber-700/10 blur-[120px]" />
         </div>
 
         <div className="relative max-w-7xl mx-auto px-6 pt-24 pb-20 text-center">
@@ -88,10 +88,13 @@ export default async function LandingPage() {
             <BrandLogo className="[&_span:last-child]:text-5xl md:[&_span:last-child]:text-7xl [&_span:first-child]:h-16 [&_span:first-child]:w-16" />
           </div>
 
-          <h1 className="text-2xl md:text-4xl font-bold tracking-tight text-gray-100 max-w-3xl mx-auto">
-            {t("headline")}
+          <h1 className="text-4xl md:text-6xl font-black tracking-tight text-gray-50">
+            {t("tagline")}
           </h1>
-          <p className="mt-4 text-gray-400 max-w-xl mx-auto">
+          <p className="mt-5 text-lg md:text-xl font-medium text-gray-300 max-w-3xl mx-auto">
+            {t("headline")}
+          </p>
+          <p className="mt-3 text-gray-500 max-w-xl mx-auto">
             {t("subheading")}
           </p>
 
@@ -114,7 +117,7 @@ export default async function LandingPage() {
 
       <section className="border-y border-white/10 bg-white/[0.02]">
         <div className="mx-auto max-w-7xl px-6 py-20">
-          <p className="text-sm font-semibold uppercase tracking-[0.24em] text-violet-300">
+          <p className="text-sm font-semibold uppercase tracking-[0.24em] text-teal-300">
             {t("seoEyebrow")}
           </p>
           <h2 className="mt-3 max-w-3xl text-3xl font-black tracking-tight md:text-4xl">
@@ -130,13 +133,39 @@ export default async function LandingPage() {
             ))}
           </div>
           <div className="mt-8 flex flex-wrap gap-4 text-sm font-semibold">
-            <Link href="/explore" className="text-rose-300 hover:text-rose-200">
+            <Link href="/explore" className="text-orange-300 hover:text-orange-200">
               {t("exploreLink")} <i className="fas fa-arrow-right ml-1" />
             </Link>
-            <Link href="/pricing" className="text-violet-300 hover:text-violet-200">
+            <Link href="/pricing" className="text-teal-300 hover:text-teal-200">
               {t("pricingLink")} <i className="fas fa-arrow-right ml-1" />
             </Link>
           </div>
+        </div>
+      </section>
+
+      {/* 关于：平台理念，兼作关于页正文 */}
+      <section className="mx-auto max-w-7xl px-6 py-20">
+        <p className="text-sm font-semibold uppercase tracking-[0.24em] text-orange-300">
+          {t("aboutEyebrow")}
+        </p>
+        <h2 className="mt-3 max-w-3xl text-3xl font-black tracking-tight md:text-4xl">
+          {t("aboutTitle")}
+        </h2>
+        <div className="mt-6 max-w-3xl space-y-4 leading-8 text-gray-400">
+          <p>{t("aboutBody1")}</p>
+          <p>{t("aboutBody2")}</p>
+          <p>{t("aboutBody3")}</p>
+        </div>
+        <div className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {(["imagine", "simple", "fresh", "clear"] as const).map((key) => (
+            <article
+              key={key}
+              className="rounded-3xl border border-white/10 bg-white/[0.03] p-6 transition-colors hover:border-orange-500/30"
+            >
+              <h3 className="font-bold text-gray-100">{t(`values.${key}.title`)}</h3>
+              <p className="mt-2 text-sm leading-6 text-gray-400">{t(`values.${key}.body`)}</p>
+            </article>
+          ))}
         </div>
       </section>
 
@@ -145,7 +174,7 @@ export default async function LandingPage() {
         <section className="max-w-7xl mx-auto px-6 pb-24">
           <div className="flex items-end justify-between mb-6">
             <h2 className="text-2xl font-bold tracking-tight">{t("featured")}</h2>
-            <Link href="/explore" className="text-sm text-rose-400 hover:text-rose-300">
+            <Link href="/explore" className="text-sm text-orange-400 hover:text-orange-300">
               {t("viewAll")} <i className="fas fa-arrow-right ml-1" />
             </Link>
           </div>

@@ -585,7 +585,7 @@ function MakePageInner() {
           active
             ? product.spicy
               ? "bg-fuchsia-600/20 border-fuchsia-500"
-              : "bg-rose-600/20 border-rose-500"
+              : "bg-orange-600/20 border-orange-500"
             : "bg-white/5 border-white/10 hover:border-white/25"
         } ${locked ? "opacity-60" : ""}`}
       >
@@ -599,7 +599,7 @@ function MakePageInner() {
           {locked && <i className="fas fa-lock text-[10px] text-amber-400" />}
         </div>
         <div className="text-[11px] text-gray-400 leading-snug">{product.description}</div>
-        <div className="mt-1.5 text-[11px] font-mono text-rose-300">
+        <div className="mt-1.5 text-[11px] font-mono text-orange-300">
           {product.credit_cost}
           {t("creditsUnit")}
           {product.unit_seconds > 0 ? ` / ${product.unit_seconds}s` : ""}
@@ -632,7 +632,7 @@ function MakePageInner() {
               key={m.mode}
               onClick={() => setMode(m.mode)}
               className={`mode-tab flex-1 md:flex-none px-5 py-3 text-sm font-semibold rounded-3xl flex items-center justify-center gap-x-2 border ${
-                m.mode === mode ? "active border-rose-600" : "bg-white/5 border-white/10"
+                m.mode === mode ? "active border-orange-600" : "bg-white/5 border-white/10"
               }`}
             >
               <i className={`fas ${m.icon}`} />
@@ -703,7 +703,7 @@ function MakePageInner() {
                     onClick={() => setGender(g)}
                     className={`px-4 py-2 rounded-2xl text-sm font-medium border transition-colors ${
                       gender === g
-                        ? "bg-rose-600/20 border-rose-500 text-rose-100"
+                        ? "bg-orange-600/20 border-orange-500 text-orange-100"
                         : "bg-white/5 border-white/10 text-gray-300 hover:border-white/25"
                     }`}
                   >
@@ -756,7 +756,7 @@ function MakePageInner() {
                   <button
                     type="button"
                     onClick={() => setPrompt(examplePrompts[Math.floor(Math.random() * examplePrompts.length)])}
-                    className="text-xs flex items-center gap-x-1 text-rose-400 hover:text-rose-300"
+                    className="text-xs flex items-center gap-x-1 text-orange-400 hover:text-orange-300"
                   >
                     <i className="fas fa-dice" /> <span>{t("random")}</span>
                   </button>
@@ -765,7 +765,7 @@ function MakePageInner() {
               <textarea
                 value={prompt}
                 onChange={(e) => setPrompt(e.target.value)}
-                className="prompt-box w-full bg-[#111] border border-white/10 focus:border-rose-500/60 rounded-2xl p-4 text-sm placeholder:text-gray-500 outline-none min-h-[120px]"
+                className="prompt-box w-full bg-[#111] border border-white/10 focus:border-orange-500/60 rounded-2xl p-4 text-sm placeholder:text-gray-500 outline-none min-h-[120px]"
                 placeholder={mode === "imgedit" ? t("editPlaceholder") : t("promptPlaceholder")}
               />
             </div>
@@ -777,7 +777,7 @@ function MakePageInner() {
               <input
                 value={negative}
                 onChange={(e) => setNegative(e.target.value)}
-                className="w-full bg-[#111] border border-white/10 focus:border-rose-500/60 rounded-2xl px-4 py-3 text-sm outline-none"
+                className="w-full bg-[#111] border border-white/10 focus:border-orange-500/60 rounded-2xl px-4 py-3 text-sm outline-none"
               />
             </div>
           )}
@@ -785,7 +785,7 @@ function MakePageInner() {
           {meta.needsImage && (
             <div className="mb-5">
               <label className="text-sm font-semibold text-gray-300 mb-2 block">{t("referenceImage")}</label>
-              <label className="block border-2 border-dashed border-white/20 hover:border-rose-500/40 rounded-3xl p-8 text-center cursor-pointer transition-colors">
+              <label className="block border-2 border-dashed border-white/20 hover:border-orange-500/40 rounded-3xl p-8 text-center cursor-pointer transition-colors">
                 <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
                 {imageBase64 || reusedImageUrl ? (
                   <div>
@@ -852,7 +852,7 @@ function MakePageInner() {
                         value={batch}
                         onChange={(e) => setBatch(Number(e.target.value))}
                         className={`w-full bg-[#111] border border-white/10 rounded-xl px-3 py-2 text-sm outline-none ${
-                          accent === "fuchsia" ? "focus:border-fuchsia-500/60" : "focus:border-rose-500/60"
+                          accent === "fuchsia" ? "focus:border-fuchsia-500/60" : "focus:border-orange-500/60"
                         }`}
                       >
                         <option value={1}>{t("oneItem")}</option>
@@ -876,7 +876,7 @@ function MakePageInner() {
               <div>
                 <div className="text-xs text-gray-400">{t("estimatedCost")}</div>
                 <div className="flex items-baseline">
-                  <span className="text-5xl font-bold font-mono text-rose-400">{cost}</span>
+                  <span className="text-5xl font-bold font-mono text-orange-400">{cost}</span>
                   <span className="ml-2 text-lg text-gray-400">{t("credits")}</span>
                 </div>
               </div>
@@ -902,7 +902,7 @@ function MakePageInner() {
               {catalog?.user_vip.is_active && (catalog.user_vip.tier?.discount_bps ?? 0) > 0 && (
                 <div className="flex justify-between">
                   <span className="text-gray-400">{t("vipDiscount")}</span>
-                  <span className="text-purple-300">
+                  <span className="text-amber-300">
                     {catalog.user_vip.tier?.name} -{catalog.user_vip.tier?.discount_percent}%
                   </span>
                 </div>
@@ -959,7 +959,7 @@ function MakePageInner() {
               className={`text-xs flex items-center justify-center gap-x-1 mx-auto ${
                 insufficientCredits
                   ? "text-amber-300 hover:text-amber-200 font-semibold"
-                  : "text-gray-400 hover:text-rose-400"
+                  : "text-gray-400 hover:text-orange-400"
               }`}
             >
               <i className="fas fa-coins fa-sm" /> <span>{t("recharge")}</span>
@@ -970,11 +970,11 @@ function MakePageInner() {
 
       {phase === "polling" && !result && (
         <div className="mt-8 glass rounded-3xl p-8 text-center">
-          <div className="w-16 h-16 mx-auto mb-4 border-4 border-rose-500/30 border-t-rose-500 rounded-full animate-spin" />
+          <div className="w-16 h-16 mx-auto mb-4 border-4 border-orange-500/30 border-t-orange-500 rounded-full animate-spin" />
           <div className="text-sm mb-3">{t("progress", { progress })}</div>
           <div className="max-w-md mx-auto h-2 bg-white/10 rounded-full overflow-hidden">
             <div
-              className="h-full bg-rose-500 rounded-full transition-all duration-500"
+              className="h-full bg-orange-500 rounded-full transition-all duration-500"
               style={{ width: `${Math.max(2, progress)}%` }}
             />
           </div>

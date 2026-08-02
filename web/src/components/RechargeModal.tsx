@@ -159,14 +159,14 @@ export function RechargeModal() {
                 onClick={() => setSelected(p.credits)}
                 className={`package-card cursor-pointer rounded-2xl p-4 bg-black/30 relative border ${
                   selected === p.credits
-                    ? "selected border-rose-500"
+                    ? "selected border-orange-500"
                     : p.badge
-                      ? "border-2 border-rose-500"
+                      ? "border-2 border-orange-500"
                       : "border-white/20"
                 }`}
               >
                 {p.badge && (
-                  <div className="absolute -top-2 -right-2 bg-rose-600 text-[10px] px-3 py-0.5 rounded-full font-bold">
+                  <div className="absolute -top-2 -right-2 bg-orange-600 text-[10px] px-3 py-0.5 rounded-full font-bold">
                     {p.badge}
                   </div>
                 )}
@@ -229,7 +229,7 @@ export function RechargeModal() {
         <button
           onClick={() => void recharge()}
           disabled={!pkg || busy}
-          className="w-full py-4 bg-gradient-to-r from-rose-600 to-red-700 hover:from-rose-700 hover:to-red-800 font-bold rounded-3xl flex items-center justify-center gap-x-2 disabled:opacity-50"
+          className="w-full py-4 bg-gradient-to-r from-orange-600 to-red-700 hover:from-orange-700 hover:to-red-800 font-bold rounded-3xl flex items-center justify-center gap-x-2 disabled:opacity-50"
         >
           {busy ? (
             <span>

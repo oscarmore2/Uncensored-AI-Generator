@@ -148,7 +148,7 @@ function GenerationsInner() {
           <div
             key={g.id}
             className={`glass rounded-3xl overflow-hidden ${g.deleted_at ? "opacity-60" : ""} ${
-              selected.has(g.id) ? "ring-2 ring-rose-500" : ""
+              selected.has(g.id) ? "ring-2 ring-orange-500" : ""
             }`}
           >
             <div className="relative aspect-video bg-[#111]">

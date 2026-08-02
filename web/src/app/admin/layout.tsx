@@ -40,7 +40,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           <BrandMark className="h-8 w-8 rounded-xl" />
           <div>
             <div className="font-bold leading-none">玩玩可物</div>
-            <div className="text-[10px] text-rose-400 font-mono">ADMIN CONSOLE</div>
+            <div className="text-[10px] text-orange-400 font-mono">ADMIN CONSOLE</div>
           </div>
         </Link>
 
@@ -60,7 +60,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         <div className="p-4 border-t border-white/10 text-xs text-gray-500 space-y-2">
           <div>
             <div className="text-gray-300 font-medium">{admin.username}</div>
-            <div className="text-rose-400">admin</div>
+            <div className="text-orange-400">admin</div>
           </div>
           <Link href="/mod" className="block text-gray-400 hover:text-white">
             <i className="fas fa-clipboard-check mr-1" /> 审核台

@@ -1,8 +1,8 @@
 {
   "Metadata": {
     "brand": "玩玩可物",
-    "title": "玩玩可物 • AI Media Studio",
-    "description": "Create images and videos with AI and turn ideas into media."
+    "title": "Wanwankewu • Say it, play it, make it",
+    "description": "Wanwankewu turns a sentence or a single image into pictures, video, audio and 3D models. Pick a quality tier, pay only for what you generate, and use curated models without touching parameters or deployment."
   },
   "Language": {
     "label": "Select language"
@@ -48,8 +48,8 @@
     "notLoggedIn": "Not signed in"
   },
   "Landing": {
-    "headline": "Turn an idea into images and video",
-    "subheading": "Create concept art, characters, and short-form motion with professional AI models.",
+    "headline": "Turn a sentence into images, video and 3D",
+    "subheading": "From concept art and character design to short clips and 3D models — pick a quality tier and let us handle the rest.",
     "enterStudio": "Enter studio",
     "startFree": "Start creating free",
     "browse": "Browse creations",
@@ -81,7 +81,31 @@
     "footer": "© 2026 玩玩可物 • AI Media Studio",
     "terms": "Terms of Service",
     "contentPolicy": "Content Policy",
-    "privacy": "Privacy & Cookies"
+    "privacy": "Privacy & Cookies",
+    "tagline": "Say it. Play it. Make it.",
+    "aboutEyebrow": "About Wanwankewu",
+    "aboutTitle": "Making AI generation something you can just play with",
+    "aboutBody1": "No models to learn, no parameters to tune, no GPUs to rent. Open the page, describe the shot you want, pick a quality tier, and leave the rest to us. Text-to-image, image-to-image, image editing, text-to-video, image-to-video, plus audio and 3D models — one account, one credit balance, all of it.",
+    "aboutBody2": "We keep the complexity backstage: choosing models, adapting parameters, scheduling compute. All you see up front is what you want and what it costs. The AI Models shelf keeps getting new arrivals worth trying — jump in, and move on if one doesn't fit.",
+    "aboutBody3": "Credits are pay-per-use, so you can start without a subscription; membership adds discounts and higher tiers. Everything you generate is private to you, retention windows are stated plainly, and you can download anything to keep.",
+    "values": {
+      "imagine": {
+        "title": "Say it, play it, make it",
+        "body": "The barrier to creating should be imagination — not a GPU and a parameter sheet."
+      },
+      "simple": {
+        "title": "Complexity stays backstage",
+        "body": "Models, compute and compatibility are our problem. You just say what you want."
+      },
+      "fresh": {
+        "title": "The shelf keeps changing",
+        "body": "We don't bet on one model. Good ones go up, stale ones come down."
+      },
+      "clear": {
+        "title": "No surprises",
+        "body": "What it costs, how long it's kept, who can see it — all stated up front."
+      }
+    }
   },
   "Login": {
     "login": "Log in",
