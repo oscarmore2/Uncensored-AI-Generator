@@ -51,6 +51,9 @@ export type PlaythingGen = {
   status: string;
   progress: number;
   result_urls: string[] | null;
+  /** 当初喂进去的参考媒体：3D 抽不出首帧、任务未完成时拿来当缩略图 */
+  input_urls?: string[];
+  thumb_urls?: string[];
   cost: number;
   error: string | null;
   is_adult: boolean;

@@ -232,6 +232,8 @@ export async function pollWaveSpeedResult(
 ): Promise<{
   status: string;
   outputs: string[];
+  /** 上游若给了成品缩略图就带回来；官方文档没有这个字段，取不到是常态 */
+  thumbnails: string[];
   error?: string;
 }> {
   const data = await wavespeedFetch<{
@@ -246,7 +248,25 @@ export async function pollWaveSpeedResult(
   const err = data?.error || data?.data?.error;
   const rawOutputs = data?.outputs ?? data?.output ?? data?.data?.outputs ?? [];
   const outputs = normalizeOutputs(rawOutputs);
-  return { status, outputs, error: err ? String(err) : undefined };
+  const thumbnails = normalizeThumbnails(rawOutputs);
+  return { status, outputs, thumbnails, error: err ? String(err) : undefined };
+}
+
+/**
+ * 成品缩略图的防御性解析。WaveSpeed 的 predictions 返回体目前只有
+ * id / status / outputs / timings，outputs 就是成品 URL，没有缩略图字段；
+ * 这里把常见命名都试一遍，哪天上游补上了就自动生效，取不到也不影响主流程。
+ */
+function normalizeThumbnails(raw: unknown): string[] {
+  if (!Array.isArray(raw)) return [];
+  const urls: string[] = [];
+  for (const item of raw) {
+    if (!item || typeof item !== "object") continue;
+    const o = item as Record<string, unknown>;
+    const t = o.thumbnail ?? o.thumbnail_url ?? o.preview ?? o.preview_url ?? o.poster ?? o.cover;
+    if (typeof t === "string" && t.startsWith("http")) urls.push(t);
+  }
+  return urls;
 }
 
 function normalizeOutputs(raw: unknown): string[] {
@@ -439,6 +459,7 @@ export async function processWaveSpeedGeneration(genId: number): Promise<void> {
 
     let mapped = mapWsStatus(task.status);
     let outputs: string[] = [];
+    let thumbnails: string[] = [];
     let lastError: string | undefined;
 
     for (let i = 0; i < 90; i++) {
@@ -446,6 +467,7 @@ export async function processWaveSpeedGeneration(genId: number): Promise<void> {
       const result = await pollWaveSpeedResult(creds.apiKey, task.id);
       mapped = mapWsStatus(result.status);
       outputs = result.outputs;
+      thumbnails = result.thumbnails;
       lastError = result.error;
       const progress =
         mapped === "succeeded" ? 100 : mapped === "failed" ? gen.progress : Math.min(95, 10 + i * 2);
@@ -489,11 +511,12 @@ export async function processWaveSpeedGeneration(genId: number): Promise<void> {
           progress: 100,
           isAdult: gen.isAdult || isAdultContent(outSafety),
           resultUrls: JSON.stringify(finalUrls.length ? finalUrls : outputs),
-          params: JSON.stringify(
-            Object.fromEntries(
+          params: JSON.stringify({
+            ...Object.fromEntries(
               Object.entries(params).filter(([k]) => k !== "image_base64")
-            )
-          ),
+            ),
+            ...(thumbnails.length ? { result_thumb_urls: thumbnails } : {}),
+          }),
         },
       });
     } else {

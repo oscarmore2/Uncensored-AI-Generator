@@ -38,6 +38,11 @@ export type DynamicFormState = {
   fields: Record<string, string>;
   /** 媒体字段 → 本地待上传文件（点击生成后再上传） */
   mediaFiles: Record<string, PendingMedia[]>;
+  /**
+   * 媒体字段 → 已经在对象存储里的 URL（「套用」历史任务时带回来的）。
+   * 这些不需要再上传一遍，提交时直接并进参数。
+   */
+  mediaUrls?: Record<string, string[]>;
 };
 
 export function defaultsFromProduct(product: PlaythingProduct | null): DynamicFormState {
@@ -67,7 +72,7 @@ export function defaultsFromProduct(product: PlaythingProduct | null): DynamicFo
     }
   }
 
-  return { prompt, negativePrompt, fields, mediaFiles };
+  return { prompt, negativePrompt, fields, mediaFiles, mediaUrls: {} };
 }
 
 export function releaseFormMedia(form: DynamicFormState) {
@@ -195,6 +200,14 @@ export function DynamicParamForm({
     }
   }
 
+  function removeReusedMedia(key: string, url: string) {
+    const current = value.mediaUrls ?? {};
+    onChange({
+      ...value,
+      mediaUrls: { ...current, [key]: (current[key] ?? []).filter((u) => u !== url) },
+    });
+  }
+
   function removeMedia(key: string, id: string) {
     const existing = value.mediaFiles[key] ?? [];
     const removed = existing.filter((m) => m.id === id);
@@ -271,8 +284,10 @@ export function DynamicParamForm({
           {mediaControls.map((c) => {
             if (c.kind !== "media") return null;
             const items = value.mediaFiles[c.key] ?? [];
+            const reusedUrls = value.mediaUrls?.[c.key] ?? [];
             const accept = (c.policy.accept ?? []).join(",");
             const max = c.policy.maxItems ?? (c.multiple ? 10 : 1);
+            const used = items.length + reusedUrls.length;
             return (
               <div key={c.key}>
                 <label className="text-xs text-gray-500 block mb-1">
@@ -284,6 +299,33 @@ export function DynamicParamForm({
                   </span>
                 </label>
                 <div className="rounded-2xl border border-dashed border-white/15 bg-white/[0.02] p-3">
+                  {(value.mediaUrls?.[c.key]?.length ?? 0) > 0 && (
+                    // 套用历史任务带回来的图：已经在对象存储里，不必重新上传
+                    <div className="flex flex-wrap gap-2 mb-2">
+                      {(value.mediaUrls?.[c.key] ?? []).map((url) => (
+                        <div key={url} className="relative group">
+                          {c.mediaKind === "image" ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img src={url} alt="" className="h-16 w-16 object-cover rounded-lg" />
+                          ) : (
+                            <div className="h-16 w-24 rounded-lg bg-black/40 text-[10px] text-gray-400 flex items-center justify-center px-1 truncate">
+                              {url.split("/").pop()}
+                            </div>
+                          )}
+                          <span className="absolute bottom-0 left-0 right-0 rounded-b-lg bg-black/70 text-center text-[9px] text-gray-300">
+                            {t("reusedMedia")}
+                          </span>
+                          <button
+                            type="button"
+                            className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-black/80 text-[10px] text-white opacity-0 group-hover:opacity-100"
+                            onClick={() => removeReusedMedia(c.key, url)}
+                          >
+                            ×
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                   {items.length > 0 && (
                     <div className="flex flex-wrap gap-2 mb-2">
                       {items.map((m) => (
@@ -315,7 +357,7 @@ export function DynamicParamForm({
                     type="file"
                     accept={accept || undefined}
                     multiple={c.multiple}
-                    disabled={items.length >= max}
+                    disabled={used >= max}
                     onChange={(e) => {
                       void handleFiles(c, e.target.files);
                       e.target.value = "";
@@ -363,7 +405,8 @@ export function buildFieldParams(
   for (const c of controls) {
     if (c.kind === "media") {
       const items = form.mediaFiles[c.key] ?? [];
-      if (!items.length && required.has(c.key)) {
+      const reused = form.mediaUrls?.[c.key] ?? [];
+      if (!items.length && !reused.length && required.has(c.key)) {
         return {
           ok: false as const,
           error: translate ? translate("chooseField", { field: c.key }) : `请选择 ${c.key}`,

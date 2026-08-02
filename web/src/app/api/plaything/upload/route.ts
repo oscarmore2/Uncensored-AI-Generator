@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { sanitizeFilename } from "@/lib/media-delete-reason";
 import { randomUUID } from "crypto";
 import { db } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
@@ -93,6 +94,7 @@ export async function POST(req: Request) {
           objectKey: uploaded.objectKey,
           contentType: validated.contentType,
           bytes: validated.bytes,
+          filename: sanitizeFilename(file.name),
           retentionAssigned: true,
           expiresAt,
         },

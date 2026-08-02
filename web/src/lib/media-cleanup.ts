@@ -1,4 +1,5 @@
 import "server-only";
+import { MEDIA_DELETE_REASONS } from "./media-delete-reason";
 import { db } from "./db";
 import { deleteManagedMediaUrl, deleteObjectKey } from "./oss";
 import { backfillMissingMediaExpirations, ensureMediaCleanupPolicies } from "./media-retention";
@@ -103,6 +104,7 @@ export async function runMediaCleanup(opts?: {
           where: { id: asset.id },
           data: {
             deletedAt: now,
+            deleteReason: MEDIA_DELETE_REASONS.RETENTION_EXPIRED,
             deleteAttempts: { increment: 1 },
             lastError: null,
           },

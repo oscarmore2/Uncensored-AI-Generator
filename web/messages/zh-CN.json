@@ -208,7 +208,10 @@
       "succeeded": "已完成",
       "partial": "部分完成",
       "failed": "失败"
-    }
+    },
+    "reuse": "套用参数",
+    "retry": "重新生成",
+    "reuseFailed": "读取原任务参数失败"
   },
   "Make": {
     "title": "创作中心",
@@ -397,7 +400,10 @@
     },
     "noExtraParams": "该档位没有可调参数，直接生成即可",
     "insufficientCredits": "点数不足：本次需 {cost} 点，当前余额 {balance} 点",
-    "insufficientShort": "点数不足，请先充值"
+    "insufficientShort": "点数不足，请先充值",
+    "applied": "参数已套用",
+    "reuseLoadFailed": "读取原任务参数失败",
+    "reusedImage": "复用上次的参考图"
   },
   "Profile": {
     "title": "个人中心",
@@ -501,7 +507,12 @@
     },
     "threeDLoadWarning": "模型部分资源加载失败，可能导致贴图缺失",
     "insufficientCredits": "点数不足：本次需 {cost} 点，当前余额 {balance} 点",
-    "insufficientShort": "点数不足，请先充值"
+    "insufficientShort": "点数不足，请先充值",
+    "reuse": "套用参数",
+    "retry": "重新生成",
+    "reuseApplied": "参数已套用",
+    "reuseFailed": "读取原任务参数失败",
+    "reusedMedia": "已有"
   },
   "Cookie": {
     "aria": "Cookie 数据收集提示",
@@ -525,5 +536,31 @@
     "loadFailed": "加载失败",
     "requestFailed": "请求失败",
     "generationFailed": "生成失败，请稍后重试"
+  },
+  "Reuse": {
+    "goneTitle": "当初的输入媒体已被清理",
+    "goneHint": "这次生成用到的参考媒体已经过了保留期并被删除，无法自动填回。点「继续」会跳转并恢复全部参数，媒体需要你重新上传。",
+    "goneUnrecordedHint": "这条记录没有保留参考媒体的信息（早于该功能上线），无法自动填回。点「继续」会跳转并恢复全部参数，媒体需要你重新上传。",
+    "unknownFilename": "（未记录文件名）",
+    "unknownTime": "未知",
+    "uploadedAt": "上传时间",
+    "deletedAt": "删除时间",
+    "deleteReason": "删除原因",
+    "reasons": {
+      "retention_expired": "保留期到期，被自动清理",
+      "admin_manual": "管理员手动清理",
+      "unknown": "未记录"
+    },
+    "cancel": "取消",
+    "confirmContinue": "继续",
+    "reuse": "套用参数",
+    "retry": "重新生成",
+    "retryTitle": "确认重新生成？",
+    "retryCost": "本次将消耗 {cost} 点",
+    "retryBalance": "当前余额 {balance} 点",
+    "retryInsufficient": "余额不足，请先充值",
+    "retryConfirm": "确认发起",
+    "applied": "参数已套用",
+    "loadFailed": "读取原任务参数失败"
   }
 }

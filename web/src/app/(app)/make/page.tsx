@@ -24,6 +24,7 @@ import { ParamControlGrid } from "@/components/ParamControls";
 import type { ParamControl } from "@/lib/param-controls";
 import { useApp } from "@/components/AppContext";
 import { useDraft } from "@/lib/use-draft";
+import { RetryConfirmDialog } from "@/components/InputMediaGoneDialog";
 import { AdaptiveMedia } from "@/components/WorkMedia";
 import { MediaExpiryBadge } from "@/components/MediaExpiryBadge";
 import { useTranslations } from "next-intl";
@@ -44,6 +45,7 @@ type MakeDraft = {
   duration: string;
   advancedOpen: boolean;
   imageBase64: string | null;
+  imageFilename: string | null;
   extraParams: Record<string, string>;
 };
 
@@ -72,6 +74,11 @@ function MakePageInner() {
   const [duration, setDuration] = useState("5");
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const [imageBase64, setImageBase64] = useState<string | null>(null);
+  // 只为「这张参考图日后被清理时能报出文件名」而记，不参与生成
+  const [imageFilename, setImageFilename] = useState<string | null>(null);
+  /** 套用历史任务时复用的参考图 URL：有它就不必再传一份 base64 */
+  const [reusedImageUrl, setReusedImageUrl] = useState<string | null>(null);
+  const [retryPrompt, setRetryPrompt] = useState(false);
   const [phase, setPhase] = useState<Phase>("idle");
   const [progress, setProgress] = useState(0);
   const [result, setResult] = useState<{
@@ -87,6 +94,7 @@ function MakePageInner() {
   const [extraParams, setExtraParams] = useState<Record<string, string>>({});
   const pollingRef = useRef(false);
   const remixLoadedRef = useRef(false);
+  const reuseLoadedRef = useRef(false);
 
   /**
    * URL 显式带了内容（分享链接、二次创作）时不恢复草稿：
@@ -95,7 +103,8 @@ function MakePageInner() {
   const deepLinked = Boolean(
     searchParams.get("prompt") ??
       searchParams.get("negative") ??
-      searchParams.get("remix_work")
+      searchParams.get("remix_work") ??
+      searchParams.get("reuse")
   );
 
   const { save: saveDraft } = useDraft<MakeDraft>(
@@ -115,6 +124,7 @@ function MakePageInner() {
       if (typeof d.duration === "string") setDuration(d.duration);
       setAdvancedOpen(Boolean(d.advancedOpen));
       setImageBase64(d.imageBase64 ?? null);
+      setImageFilename(d.imageFilename ?? null);
       setExtraParams(d.extraParams ?? {});
     },
     {
@@ -138,6 +148,7 @@ function MakePageInner() {
       duration,
       advancedOpen,
       imageBase64,
+      imageFilename,
       extraParams,
     });
   }, [
@@ -154,6 +165,7 @@ function MakePageInner() {
     duration,
     advancedOpen,
     imageBase64,
+    imageFilename,
     extraParams,
   ]);
 
@@ -239,6 +251,62 @@ function MakePageInner() {
         toast(t("copied"));
       })
       .catch((error) => toast(error instanceof Error ? error.message : t("copyFailed"), true));
+  }, [searchParams, t, toast, user?.adult_mode_enabled]);
+
+  /**
+   * ?reuse=<id> —— 从「我的作品」套用一条历史任务。
+   * 参考图不重新上传，直接复用当初那张已在对象存储里的图；
+   * 图已被清理时列表页会先弹框说明，并带上 nomedia=1 让这里只填参数。
+   */
+  useEffect(() => {
+    const reuseId = searchParams.get("reuse");
+    if (!reuseId || reuseLoadedRef.current) return;
+    reuseLoadedRef.current = true;
+    const skipMedia = searchParams.get("nomedia") === "1";
+
+    api<{
+      mode: string;
+      tier: string;
+      spicy: boolean;
+      prompt: string;
+      negative_prompt: string;
+      params: Record<string, string>;
+      gender: string | null;
+      undress_options: unknown;
+      media: { usable_urls: string[] };
+    }>(`/api/generations/${encodeURIComponent(reuseId)}/reuse`)
+      .then((d) => {
+        if (isGenerationMode(d.mode)) {
+          setMode(d.mode === "undress" && !user?.adult_mode_enabled ? "txt2img" : d.mode);
+        }
+        setTier(d.tier);
+        setSpicy(Boolean(d.spicy));
+        setPrompt(d.prompt);
+        setNegative(d.negative_prompt ?? "");
+        if (d.gender && (UNDRESS_GENDERS as readonly string[]).includes(d.gender)) {
+          setGender(d.gender as UndressGender);
+        }
+        if (d.undress_options) setUndressOptions(normalizeUndressAdvanced(d.undress_options));
+
+        const p = d.params ?? {};
+        if (typeof p.ratio === "string") setRatio(p.ratio);
+        if (typeof p.duration === "string") setDuration(p.duration);
+        const batchNum = Number(p.batch);
+        if (batchNum === 1 || batchNum === 2 || batchNum === 4) setBatch(batchNum);
+        const known = new Set(["ratio", "duration", "batch", "gender", "undress_options"]);
+        setExtraParams(
+          Object.fromEntries(Object.entries(p).filter(([key]) => !known.has(key)))
+        );
+
+        if (!skipMedia && d.media?.usable_urls?.length) {
+          setReusedImageUrl(d.media.usable_urls[0]);
+          setImageBase64(null);
+        }
+        toast(t("applied"));
+        // run=1 表示「重新生成」：参数就位后弹确认框，由用户确认再扣点发单
+        if (searchParams.get("run") === "1") setRetryPrompt(true);
+      })
+      .catch(() => toast(t("reuseLoadFailed"), true));
   }, [searchParams, t, toast, user?.adult_mode_enabled]);
 
   useEffect(() => {
@@ -349,7 +417,11 @@ function MakePageInner() {
     if (!file) return;
     if (file.size > 10 * 1024 * 1024) return toast(t("imageTooLarge"), true);
     const reader = new FileReader();
-    reader.onload = (ev) => setImageBase64(ev.target?.result as string);
+    reader.onload = (ev) => {
+      setImageBase64(ev.target?.result as string);
+      setImageFilename(file.name || null);
+      setReusedImageUrl(null);
+    };
     reader.readAsDataURL(file);
   }
 
@@ -394,7 +466,9 @@ function MakePageInner() {
 
   async function startGeneration() {
     if (!isUndress && meta.needsPrompt && !prompt.trim()) return toast(t("promptRequired"), true);
-    if (meta.needsImage && !imageBase64) return toast(t("imageRequired"), true);
+    if (meta.needsImage && !imageBase64 && !reusedImageUrl) {
+      return toast(t("imageRequired"), true);
+    }
     if (isUndress && !adultEnabled) return toast(t("undressNeedsAdult"), true);
     if (phase !== "idle") return;
     if (!selectedProduct) return toast(t("tierUnavailable"), true);
@@ -426,6 +500,8 @@ function MakePageInner() {
           duration: meta.category === "video" ? duration : undefined,
           batch: meta.supportsBatch ? batch : 1,
           image_base64: imageBase64,
+          ...(imageFilename ? { image_filename: imageFilename } : {}),
+          ...(!imageBase64 && reusedImageUrl ? { image_url: reusedImageUrl } : {}),
           ...extraParams,
         }),
       });
@@ -711,14 +787,23 @@ function MakePageInner() {
               <label className="text-sm font-semibold text-gray-300 mb-2 block">{t("referenceImage")}</label>
               <label className="block border-2 border-dashed border-white/20 hover:border-rose-500/40 rounded-3xl p-8 text-center cursor-pointer transition-colors">
                 <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
-                {imageBase64 ? (
+                {imageBase64 || reusedImageUrl ? (
                   <div>
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={imageBase64} alt={t("preview")} className="mx-auto max-h-48 rounded-2xl shadow-xl mb-3" />
+                    <img
+                      src={imageBase64 ?? reusedImageUrl ?? ""}
+                      alt={t("preview")}
+                      className="mx-auto max-h-48 rounded-2xl shadow-xl mb-3"
+                    />
+                    {!imageBase64 && reusedImageUrl && (
+                      <div className="mb-2 text-[11px] text-gray-500">{t("reusedImage")}</div>
+                    )}
                     <button
                       onClick={(e) => {
                         e.preventDefault();
                         setImageBase64(null);
+                        setImageFilename(null);
+                        setReusedImageUrl(null);
                       }}
                       className="text-xs px-4 py-1 bg-white/10 hover:bg-white/20 rounded-full"
                     >
@@ -931,6 +1016,17 @@ function MakePageInner() {
             </div>
           </div>
         </div>
+      )}
+      {retryPrompt && (
+        <RetryConfirmDialog
+          cost={cost}
+          balance={balance}
+          onCancel={() => setRetryPrompt(false)}
+          onConfirm={() => {
+            setRetryPrompt(false);
+            void startGeneration();
+          }}
+        />
       )}
     </div>
   );

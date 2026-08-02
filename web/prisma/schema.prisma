@@ -218,6 +218,10 @@ model MediaAsset {
   objectKey         String?
   contentType       String?
   bytes             Int?
+  /// 用户上传时的原始文件名，用于「输入媒体已被删除」提示里指认是哪一个文件
+  filename          String?
+  /// 删除原因（retention_expired / admin_manual / user_deleted…），同上
+  deleteReason      String?
   sourceId          Int?
   retentionAssigned Boolean   @default(false)
   expiresAt         DateTime?

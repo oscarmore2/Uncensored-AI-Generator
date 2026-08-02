@@ -208,7 +208,10 @@
       "succeeded": "Completed",
       "partial": "Partially completed",
       "failed": "Failed"
-    }
+    },
+    "reuse": "Reuse settings",
+    "retry": "Retry task",
+    "reuseFailed": "Could not load the original settings"
   },
   "Make": {
     "title": "Create",
@@ -397,7 +400,10 @@
     },
     "noExtraParams": "This tier has no adjustable parameters.",
     "insufficientCredits": "Not enough credits: this costs {cost}, balance is {balance}",
-    "insufficientShort": "Not enough credits"
+    "insufficientShort": "Not enough credits",
+    "applied": "Settings applied",
+    "reuseLoadFailed": "Could not load the original settings",
+    "reusedImage": "Reusing the previous reference image"
   },
   "Profile": {
     "title": "Profile",
@@ -501,7 +507,12 @@
     },
     "threeDLoadWarning": "Some model resources failed to load — textures may be missing",
     "insufficientCredits": "Not enough credits: this costs {cost}, balance is {balance}",
-    "insufficientShort": "Not enough credits"
+    "insufficientShort": "Not enough credits",
+    "reuse": "Reuse",
+    "retry": "Retry",
+    "reuseApplied": "Settings applied",
+    "reuseFailed": "Could not load the original settings",
+    "reusedMedia": "saved"
   },
   "Cookie": {
     "aria": "Cookie collection notice",
@@ -525,5 +536,31 @@
     "loadFailed": "Unable to load",
     "requestFailed": "Request failed",
     "generationFailed": "Generation failed. Please try again."
+  },
+  "Reuse": {
+    "goneTitle": "The original input media is gone",
+    "goneHint": "The reference media used for this generation passed its retention period and was deleted, so it cannot be filled in automatically. Continue to jump over with every parameter restored — you will need to upload the media again.",
+    "goneUnrecordedHint": "This record has no reference-media information (it predates this feature), so nothing can be filled in automatically. Continue to jump over with every parameter restored — you will need to upload the media again.",
+    "unknownFilename": "(filename not recorded)",
+    "unknownTime": "Unknown",
+    "uploadedAt": "Uploaded",
+    "deletedAt": "Deleted",
+    "deleteReason": "Reason",
+    "reasons": {
+      "retention_expired": "Retention period expired, cleaned up automatically",
+      "admin_manual": "Removed manually by an administrator",
+      "unknown": "Not recorded"
+    },
+    "cancel": "Cancel",
+    "confirmContinue": "Continue",
+    "reuse": "Reuse settings",
+    "retry": "Retry task",
+    "retryTitle": "Retry this generation?",
+    "retryCost": "This will cost {cost} credits",
+    "retryBalance": "Current balance: {balance} credits",
+    "retryInsufficient": "Not enough credits — please top up first",
+    "retryConfirm": "Confirm",
+    "applied": "Settings applied",
+    "loadFailed": "Could not load the original settings"
   }
 }

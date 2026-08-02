@@ -53,13 +53,20 @@ export const generationSchema = z
     batch: z.union([z.literal(1), z.literal(2), z.literal(4)]).optional().default(1),
     // base64 参考图（约 10MB 上限）
     image_base64: z.string().max(14_000_000).nullable().optional(),
+    /** 参考图原始文件名，仅用于日后提示「这张图已被清理」时指认是哪一个文件 */
+    image_filename: z.string().max(200).nullable().optional(),
+    /**
+     * 「套用 / 重新生成」时直接复用上次那张已在对象存储里的图，免去重新上传。
+     * 服务端会校验该 URL 确属本人且未被清理，不能拿来指向任意外部地址。
+     */
+    image_url: z.string().url().max(2000).nullable().optional(),
   })
   .superRefine((v, ctx) => {
     const meta = MODE_META[v.mode];
     if (meta.needsPrompt && !v.prompt?.trim()) {
       ctx.addIssue({ code: "custom", message: "请输入提示词", path: ["prompt"] });
     }
-    if (meta.needsImage && !v.image_base64) {
+    if (meta.needsImage && !v.image_base64 && !v.image_url) {
       ctx.addIssue({ code: "custom", message: "该模式需要上传参考图片", path: ["image_base64"] });
     }
     if (!meta.tiers.includes(v.tier)) {

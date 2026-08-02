@@ -50,6 +50,11 @@ function posterUrlOf(urls: string[] | null | undefined, mode?: string): string |
   return urls?.find((u) => mediaKindOf([u], mode) === "image") ?? null;
 }
 
+/** 输入媒体里的第一张静态图，成品出不了封面时拿来顶上 */
+function inputPosterOf(urls: string[] | null | undefined): string | null {
+  return urls?.find((u) => mediaKindOf([u]) === "image") ?? null;
+}
+
 /** 该类型对应的第一条 URL */
 function urlOfKind(
   urls: string[] | null | undefined,
@@ -76,25 +81,53 @@ export function MediaThumb({
   mode,
   alt,
   className = "w-full h-full object-cover",
+  fallbackUrls,
+  showInputBadge = true,
 }: {
   urls: string[] | null | undefined;
   mode?: string;
   alt?: string;
   className?: string;
+  /**
+   * 成品出不了封面时顶上的图，一般是这次生成的输入图。
+   * 覆盖两种情况：任务还没跑完（成品尚不存在），以及 3D/音频这类抽不出首帧的成品。
+   */
+  fallbackUrls?: string[] | null;
+  /** 缩略图很小时（几十像素）标签挤得看不清，可关掉 */
+  showInputBadge?: boolean;
 }) {
   const kind = primaryMediaKind(urls, mode);
-  const poster = posterUrlOf(urls, mode);
+  // 成品自己的静态图优先；输入图只在成品抽不出画面时才顶上（3D/音频、或任务还没跑完），
+  // 否则图生视频完成后会一直显示输入图，看不到生成结果
+  const inputBadgeLabel = "输入图";
+  const resultPoster = posterUrlOf(urls, mode);
+  const poster = resultPoster ?? inputPosterOf(fallbackUrls);
 
-  if (!urls?.length) return null;
+  if (!urls?.length) {
+    // 任务未完成：用输入图占位，比一个空框有信息量
+    const input = inputPosterOf(fallbackUrls);
+    if (!input) return null;
+    return (
+      <>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={input} alt={alt ?? "输入图"} className={`${className} opacity-45`} loading="lazy" />
+        {showInputBadge && (
+          <span className="absolute bottom-2 left-2 rounded-full bg-black/70 px-2 py-px text-[10px] text-gray-300">
+            {inputBadgeLabel}
+          </span>
+        )}
+      </>
+    );
+  }
 
   if (kind === "video") {
     const videoUrl = urlOfKind(urls, "video", mode) ?? urls[0];
     return (
       <>
-        {poster ? (
-          // 有封面图就直接用，比让浏览器解码视频抽帧更快更稳
+        {resultPoster ? (
+          // 成品里带了封面图就直接用，比让浏览器解码视频抽帧更快更稳
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={poster} alt={alt ?? "作品"} className={className} loading="lazy" />
+          <img src={resultPoster} alt={alt ?? "作品"} className={className} loading="lazy" />
         ) : (
           // 无封面时靠 #t=0.1 让浏览器 seek 到首帧；preload=metadata 不会下整段
           <video

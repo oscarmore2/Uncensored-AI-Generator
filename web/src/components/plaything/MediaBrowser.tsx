@@ -13,13 +13,20 @@ export function MediaBrowser({
   items,
   selectedId,
   onSelect,
+  onReuse,
 }: {
   mediaKind: PlaythingMediaKind;
   items: PlaythingGen[];
   selectedId: number | null;
   onSelect: (id: number) => void;
+  /** 套用（run=false）/ 重新生成（run=true） */
+  onReuse?: (id: number, run: boolean) => void;
 }) {
   const t = useTranslations("Plaything");
+  // 各子视图在未指定选中项时会自己默认选第一条成功作品，
+  // 操作按钮要对齐这个行为，否则刚进页面时按钮会整排消失
+  const activeId =
+    selectedId ?? items.find((g) => g.status === "succeeded" && g.result_urls?.length)?.id ?? null;
   return (
     <div className="h-full flex flex-col min-h-0">
       <div className="flex items-center gap-4 border-b border-white/10 px-1 mb-3">
@@ -51,6 +58,26 @@ export function MediaBrowser({
           <ImageAlbum items={items} selectedId={selectedId} onSelect={onSelect} />
         )}
       </div>
+      {onReuse && activeId != null && (
+        <div className="mt-3 flex gap-2 border-t border-white/10 pt-3">
+          <button
+            type="button"
+            onClick={() => onReuse(activeId, false)}
+            className="flex-1 rounded-xl border border-white/10 bg-white/5 py-2.5 text-xs hover:bg-white/10"
+          >
+            <i className="fas fa-rotate-left mr-1.5" />
+            {t("reuse")}
+          </button>
+          <button
+            type="button"
+            onClick={() => onReuse(activeId, true)}
+            className="flex-1 rounded-xl bg-rose-600 py-2.5 text-xs font-semibold hover:bg-rose-500"
+          >
+            <i className="fas fa-rotate-right mr-1.5" />
+            {t("retry")}
+          </button>
+        </div>
+      )}
     </div>
   );
 }

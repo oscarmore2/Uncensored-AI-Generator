@@ -32,6 +32,13 @@ export interface ApiGeneration {
   prompt: string;
   status: string;
   result_urls: string[] | null;
+  /** 当初喂进去的参考图，成品是视频/3D 或任务未完成时拿来当缩略图 */
+  input_urls?: string[];
+  /** 上游返回的成品缩略图（目前 WaveSpeed 不给，留作兼容） */
+  thumb_urls?: string[];
+  tier?: string;
+  spicy?: boolean;
+  progress?: number;
   cost: number;
   is_adult: boolean;
   media_expires_at: string | null;

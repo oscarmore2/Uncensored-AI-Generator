@@ -1,4 +1,5 @@
 import { resolvePlaythingCategory } from "./plaything-categories";
+import { extractInputUrls, extractResultThumbs } from "./generation-media";
 
 type GenProduct = {
   label: string;
@@ -13,6 +14,7 @@ export function playthingGenerationOut(g: {
   status: string;
   progress: number;
   resultUrls: string | null;
+  params?: string;
   cost: number;
   error: string | null;
   createdAt: Date;
@@ -24,6 +26,14 @@ export function playthingGenerationOut(g: {
   const type = g.product?.catalogModel?.type ?? "";
   const modelId = g.product?.modelId ?? "";
   const { category, media_kind } = resolvePlaythingCategory(type, modelId);
+  let parsedParams: unknown = {};
+  try {
+    parsedParams = g.params ? JSON.parse(g.params) : {};
+  } catch {
+    parsedParams = {};
+  }
+  const inputUrls = extractInputUrls(parsedParams);
+  const thumbUrls = extractResultThumbs(parsedParams);
   return {
     id: g.id,
     product_id: g.productId,
@@ -41,6 +51,8 @@ export function playthingGenerationOut(g: {
     created_at: g.createdAt,
     category,
     media_kind,
+    input_urls: inputUrls,
+    thumb_urls: thumbUrls,
   };
 }
 

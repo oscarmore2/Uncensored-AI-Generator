@@ -18,6 +18,8 @@ import {
   applySourceAspectToInputs,
   readImageDimsFromDataUrl,
 } from "./undress-geometry";
+import { sanitizeFilename } from "./media-delete-reason";
+import { uploadMediaExpiry } from "./media-retention";
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
@@ -25,10 +27,19 @@ export async function generationProviderConfigured(): Promise<boolean> {
   return Boolean(await getActiveWaveSpeedCredentials());
 }
 
-/** data URL → 对象存储公开 URL。OSS 未配置时退回原 data URL 交给上游自行解析。 */
+/**
+ * data URL → 对象存储公开 URL。OSS 未配置时退回原 data URL 交给上游自行解析。
+ *
+ * 上传的同时登记一条 MediaAsset：
+ * - 任务收尾会把 base64 从 params 里删掉，不登记的话这张图就再也找不回来，
+ *   「套用」也就没法把参考图带回来；
+ * - 清理任务是按 MediaAsset 扫的，不登记等于在 OSS 里留下永不回收的孤儿文件。
+ */
 async function materializeReferenceImage(
   userId: number,
-  dataUrl: string
+  genId: number,
+  dataUrl: string,
+  filename: string | null
 ): Promise<string> {
   const match = dataUrl.match(/^data:([^;]+);base64,(.+)$/s);
   if (!match) return dataUrl;
@@ -45,6 +56,28 @@ async function materializeReferenceImage(
     `generations/${userId}/${randomUUID()}.${ext}`,
     contentType
   );
+
+  try {
+    await db.mediaAsset.create({
+      data: {
+        userId,
+        kind: "upload",
+        channel: "main",
+        url: uploaded.url,
+        objectKey: uploaded.objectKey,
+        contentType,
+        bytes: buffer.length,
+        filename: sanitizeFilename(filename),
+        sourceId: genId,
+        retentionAssigned: true,
+        expiresAt: await uploadMediaExpiry(),
+      },
+    });
+  } catch (err) {
+    // 登记失败不该让已经付过费的生成任务挂掉，退化成旧行为（图还能用，只是没进清理台账）
+    console.warn("[generation] 参考图 MediaAsset 登记失败：", err);
+  }
+
   return uploaded.url;
 }
 
@@ -89,12 +122,24 @@ export async function processGeneration(genId: number): Promise<void> {
     let imageUrl: string | null = null;
     let sourceDims: { width: number; height: number } | null = null;
     if (modeNeedsImage(gen.mode)) {
-      const raw = params.image_base64;
-      if (typeof raw !== "string" || !raw) throw new Error("该模式需要上传参考图片");
+      // 套用历史任务时没有 base64，直接复用上次那张已在对象存储里的图
+      const reused =
+        Array.isArray(params.input_urls) && typeof params.input_urls[0] === "string"
+          ? (params.input_urls[0] as string)
+          : null;
+      const raw =
+        typeof params.image_base64 === "string" && params.image_base64
+          ? params.image_base64
+          : reused;
+      if (!raw) throw new Error("该模式需要上传参考图片");
       if (gen.mode === "undress") {
         sourceDims = readImageDimsFromDataUrl(raw);
       }
-      imageUrl = await materializeReferenceImage(gen.userId, raw);
+      const inputName =
+        typeof params.image_filename === "string" ? params.image_filename : null;
+      imageUrl = await materializeReferenceImage(gen.userId, genId, raw, inputName);
+      // 落进 params：收尾会删掉 base64，届时只剩这个 URL 能指认当初用的是哪张图
+      await persistInputUrls(genId, [imageUrl]);
 
       // 参考图必须过闸再提交上游：文本分类器看不见像素，
       // 一张真人未成年照片配无害提示词能穿透纯文本审查
@@ -166,6 +211,7 @@ export async function processGeneration(genId: number): Promise<void> {
 
     let mapped = mapWaveSpeedStatus(task.status);
     let outputs: string[] = [];
+    let thumbnails: string[] = [];
     let lastError: string | undefined;
 
     for (let i = 0; i < 90; i++) {
@@ -173,6 +219,7 @@ export async function processGeneration(genId: number): Promise<void> {
       const result = await pollWaveSpeedResult(creds.apiKey, task.id);
       mapped = mapWaveSpeedStatus(result.status);
       outputs = result.outputs;
+      thumbnails = result.thumbnails;
       lastError = result.error;
 
       await db.generation.update({
@@ -214,15 +261,16 @@ export async function processGeneration(genId: number): Promise<void> {
             Array.from(new Set([...safeCategories(gen.safetyCategories), ...safetyAudit(outSafety)]))
           ),
           ...(costUsd != null ? { providerCostUsd: costUsd } : {}),
-          // 清掉大体积 base64，只留可复现的档位与参数
-          params: JSON.stringify({
-            ratio: params.ratio,
-            duration: params.duration,
-            batch: typeof params.batch === "number" ? params.batch : 1,
+          // 清掉大体积 base64，其余原样留着：
+          // 「套用」要靠它复原 gender / undress_options / 模型额外参数，
+          // input_urls 则是参考图被 base64 清掉后唯一的线索
+          params: JSON.stringify(reproducibleParams(params, {
             tier: gen.tier,
             spicy: gen.spicy,
-            product_id: product.id,
-          }),
+            productId: product.id,
+            inputUrls: imageUrl ? [imageUrl] : [],
+            thumbUrls: thumbnails,
+          })),
         },
       });
     } else {
@@ -275,6 +323,50 @@ async function recordSafetyBlock(
   sendTelegram(
     `🚨 内容审查拦截（${stage}）\n任务 #${genId}\n用户 ID: ${userId}\n判定: ${safety.level} / ${safety.categories.join("、") || "—"}\n来源: ${safety.source}\n${safety.reason}`
   );
+}
+
+/**
+ * 成功收尾时要落库的参数：原样保留用户可复现的选择，只丢掉大体积的 base64。
+ * 早期实现只留 ratio/duration/batch，导致脱衣的性别与高级选项、
+ * 以及模型专属的额外参数在任务结束后就查不到了，「套用」也就复原不出来。
+ */
+function reproducibleParams(
+  params: Record<string, unknown>,
+  extra: {
+    tier: string;
+    spicy: boolean;
+    productId: number;
+    inputUrls: string[];
+    thumbUrls: string[];
+  }
+): Record<string, unknown> {
+  const out: Record<string, unknown> = { ...params };
+  delete out.image_base64;
+  out.tier = extra.tier;
+  out.spicy = extra.spicy;
+  out.product_id = extra.productId;
+  if (extra.inputUrls.length) out.input_urls = extra.inputUrls;
+  if (extra.thumbUrls.length) out.result_thumb_urls = extra.thumbUrls;
+  return out;
+}
+
+/** 把参考图的 OSS URL 写进 params.input_urls，供作品页缩略图与「套用」使用 */
+async function persistInputUrls(genId: number, urls: string[]): Promise<void> {
+  if (!urls.length) return;
+  const current = await db.generation
+    .findUnique({ where: { id: genId }, select: { params: true } })
+    .catch(() => null);
+  if (!current) return;
+  try {
+    const params = JSON.parse(current.params) as Record<string, unknown>;
+    params.input_urls = urls;
+    await db.generation.update({
+      where: { id: genId },
+      data: { params: JSON.stringify(params) },
+    });
+  } catch {
+    // 参数损坏不阻断生成
+  }
 }
 
 /** 任务收尾时移除库里的 base64，避免长期占用存储 */

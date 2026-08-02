@@ -1,4 +1,5 @@
 import type { Generation, PublicWork, User, VipTier } from "@prisma/client";
+import { extractInputUrls, extractResultThumbs } from "./generation-media";
 import { isVipActive } from "./pricing";
 import { hasAdultAccess } from "./adult-access";
 
@@ -36,6 +37,7 @@ export function userOut(
 }
 
 export function generationOut(gen: Generation) {
+  const params = safeJson(gen.params);
   return {
     id: gen.id,
     mode: gen.mode,
@@ -52,6 +54,9 @@ export function generationOut(gen: Generation) {
     media_expires_at: gen.mediaExpiresAt,
     media_deleted_at: gen.mediaDeletedAt,
     created_at: gen.createdAt,
+    // 作品卡片用：视频/3D 拿不到成品首帧时退回当初的输入图
+    input_urls: extractInputUrls(params),
+    thumb_urls: extractResultThumbs(params),
   };
 }
 

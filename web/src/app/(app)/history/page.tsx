@@ -1,9 +1,15 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { api, type ApiGeneration } from "@/lib/client";
 import { useApp } from "@/components/AppContext";
 import { AdaptiveMedia } from "@/components/WorkMedia";
+import { MediaKindBadge, MediaThumb } from "@/components/MediaPreview";
+import {
+  InputMediaGoneDialog,
+  type ReuseMediaItem,
+} from "@/components/InputMediaGoneDialog";
 import { MediaExpiryBadge } from "@/components/MediaExpiryBadge";
 import { useLocale, useTranslations } from "next-intl";
 
@@ -15,6 +21,55 @@ export default function HistoryPage() {
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState<ApiGeneration | null>(null);
   const [loaded, setLoaded] = useState(false);
+  const router = useRouter();
+  /** 输入图已被清理时先弹说明框，用户确认后才继续跳转（只填参数不填图） */
+  const [gone, setGone] = useState<{
+    items: ReuseMediaItem[];
+    unrecorded: boolean;
+    go: (skipMedia: boolean) => void;
+  } | null>(null);
+  const [checking, setChecking] = useState(false);
+
+  /**
+   * 套用 / 重新生成：先问一遍当初的参考图还在不在。
+   * 还在就直接带过去，不在就先把「哪个文件、何时传、何时删、为何删」讲清楚，
+   * 用户确认后只恢复参数，媒体留给他自己重新上传。
+   */
+  const openInMake = useCallback(
+    async (item: ApiGeneration, run: boolean) => {
+      if (checking) return;
+      setChecking(true);
+      const go = (skipMedia: boolean) => {
+        const q = new URLSearchParams({ reuse: String(item.id) });
+        if (run) q.set("run", "1");
+        if (skipMedia) q.set("nomedia", "1");
+        router.push(`/make?${q.toString()}`);
+      };
+      try {
+        const info = await api<{
+          needs_image: boolean;
+          input_unrecorded: boolean;
+          media: { all_available: boolean; items: ReuseMediaItem[] };
+        }>(`/api/generations/${item.id}/reuse`);
+
+        const missing = info.needs_image && (!info.media.all_available || info.input_unrecorded);
+        if (missing) {
+          setGone({
+            items: info.media.items,
+            unrecorded: info.input_unrecorded,
+            go,
+          });
+          return;
+        }
+        go(false);
+      } catch {
+        toast(t("reuseFailed"), true);
+      } finally {
+        setChecking(false);
+      }
+    },
+    [checking, router, t, toast]
+  );
 
   const load = useCallback(async () => {
     try {
@@ -71,15 +126,27 @@ export default function HistoryPage() {
               onClick={() => setSelected(item)}
               className="result-card glass rounded-3xl overflow-hidden cursor-pointer"
             >
-              <div className="relative">
+              <div className="relative aspect-[4/3] overflow-hidden">
                 {item.status === "succeeded" && item.result_urls?.length ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={item.result_urls[0]} className="w-full aspect-[4/3] object-cover" alt={item.mode} />
+                  // 视频抽首帧、3D 用输入图或图标；早先一律用 <img> 导致视频/3D 裂图
+                  <MediaThumb
+                    urls={item.thumb_urls?.length ? item.thumb_urls : item.result_urls}
+                    mode={item.mode}
+                    alt={item.mode}
+                    fallbackUrls={item.input_urls}
+                  />
+                ) : item.input_urls?.length && item.status !== "failed" ? (
+                  <MediaThumb urls={null} mode={item.mode} fallbackUrls={item.input_urls} />
                 ) : (
-                  <div className="fake-image aspect-[16/9] flex items-center justify-center">
+                  <div className="fake-image w-full h-full flex items-center justify-center">
                     <i
                       className={`fas ${item.status === "failed" ? "fa-triangle-exclamation text-red-400" : "fa-spinner fa-spin"} text-3xl`}
                     />
+                  </div>
+                )}
+                {item.status === "succeeded" && (
+                  <div className="absolute bottom-2 right-2">
+                    <MediaKindBadge urls={item.result_urls} mode={item.mode} />
                   </div>
                 )}
                 <div className="absolute top-3 left-3">
@@ -170,9 +237,37 @@ export default function HistoryPage() {
                   {t("close")}
                 </button>
               </div>
+              <div className="flex gap-3 px-4 pb-6">
+                <button
+                  onClick={() => void openInMake(selected, false)}
+                  disabled={checking}
+                  className="flex-1 py-3 bg-white/5 border border-white/10 rounded-2xl flex items-center justify-center gap-x-2 disabled:opacity-40"
+                >
+                  <i className="fas fa-rotate-left" /> {t("reuse")}
+                </button>
+                <button
+                  onClick={() => void openInMake(selected, true)}
+                  disabled={checking}
+                  className="flex-1 py-3 bg-rose-600 hover:bg-rose-500 rounded-2xl font-semibold flex items-center justify-center gap-x-2 disabled:opacity-40"
+                >
+                  <i className="fas fa-rotate-right" /> {t("retry")}
+                </button>
+              </div>
             </div>
           </div>
         </div>
+      )}
+      {gone && (
+        <InputMediaGoneDialog
+          items={gone.items}
+          unrecorded={gone.unrecorded}
+          onCancel={() => setGone(null)}
+          onConfirm={() => {
+            const go = gone.go;
+            setGone(null);
+            go(true);
+          }}
+        />
       )}
     </div>
   );

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo } from "react";
+import { MediaThumb } from "@/components/MediaPreview";
 import { EmptyState } from "./ImageAlbum";
 import { detectMediaKindFromUrl } from "@/lib/plaything-categories";
 import { useModelViewerDiagnostics } from "@/lib/model-viewer-diagnostics";
@@ -107,8 +108,21 @@ export function Model3DViewer({
                 : "border-white/10 hover:border-white/25"
             }`}
           >
-            <div className="font-mono text-gray-500">#{g.id}</div>
-            <div className="truncate text-gray-300">{g.product_label || g.model_id}</div>
+            <div className="flex items-center gap-2">
+              {/* .glb 抽不出首帧，用当初的输入图当封面，没有就退回立方体图标 */}
+              <span className="relative h-10 w-10 shrink-0 overflow-hidden rounded-lg bg-[#111]">
+                <MediaThumb urls={null} fallbackUrls={g.input_urls} showInputBadge={false} />
+                {!g.input_urls?.length && (
+                  <i className="fas fa-cube absolute inset-0 flex items-center justify-center text-gray-600" />
+                )}
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block font-mono text-gray-500">#{g.id}</span>
+                <span className="block truncate text-gray-300">
+                  {g.product_label || g.model_id}
+                </span>
+              </span>
+            </div>
           </button>
         ))}
       </div>

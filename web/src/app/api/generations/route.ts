@@ -99,6 +99,28 @@ export async function POST(req: Request) {
     );
   }
 
+  // 复用历史参考图：必须是本人名下、且尚未被清理的那一条，
+  // 否则等于开了一个「让服务端去下载任意 URL」的口子
+  let reusedImageUrl: string | null = null;
+  if (gen.image_url && !gen.image_base64) {
+    const asset = await db.mediaAsset.findFirst({
+      where: {
+        userId: user.id,
+        url: gen.image_url,
+        kind: "upload",
+        deletedAt: null,
+      },
+      select: { url: true },
+    });
+    if (!asset) {
+      return NextResponse.json(
+        { error: "所选参考图已不可用，请重新上传", code: "REUSED_IMAGE_UNAVAILABLE" },
+        { status: 400 }
+      );
+    }
+    reusedImageUrl = asset.url;
+  }
+
   const cost = quote.cost;
   const ownerVipAtCreation = isVipActive(user);
   const mediaExpiresAt = await generatedMediaExpiry("main", ownerVipAtCreation);
@@ -129,6 +151,8 @@ export async function POST(req: Request) {
     "seed",
     "batch",
     "image_base64",
+    "image_filename",
+    "image_url",
   ]);
   const extraUi: Record<string, unknown> = {};
   if (body && typeof body === "object" && !Array.isArray(body)) {
@@ -155,6 +179,8 @@ export async function POST(req: Request) {
         seed: gen.seed,
         batch: gen.batch,
         image_base64: gen.image_base64 ?? null,
+        ...(gen.image_filename ? { image_filename: gen.image_filename } : {}),
+        ...(reusedImageUrl ? { input_urls: [reusedImageUrl] } : {}),
         ...(gen.mode === "undress" && gen.gender ? { gender: gen.gender } : {}),
         ...(gen.mode === "undress" && undressOptions ? { undress_options: undressOptions } : {}),
         ...extraUi,
