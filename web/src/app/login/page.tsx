@@ -198,22 +198,22 @@ function LoginForm() {
 
         {verificationEmail ? (
           <div className="rounded-3xl border border-emerald-400/20 bg-emerald-400/10 p-6 text-center">
-            <i className="fas fa-envelope-circle-check text-3xl text-emerald-300" />
+            <i className="fas fa-envelope-circle-check text-3xl text-emerald-700" />
             <h1 className="mt-3 text-xl font-bold">{t("checkEmailTitle")}</h1>
-            <p className="mt-2 text-sm leading-6 text-gray-300">
+            <p className="mt-2 text-sm leading-6 text-ink-muted">
               {t("checkEmailBody", { email: verificationEmail })}
             </p>
             <button
               type="button"
               disabled={busy}
               onClick={() => void resendVerification()}
-              className="mt-5 rounded-2xl border border-white/15 px-5 py-2.5 text-sm font-semibold hover:bg-white/5 disabled:opacity-50"
+              className="mt-5 rounded-2xl border border-line px-5 py-2.5 text-sm font-semibold hover:bg-black/[0.04] disabled:opacity-50"
             >
               {busy ? t("processing") : t("resendVerification")}
             </button>
-            {resendMessage && <p className="mt-3 text-xs text-gray-400">{resendMessage}</p>}
+            {resendMessage && <p className="mt-3 text-xs text-ink-muted">{resendMessage}</p>}
             {devVerificationUrl && (
-              <a href={devVerificationUrl} className="mt-3 block text-xs text-teal-300 underline">
+              <a href={devVerificationUrl} className="mt-3 block text-xs text-teal-700 underline">
                 {t("demoVerifyLink")}
               </a>
             )}
@@ -224,14 +224,14 @@ function LoginForm() {
                 setMode("login");
                 setError("");
               }}
-              className="mt-4 block w-full text-xs text-gray-500 hover:text-gray-300"
+              className="mt-4 block w-full text-xs text-ink-subtle hover:text-ink-muted"
             >
               {t("backToLogin")}
             </button>
           </div>
         ) : (
           <>
-        <div className="flex mb-6 bg-black/40 rounded-2xl p-1">
+        <div className="flex mb-6 bg-black/[0.04] rounded-2xl p-1">
           {(["login", "register"] as const).map((m) => (
             <button
               key={m}
@@ -243,7 +243,7 @@ function LoginForm() {
                 setTurnstileReset((n) => n + 1);
               }}
               className={`flex-1 py-2 text-sm font-semibold rounded-xl transition-colors ${
-                mode === m ? "bg-orange-600 text-white" : "text-gray-400 hover:text-white"
+                mode === m ? "bg-orange-700 text-white" : "text-ink-muted hover:text-ink"
               }`}
             >
               {m === "login" ? t("login") : t("register")}
@@ -256,32 +256,32 @@ function LoginForm() {
             {providers.google && (
               <a
                 href={`/api/auth/oauth/google?next=${encodeURIComponent(safeNextPath(params.get("next")))}`}
-                className="flex items-center justify-center gap-3 rounded-2xl border border-white/15 bg-white px-4 py-3 font-semibold text-black hover:bg-gray-100"
+                className="flex items-center justify-center gap-3 rounded-2xl border border-line bg-white px-4 py-3 font-semibold text-black hover:bg-gray-100"
               >
-                <span className="text-lg font-black text-blue-600">G</span>
+                <span className="text-lg font-black text-blue-700">G</span>
                 {t("continueGoogle")}
               </a>
             )}
             {providers.facebook && (
               <a
                 href={`/api/auth/oauth/facebook?next=${encodeURIComponent(safeNextPath(params.get("next")))}`}
-                className="flex items-center justify-center gap-3 rounded-2xl bg-[#1877F2] px-4 py-3 font-semibold text-white hover:bg-[#166fe5]"
+                className="flex items-center justify-center gap-3 rounded-2xl bg-[#1877F2] px-4 py-3 font-semibold text-ink hover:bg-[#166fe5]"
               >
                 <i className="fab fa-facebook text-lg" />
                 {t("continueFacebook")}
               </a>
             )}
-            <div className="flex items-center gap-3 text-[10px] uppercase tracking-widest text-gray-600">
-              <span className="h-px flex-1 bg-white/10" />
+            <div className="flex items-center gap-3 text-[10px] uppercase tracking-widest text-ink-subtle">
+              <span className="h-px flex-1 bg-black/[0.06]" />
               {t("orPassword")}
-              <span className="h-px flex-1 bg-white/10" />
+              <span className="h-px flex-1 bg-black/[0.06]" />
             </div>
           </div>
         )}
 
         <form onSubmit={submit} className="space-y-4">
           <div>
-            <label className="text-sm text-gray-300">
+            <label className="text-sm text-ink-muted">
               {mode === "login" ? t("usernameOrEmail") : t("username")}
             </label>
             <input
@@ -289,12 +289,12 @@ function LoginForm() {
               onChange={(e) => setUsername(e.target.value)}
               autoComplete="username"
               required
-              className="w-full mt-1 bg-[#111] border border-white/10 focus:border-orange-500 rounded-2xl px-4 py-3 outline-none"
+              className="w-full mt-1 bg-surface border border-line focus:border-orange-500 rounded-2xl px-4 py-3 outline-none"
             />
           </div>
           {mode === "register" && (
             <div>
-              <label className="text-sm text-gray-300">{t("email")}</label>
+              <label className="text-sm text-ink-muted">{t("email")}</label>
               <input
                 type="email"
                 value={email}
@@ -302,13 +302,13 @@ function LoginForm() {
                 autoComplete="email"
                 required
                 maxLength={254}
-                className="w-full mt-1 bg-[#111] border border-white/10 focus:border-orange-500 rounded-2xl px-4 py-3 outline-none"
+                className="w-full mt-1 bg-surface border border-line focus:border-orange-500 rounded-2xl px-4 py-3 outline-none"
               />
-              <p className="mt-1 text-[10px] text-gray-500">{t("emailHint")}</p>
+              <p className="mt-1 text-[10px] text-ink-subtle">{t("emailHint")}</p>
             </div>
           )}
           <div>
-            <label className="text-sm text-gray-300">{t("password")}</label>
+            <label className="text-sm text-ink-muted">{t("password")}</label>
             <input
               type="password"
               value={password}
@@ -316,9 +316,9 @@ function LoginForm() {
               autoComplete={mode === "login" ? "current-password" : "new-password"}
               required
               minLength={mode === "register" ? 8 : 1}
-              className="w-full mt-1 bg-[#111] border border-white/10 focus:border-orange-500 rounded-2xl px-4 py-3 outline-none"
+              className="w-full mt-1 bg-surface border border-line focus:border-orange-500 rounded-2xl px-4 py-3 outline-none"
             />
-            {mode === "register" && <p className="text-[10px] text-gray-500 mt-1">{t("passwordHint")}</p>}
+            {mode === "register" && <p className="text-[10px] text-ink-subtle mt-1">{t("passwordHint")}</p>}
           </div>
 
           {siteKey ? (
@@ -328,11 +328,11 @@ function LoginForm() {
               resetKey={`${mode}-${turnstileReset}`}
             />
           ) : (
-            <p className="text-[10px] text-gray-500">{t("captchaLoading")}</p>
+            <p className="text-[10px] text-ink-subtle">{t("captchaLoading")}</p>
           )}
 
           {mode === "register" && (
-            <label className="flex cursor-pointer items-start gap-3 text-xs leading-5 text-gray-400">
+            <label className="flex cursor-pointer items-start gap-3 text-xs leading-5 text-ink-muted">
               <input
                 type="checkbox"
                 checked={accepted}
@@ -342,32 +342,32 @@ function LoginForm() {
               />
               <span>
                 {t("agreePrefix")}
-                <Link href="/terms" target="_blank" className="mx-1 text-teal-300 underline">{t("terms")}</Link>
+                <Link href="/terms" target="_blank" className="mx-1 text-teal-700 underline">{t("terms")}</Link>
                 {t("and")}
-                <Link href="/content-policy" target="_blank" className="mx-1 text-teal-300 underline">{t("contentPolicy")}</Link>
+                <Link href="/content-policy" target="_blank" className="mx-1 text-teal-700 underline">{t("contentPolicy")}</Link>
               </span>
             </label>
           )}
 
-          {error && <p className="text-sm text-red-400">{error}</p>}
+          {error && <p className="text-sm text-red-700">{error}</p>}
 
           <button
             type="submit"
             disabled={busy || !turnstileToken || !siteKey || (mode === "register" && !accepted)}
-            className="w-full py-3.5 bg-white text-black font-bold rounded-2xl hover:bg-gray-100 disabled:opacity-50"
+            className="w-full py-3.5 bg-orange-700 text-white font-bold rounded-2xl hover:bg-orange-700 disabled:opacity-50"
           >
             {busy ? t("processing") : mode === "login" ? t("login") : t("registerAndLogin")}
           </button>
         </form>
 
-        <p className="text-center text-xs leading-5 text-gray-500 mt-4">
+        <p className="text-center text-xs leading-5 text-ink-subtle mt-4">
           {t("noticePrefix")}
-          <Link href="/terms" className="mx-1 text-gray-300 hover:text-white">{t("terms")}</Link>
+          <Link href="/terms" className="mx-1 text-ink-muted hover:text-ink">{t("terms")}</Link>
           {t("noticeMiddle")}
-          <Link href="/content-policy" className="mx-1 text-gray-300 hover:text-white">{t("contentPolicy")}</Link>
+          <Link href="/content-policy" className="mx-1 text-ink-muted hover:text-ink">{t("contentPolicy")}</Link>
           {t("noticeSuffix")}
         </p>
-        <p className="mt-2 text-center text-[10px] leading-4 text-gray-600">
+        <p className="mt-2 text-center text-[10px] leading-4 text-ink-subtle">
           {t("geoNotice")}
         </p>
           </>

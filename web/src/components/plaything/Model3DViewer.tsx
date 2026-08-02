@@ -40,7 +40,7 @@ export function Model3DViewer({
 
   return (
     <div className="flex flex-col lg:flex-row gap-4 min-h-[320px]">
-      <div className="flex-1 rounded-2xl border border-white/10 bg-[#0c0c0c] overflow-hidden min-h-[280px] relative">
+      <div className="flex-1 rounded-2xl border border-line bg-stage overflow-hidden min-h-[280px] relative">
         {modelUrl ? (
           <>
             {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
@@ -54,17 +54,17 @@ export function Model3DViewer({
               style={{ width: "100%", height: "min(60vh, 520px)", background: "#0c0c0c" }}
             />
             {loadError && (
-              <div className="absolute bottom-2 left-2 right-2 flex items-start gap-2 rounded-xl bg-amber-950/90 border border-amber-500/30 px-3 py-2 text-[11px] text-amber-200">
+              <div className="absolute bottom-2 left-2 right-2 flex items-start gap-2 rounded-xl bg-amber-950/90 border border-amber-500/30 px-3 py-2 text-[11px] text-amber-800">
                 <i className="fas fa-triangle-exclamation mt-0.5 shrink-0" />
                 <span>
                   {t("threeDLoadWarning")}
-                  <span className="block text-amber-400/70 font-mono mt-0.5 break-all">{loadError}</span>
+                  <span className="block text-amber-800/70 font-mono mt-0.5 break-all">{loadError}</span>
                 </span>
               </div>
             )}
           </>
         ) : selected?.result_urls?.length ? (
-          <div className="p-6 text-sm text-gray-400 space-y-3">
+          <div className="p-6 text-sm text-ink-muted space-y-3">
             <p>{t("threeDDownload")}</p>
             <ul className="space-y-2">
               {selected.result_urls.map((u) => (
@@ -73,7 +73,7 @@ export function Model3DViewer({
                     href={u}
                     target="_blank"
                     rel="noreferrer"
-                    className="text-orange-400 hover:underline break-all"
+                    className="text-orange-700 hover:underline break-all"
                   >
                     {u}
                   </a>
@@ -82,7 +82,7 @@ export function Model3DViewer({
             </ul>
           </div>
         ) : (
-          <div className="flex items-center justify-center h-full text-sm text-gray-500">
+          <div className="flex items-center justify-center h-full text-sm text-ink-subtle">
             {t("select3d")}
           </div>
         )}
@@ -105,20 +105,20 @@ export function Model3DViewer({
             className={`w-full text-left rounded-xl px-3 py-2 text-xs border ${
               g.id === selected?.id
                 ? "border-orange-500/40 bg-orange-500/10"
-                : "border-white/10 hover:border-white/25"
+                : "border-line hover:border-line-strong"
             }`}
           >
             <div className="flex items-center gap-2">
               {/* .glb 抽不出首帧，用当初的输入图当封面，没有就退回立方体图标 */}
-              <span className="relative h-10 w-10 shrink-0 overflow-hidden rounded-lg bg-[#111]">
+              <span className="relative h-10 w-10 shrink-0 overflow-hidden rounded-lg bg-stage">
                 <MediaThumb urls={null} fallbackUrls={g.input_urls} showInputBadge={false} />
                 {!g.input_urls?.length && (
-                  <i className="fas fa-cube absolute inset-0 flex items-center justify-center text-gray-600" />
+                  <i className="fas fa-cube absolute inset-0 flex items-center justify-center text-ink-subtle" />
                 )}
               </span>
               <span className="min-w-0 flex-1">
-                <span className="block font-mono text-gray-500">#{g.id}</span>
-                <span className="block truncate text-gray-300">
+                <span className="block font-mono text-ink-subtle">#{g.id}</span>
+                <span className="block truncate text-ink-muted">
                   {g.product_label || g.model_id}
                 </span>
               </span>

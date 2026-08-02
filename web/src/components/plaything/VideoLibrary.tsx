@@ -25,7 +25,7 @@ export function VideoLibrary({
 
   return (
     <div className="flex flex-col lg:flex-row gap-4 min-h-[320px]">
-      <div className="flex-1 rounded-2xl bg-black/40 border border-white/10 overflow-hidden flex items-center justify-center min-h-[220px]">
+      <div className="flex-1 rounded-2xl bg-stage border border-line overflow-hidden flex items-center justify-center min-h-[220px]">
         {activeUrl ? (
           <div className="relative w-full">
             <video
@@ -45,7 +45,7 @@ export function VideoLibrary({
             )}
           </div>
         ) : (
-          <p className="text-sm text-gray-500 px-4 text-center">
+          <p className="text-sm text-ink-subtle px-4 text-center">
             {items.some((g) => g.status === "processing" || g.status === "pending")
               ? t("videoProcessing")
               : t("selectVideo")}
@@ -62,19 +62,19 @@ export function VideoLibrary({
               type="button"
               onClick={() => onSelect(g.id)}
               className={`w-full text-left rounded-xl border overflow-hidden ${
-                active ? "border-orange-500/50" : "border-white/10 hover:border-white/25"
+                active ? "border-orange-500/50" : "border-line hover:border-line-strong"
               }`}
             >
-              <div className="aspect-video bg-[#111] relative">
+              <div className="aspect-video bg-stage relative">
                 <video src={url} muted preload="metadata" className="w-full h-full object-cover" />
-                <span className="absolute bottom-1 left-1 text-[10px] px-1 rounded bg-black/60 font-mono">
+                <span className="absolute bottom-1 left-1 text-[10px] px-1 rounded bg-black/60 font-mono text-white">
                   #{g.id}
                 </span>
                 {g.is_adult && (
                   <span className="absolute right-1 top-1 rounded-full bg-red-600 px-2 py-0.5 text-[9px] font-bold">18+</span>
                 )}
               </div>
-              <div className="px-2 py-1.5 text-[11px] text-gray-400 truncate">
+              <div className="px-2 py-1.5 text-[11px] text-ink-muted truncate">
                 {g.product_label || g.model_id}
               </div>
             </button>
@@ -85,7 +85,7 @@ export function VideoLibrary({
           .map((g) => (
             <div
               key={g.id}
-              className="rounded-xl border border-white/10 px-2 py-2 text-[11px] text-gray-500"
+              className="rounded-xl border border-line px-2 py-2 text-[11px] text-ink-subtle"
             >
               #{g.id} · {g.status} · {g.progress}%
             </div>

@@ -37,10 +37,10 @@ export function MediaExpiryBadge({
 
   const label = deletedAt ? t("deleted") : expiresAt ? countdown(expiresAt, t) : t("permanent");
   const color = deletedAt
-    ? "bg-gray-700/80 text-gray-300"
+    ? "bg-black/[0.06] text-ink-subtle"
     : expiresAt
-      ? "bg-amber-500/15 text-amber-200 border border-amber-400/25"
-      : "bg-emerald-500/15 text-emerald-200 border border-emerald-400/20";
+      ? "bg-amber-500/15 text-amber-800 border border-amber-400/25"
+      : "bg-emerald-500/15 text-emerald-700 border border-emerald-400/20";
   return (
     <span className={`inline-flex items-center rounded-full ${color} ${compact ? "px-2 py-0.5 text-[9px]" : "px-3 py-1 text-xs"}`}>
       <i className={`fas ${deletedAt ? "fa-trash-can" : expiresAt ? "fa-clock" : "fa-infinity"} mr-1.5`} />

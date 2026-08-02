@@ -34,7 +34,7 @@ function OptionChips<T extends string>({
 }) {
   return (
     <div>
-      <label className="text-xs text-gray-400 block mb-1.5">{label}</label>
+      <label className="text-xs text-ink-muted block mb-1.5">{label}</label>
       <div className="flex flex-wrap gap-1.5">
         {values.map((v) => {
           const active = value === v;
@@ -45,8 +45,8 @@ function OptionChips<T extends string>({
               onClick={() => onChange(v)}
               className={`px-3 py-1.5 rounded-xl border text-xs transition-colors ${
                 active
-                  ? "bg-orange-600/20 border-orange-500 text-orange-100"
-                  : "bg-white/5 border-white/10 text-gray-300 hover:border-white/25"
+                  ? "bg-orange-600/20 border-orange-500 text-orange-700"
+                  : "bg-black/[0.03] border-line text-ink-muted hover:border-line-strong"
               }`}
             >
               {labelOf(v)}
@@ -81,15 +81,15 @@ export function UndressAdvancedPanel({
   }
 
   return (
-    <div className="mb-5 space-y-4 rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+    <div className="mb-5 space-y-4 rounded-2xl border border-line bg-black/[0.03] p-4">
       <div className="flex items-center gap-2">
-        <span className="text-sm font-semibold text-orange-200">{t("undressAdvancedTitle")}</span>
-        <span className="text-[10px] px-1.5 py-px rounded bg-amber-500/20 text-amber-200">VIP2</span>
+        <span className="text-sm font-semibold text-orange-700">{t("undressAdvancedTitle")}</span>
+        <span className="text-[10px] px-1.5 py-px rounded bg-amber-500/20 text-amber-800">VIP2</span>
       </div>
-      <p className="text-[11px] text-gray-500 leading-relaxed">{t("undressAdvancedHint")}</p>
+      <p className="text-[11px] text-ink-subtle leading-relaxed">{t("undressAdvancedHint")}</p>
 
       <section className="space-y-3">
-        <h3 className="text-xs font-semibold tracking-wide text-gray-300 uppercase">
+        <h3 className="text-xs font-semibold tracking-wide text-ink-muted uppercase">
           {t("undressSections.wear")}
         </h3>
         <OptionChips
@@ -117,8 +117,8 @@ export function UndressAdvancedPanel({
         />
       </section>
 
-      <section className="space-y-3 pt-2 border-t border-white/5">
-        <h3 className="text-xs font-semibold tracking-wide text-gray-300 uppercase">
+      <section className="space-y-3 pt-2 border-t border-line">
+        <h3 className="text-xs font-semibold tracking-wide text-ink-muted uppercase">
           {t("undressSections.body")}
         </h3>
         <OptionChips

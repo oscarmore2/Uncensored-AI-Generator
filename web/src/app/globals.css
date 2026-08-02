@@ -2,8 +2,27 @@
 @import "tailwindcss";
 
 :root {
-  --bg: #0a0a0a;
-  --fg: #f1f1f1;
+  /**
+   * 浅色外壳。底色取图标同款奶油米，比纯白柔和、不刺眼，也和暖橘主色同调。
+   * 唯独「作品预览区」保持深色（见 --stage）：图片/视频/3D 在深底上才看得准颜色，
+   * 浅底会和画面本身抢。所以是「浅色外壳 + 深色画布」，不是整站刷白。
+   */
+  --bg: #faf6ef;
+  --fg: #1c1917;
+
+  /** 层级：卡片 / 内嵌面板 / 输入框 */
+  --surface: #ffffff;
+  --surface-2: #f4eee4;
+  --surface-3: #ece4d7;
+
+  /** 描边与文字层级 */
+  --line: rgba(28, 25, 23, 0.1);
+  --line-strong: rgba(28, 25, 23, 0.18);
+  --fg-muted: #57534e;
+  --fg-subtle: #6d655b;
+
+  /** 媒体舞台：预览图片/视频/3D 的衬底，始终保持深色 */
+  --stage: #17130f;
 
   /**
    * 品牌主色：暖橘。
@@ -15,11 +34,31 @@
   --accent-hover: #fb923c;
   --accent-strong: #ea580c;
   --accent-soft: rgba(249, 115, 22, 0.12);
+  /** 品牌橘直接当文字色在浅底上只有 2.6:1，文字场景要压深一档 */
+  --accent-text: #b7410b;
+  /**
+   * 实心底 + 白字的场景（主按钮、选中态）要用更深的一档：
+   * #f97316 配白字只有 2.81:1，#c2410c 能到 5.2:1。
+   * 浅色的 --accent 留给描边、辉光、图标这类非文字承载处。
+   */
+  --accent-solid: #c2410c;
 
   /** 点数/充值：与主色互补的青碧，跟「会员金」区分开 */
   --credit: #2dd4bf;
   /** 会员专属 */
   --vip: #fbbf24;
+}
+
+@theme inline {
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-surface-3: var(--surface-3);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-ink: var(--fg);
+  --color-ink-muted: var(--fg-muted);
+  --color-ink-subtle: var(--fg-subtle);
+  --color-stage: var(--stage);
 }
 
 body {
@@ -29,9 +68,9 @@ body {
 }
 
 .glass {
-  background: rgba(255, 255, 255, 0.05);
-  backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  box-shadow: 0 1px 2px rgba(28, 25, 23, 0.04), 0 8px 24px -12px rgba(28, 25, 23, 0.12);
 }
 
 .nav-item {
@@ -52,20 +91,20 @@ body {
   width: 100%;
 }
 .nav-active {
-  color: var(--accent);
+  color: var(--accent-text);
 }
 
 .mode-tab {
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 .mode-tab.active {
-  background-color: var(--accent);
+  background-color: var(--accent-solid);
   color: white;
   box-shadow: 0 10px 15px -3px rgb(249 115 22 / 0.25);
 }
 
 .generate-btn {
-  background: linear-gradient(90deg, var(--accent-hover), var(--accent-strong));
+  background: linear-gradient(90deg, var(--accent-strong), var(--accent-solid));
   transition: all 0.3s ease;
 }
 .generate-btn:hover {
@@ -78,6 +117,7 @@ body {
 }
 .result-card:hover {
   transform: translateY(-4px);
+  box-shadow: 0 16px 32px -16px rgba(28, 25, 23, 0.25);
 }
 
 .prompt-box {
@@ -106,8 +146,8 @@ body {
 }
 
 .credit-display {
-  background: #111;
-  border: 1px solid #333;
+  background: var(--surface);
+  border: 1px solid var(--line);
 }
 
 .package-card {
@@ -134,7 +174,7 @@ body {
 }
 
 .fake-image {
-  background: linear-gradient(135deg, #1f1f1f, #111);
+  background: linear-gradient(135deg, var(--surface-2), var(--surface-3));
   position: relative;
   overflow: hidden;
 }
@@ -146,8 +186,8 @@ body {
     45deg,
     transparent,
     transparent 10px,
-    rgba(249, 115, 22, 0.06) 10px,
-    rgba(249, 115, 22, 0.06) 20px
+    rgba(249, 115, 22, 0.09) 10px,
+    rgba(249, 115, 22, 0.09) 20px
   );
 }
 
@@ -166,11 +206,11 @@ body {
   margin-bottom: 0.65rem;
   font-size: 1.15rem;
   font-weight: 700;
-  color: #f4f4f5;
+  color: var(--fg);
 }
 .legal-copy p,
 .legal-copy li {
-  color: #b8b8c2;
+  color: var(--fg-muted);
   font-size: 0.925rem;
   line-height: 1.85;
 }
@@ -181,6 +221,6 @@ body {
 }
 .legal-copy .legal-updated {
   margin-top: 0.75rem;
-  color: #71717a;
+  color: var(--fg-subtle);
   font-size: 0.8rem;
 }

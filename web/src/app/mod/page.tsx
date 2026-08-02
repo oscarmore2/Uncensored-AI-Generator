@@ -29,27 +29,27 @@ export default async function ModDashboardPage() {
   return (
     <div>
       <h1 className="text-3xl font-bold tracking-tighter mb-1">队列概览</h1>
-      <p className="text-gray-400 text-sm mb-8">审核工作台 · 数据实时读取</p>
+      <p className="text-ink-muted text-sm mb-8">审核工作台 · 数据实时读取</p>
 
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-10">
         {stats.map((s) => (
           <Link key={s.label} href={s.href} className="glass rounded-3xl p-5 hover:border-orange-500/40 transition-colors">
             <div className="text-3xl font-bold font-mono stat-number">{s.value}</div>
-            <div className="text-xs text-gray-400 mt-1">{s.label}</div>
+            <div className="text-xs text-ink-muted mt-1">{s.label}</div>
           </Link>
         ))}
       </div>
 
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-xl font-bold">最近生成</h2>
-        <Link href="/mod/generations" className="text-sm text-orange-400 hover:text-orange-300">
+        <Link href="/mod/generations" className="text-sm text-orange-700 hover:text-orange-800">
           进入审核 <i className="fas fa-arrow-right ml-1" />
         </Link>
       </div>
       <div className="glass rounded-3xl overflow-hidden">
         <table className="w-full text-sm">
           <thead>
-            <tr className="text-left text-xs text-gray-400 border-b border-white/10">
+            <tr className="text-left text-xs text-ink-muted border-b border-line">
               <th className="px-5 py-3">ID</th>
               <th className="px-5 py-3">用户</th>
               <th className="px-5 py-3">模式</th>
@@ -60,30 +60,30 @@ export default async function ModDashboardPage() {
           </thead>
           <tbody>
             {recent.map((g) => (
-              <tr key={g.id} className="border-b border-white/5 hover:bg-white/[0.02]">
-                <td className="px-5 py-3 font-mono text-gray-400">#{g.id}</td>
+              <tr key={g.id} className="border-b border-line hover:bg-black/[0.03]">
+                <td className="px-5 py-3 font-mono text-ink-muted">#{g.id}</td>
                 <td className="px-5 py-3">{g.user.username}</td>
                 <td className="px-5 py-3 font-mono text-xs">{g.mode}</td>
-                <td className="px-5 py-3 max-w-xs truncate text-gray-300">{g.prompt}</td>
+                <td className="px-5 py-3 max-w-xs truncate text-ink-muted">{g.prompt}</td>
                 <td className="px-5 py-3">
                   <span
                     className={`text-xs px-2 py-0.5 rounded-full ${
                       g.status === "succeeded"
-                        ? "bg-emerald-500/15 text-emerald-300"
+                        ? "bg-emerald-500/15 text-emerald-700"
                         : g.status === "failed"
-                          ? "bg-red-500/15 text-red-300"
-                          : "bg-amber-500/15 text-amber-300"
+                          ? "bg-red-500/15 text-red-700"
+                          : "bg-amber-500/15 text-amber-800"
                     }`}
                   >
                     {g.status}
                   </span>
                 </td>
-                <td className="px-5 py-3 text-xs text-gray-500">{g.createdAt.toLocaleString("zh-CN")}</td>
+                <td className="px-5 py-3 text-xs text-ink-subtle">{g.createdAt.toLocaleString("zh-CN")}</td>
               </tr>
             ))}
             {recent.length === 0 && (
               <tr>
-                <td colSpan={6} className="px-5 py-10 text-center text-gray-500">
+                <td colSpan={6} className="px-5 py-10 text-center text-ink-subtle">
                   暂无生成记录
                 </td>
               </tr>

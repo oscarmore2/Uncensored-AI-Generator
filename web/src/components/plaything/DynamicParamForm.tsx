@@ -226,7 +226,7 @@ export function DynamicParamForm({
       {hasPrompt && (
         <div>
           <div className="flex items-center justify-between mb-1 gap-2 flex-wrap">
-            <label className="text-xs text-gray-400">
+            <label className="text-xs text-ink-muted">
               {t("prompt")}{required.has("prompt") ? " *" : ""}
             </label>
             {showOptimizer && (
@@ -235,7 +235,7 @@ export function DynamicParamForm({
                   value={optimizeStyle}
                   onChange={(e) => setOptimizeStyle(e.target.value as PromptOptimizeStyle)}
                   disabled={optimizing}
-                  className="bg-[#111] border border-white/10 rounded-lg px-2 py-1 text-[11px] text-gray-300 outline-none disabled:opacity-50"
+                  className="bg-surface border border-line rounded-lg px-2 py-1 text-[11px] text-ink-muted outline-none disabled:opacity-50"
                 >
                   {OPTIMIZE_STYLES.map((s) => (
                     <option key={s} value={s}>
@@ -261,26 +261,26 @@ export function DynamicParamForm({
             onChange={(e) => onChange({ ...value, prompt: e.target.value })}
             rows={4}
             placeholder={t("promptPlaceholder")}
-            className={`w-full bg-[#111] border border-white/10 rounded-2xl px-4 py-3 text-sm outline-none resize-y ${a.focusBorder}`}
+            className={`w-full bg-surface border border-line rounded-2xl px-4 py-3 text-sm outline-none resize-y ${a.focusBorder}`}
           />
         </div>
       )}
 
       {hasNegative && (
         <div>
-          <label className="text-xs text-gray-400 block mb-1">{t("negativePrompt")}</label>
+          <label className="text-xs text-ink-muted block mb-1">{t("negativePrompt")}</label>
           <textarea
             value={value.negativePrompt}
             onChange={(e) => onChange({ ...value, negativePrompt: e.target.value })}
             rows={2}
-            className="w-full bg-[#111] border border-white/10 rounded-2xl px-4 py-3 text-sm outline-none resize-y"
+            className="w-full bg-surface border border-line rounded-2xl px-4 py-3 text-sm outline-none resize-y"
           />
         </div>
       )}
 
       {mediaControls.length > 0 && (
         <div className="space-y-3">
-          <div className="text-xs text-gray-400">{t("referenceMedia")}</div>
+          <div className="text-xs text-ink-muted">{t("referenceMedia")}</div>
           {mediaControls.map((c) => {
             if (c.kind !== "media") return null;
             const items = value.mediaFiles[c.key] ?? [];
@@ -290,15 +290,15 @@ export function DynamicParamForm({
             const used = items.length + reusedUrls.length;
             return (
               <div key={c.key}>
-                <label className="text-xs text-gray-500 block mb-1">
+                <label className="text-xs text-ink-subtle block mb-1">
                   {c.key}
                   {required.has(c.key) ? " *" : ""}
-                  <span className="text-gray-600">
+                  <span className="text-ink-subtle">
                     {" "}
                     · {t("mediaLimit", { max, accept: c.policy.accept?.join(", ") || c.mediaKind })}
                   </span>
                 </label>
-                <div className="rounded-2xl border border-dashed border-white/15 bg-white/[0.02] p-3">
+                <div className="rounded-2xl border border-dashed border-line bg-black/[0.03] p-3">
                   {(value.mediaUrls?.[c.key]?.length ?? 0) > 0 && (
                     // 套用历史任务带回来的图：已经在对象存储里，不必重新上传
                     <div className="flex flex-wrap gap-2 mb-2">
@@ -308,7 +308,7 @@ export function DynamicParamForm({
                             // eslint-disable-next-line @next/next/no-img-element
                             <img src={url} alt="" className="h-16 w-16 object-cover rounded-lg" />
                           ) : (
-                            <div className="h-16 w-24 rounded-lg bg-black/40 text-[10px] text-gray-400 flex items-center justify-center px-1 truncate">
+                            <div className="h-16 w-24 rounded-lg bg-black/[0.04] text-[10px] text-ink-muted flex items-center justify-center px-1 truncate">
                               {url.split("/").pop()}
                             </div>
                           )}
@@ -338,7 +338,7 @@ export function DynamicParamForm({
                               className="h-16 w-16 object-cover rounded-lg"
                             />
                           ) : (
-                            <div className="h-16 w-24 rounded-lg bg-black/40 text-[10px] text-gray-400 flex items-center justify-center px-1 truncate">
+                            <div className="h-16 w-24 rounded-lg bg-black/[0.04] text-[10px] text-ink-muted flex items-center justify-center px-1 truncate">
                               {m.file.name}
                             </div>
                           )}
@@ -362,7 +362,7 @@ export function DynamicParamForm({
                       void handleFiles(c, e.target.files);
                       e.target.value = "";
                     }}
-                    className="text-xs text-gray-400 w-full"
+                    className="text-xs text-ink-muted w-full"
                   />
                 </div>
               </div>

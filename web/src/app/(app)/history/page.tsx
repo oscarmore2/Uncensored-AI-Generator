@@ -98,11 +98,11 @@ export default function HistoryPage() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder={t("search")}
-            className="bg-[#111] border border-white/10 px-4 py-2 rounded-2xl text-sm w-64 focus:border-orange-500/50 outline-none"
+            className="bg-surface border border-line px-4 py-2 rounded-2xl text-sm w-64 focus:border-orange-500/50 outline-none"
           />
           <button
             onClick={load}
-            className="px-4 py-2 text-sm bg-white/5 hover:bg-white/10 border border-white/10 rounded-2xl flex items-center gap-x-2"
+            className="px-4 py-2 text-sm bg-black/[0.03] hover:bg-black/[0.06] border border-line rounded-2xl flex items-center gap-x-2"
           >
             <i className="fas fa-sync-alt" /> <span className="hidden md:inline">{t("refresh")}</span>
           </button>
@@ -111,8 +111,8 @@ export default function HistoryPage() {
 
       {loaded && filtered.length === 0 ? (
         <div className="text-center py-16">
-          <i className="fas fa-images text-6xl text-gray-700 mb-4" />
-          <p className="text-gray-400">
+          <i className="fas fa-images text-6xl text-ink-subtle mb-4" />
+          <p className="text-ink-muted">
             {t("empty")}
             <br />
             {t("emptyHint")}
@@ -126,7 +126,7 @@ export default function HistoryPage() {
               onClick={() => setSelected(item)}
               className="result-card glass rounded-3xl overflow-hidden cursor-pointer"
             >
-              <div className="relative aspect-[4/3] overflow-hidden">
+              <div className="relative aspect-[4/3] overflow-hidden bg-stage">
                 {item.status === "succeeded" && item.result_urls?.length ? (
                   // 视频抽首帧、3D 用输入图或图标；早先一律用 <img> 导致视频/3D 裂图
                   <MediaThumb
@@ -140,7 +140,7 @@ export default function HistoryPage() {
                 ) : (
                   <div className="fake-image w-full h-full flex items-center justify-center">
                     <i
-                      className={`fas ${item.status === "failed" ? "fa-triangle-exclamation text-red-400" : "fa-spinner fa-spin"} text-3xl`}
+                      className={`fas ${item.status === "failed" ? "fa-triangle-exclamation text-red-700" : "fa-spinner fa-spin"} text-3xl`}
                     />
                   </div>
                 )}
@@ -150,12 +150,12 @@ export default function HistoryPage() {
                   </div>
                 )}
                 <div className="absolute top-3 left-3">
-                  <span className="text-[10px] px-2.5 py-px bg-black/60 rounded-full">{item.mode}</span>
+                  <span className="text-[10px] px-2.5 py-px bg-black/60 rounded-full text-white">{item.mode}</span>
                   {item.is_adult && (
-                    <span className="ml-1 rounded-full bg-red-600 px-2 py-px text-[10px] font-bold text-white">18+</span>
+                    <span className="ml-1 rounded-full bg-red-700 px-2 py-px text-[10px] font-bold text-white">18+</span>
                   )}
                 </div>
-                <div className="absolute top-3 right-3 text-[10px] px-2 py-px bg-black/70 rounded-full">
+                <div className="absolute top-3 right-3 text-[10px] px-2 py-px bg-black/70 rounded-full text-white">
                   {item.cost}pt
                 </div>
               </div>
@@ -165,12 +165,12 @@ export default function HistoryPage() {
                   deletedAt={item.media_deleted_at}
                   compact
                 />
-                <div className="text-xs text-gray-400 mb-1">
+                <div className="text-xs text-ink-muted mb-1">
                   {new Date(item.created_at).toLocaleDateString(locale)}
                 </div>
                 <div className="text-sm line-clamp-2">{item.prompt}</div>
                 <div
-                  className={`mt-3 text-xs ${item.status === "failed" ? "text-red-400" : "text-emerald-400"}`}
+                  className={`mt-3 text-xs ${item.status === "failed" ? "text-red-700" : "text-emerald-700"}`}
                 >
                   {t.has(`statuses.${item.status}`) ? t(`statuses.${item.status}` as "statuses.pending") : item.status}
                 </div>
@@ -182,20 +182,20 @@ export default function HistoryPage() {
 
       {selected && (
         <div
-          className="fixed inset-0 bg-black/95 z-[110] flex items-center justify-center p-4"
+          className="fixed inset-0 bg-black/95 z-[110] flex items-center justify-center p-4 text-white"
           onClick={(e) => {
             if (e.target === e.currentTarget) setSelected(null);
           }}
         >
           <div className="max-w-3xl w-full glass rounded-3xl overflow-hidden modal-pop">
-            <div className="p-5 flex justify-between border-b border-white/10">
+            <div className="p-5 flex justify-between border-b border-line">
               <div>
                 <span className="font-semibold">{selected.mode}</span>
                 {selected.is_adult && (
-                  <span className="ml-2 rounded-full bg-red-600 px-2 py-0.5 text-[10px] font-bold text-white">18+</span>
+                  <span className="ml-2 rounded-full bg-red-700 px-2 py-0.5 text-[10px] font-bold text-white">18+</span>
                 )}
               </div>
-              <button onClick={() => setSelected(null)} className="text-3xl text-gray-400 hover:text-white">
+              <button onClick={() => setSelected(null)} className="text-3xl text-ink-muted hover:text-ink">
                 &times;
               </button>
             </div>
@@ -211,7 +211,7 @@ export default function HistoryPage() {
                   </div>
                 </div>
               )}
-              <div className="mt-6 text-sm bg-black/40 p-4 rounded-2xl">{selected.prompt}</div>
+              <div className="mt-6 text-sm bg-black/[0.04] p-4 rounded-2xl">{selected.prompt}</div>
               <div className="mt-3">
                 <MediaExpiryBadge
                   expiresAt={selected.media_expires_at}
@@ -225,14 +225,14 @@ export default function HistoryPage() {
                     download={`wanwankewu_${selected.id}${selected.mode.endsWith("vid") ? ".mp4" : ".jpg"}`}
                     target="_blank"
                     rel="noopener"
-                    className="flex-1 py-3 bg-white text-black font-semibold rounded-2xl flex items-center justify-center gap-x-2"
+                    className="flex-1 py-3 bg-orange-700 text-white font-semibold rounded-2xl flex items-center justify-center gap-x-2"
                   >
                     <i className="fas fa-download" /> {t("download")}
                   </a>
                 ) : null}
                 <button
                   onClick={() => setSelected(null)}
-                  className="flex-1 py-3 bg-white/5 border border-white/10 rounded-2xl"
+                  className="flex-1 py-3 bg-black/[0.03] border border-line rounded-2xl"
                 >
                   {t("close")}
                 </button>
@@ -241,14 +241,14 @@ export default function HistoryPage() {
                 <button
                   onClick={() => void openInMake(selected, false)}
                   disabled={checking}
-                  className="flex-1 py-3 bg-white/5 border border-white/10 rounded-2xl flex items-center justify-center gap-x-2 disabled:opacity-40"
+                  className="flex-1 py-3 bg-black/[0.03] border border-line rounded-2xl flex items-center justify-center gap-x-2 disabled:opacity-40"
                 >
                   <i className="fas fa-rotate-left" /> {t("reuse")}
                 </button>
                 <button
                   onClick={() => void openInMake(selected, true)}
                   disabled={checking}
-                  className="flex-1 py-3 bg-orange-600 hover:bg-orange-500 rounded-2xl font-semibold flex items-center justify-center gap-x-2 disabled:opacity-40"
+                  className="flex-1 py-3 bg-orange-700 hover:bg-orange-600 rounded-2xl font-semibold flex items-center justify-center gap-x-2 disabled:opacity-40"
                 >
                   <i className="fas fa-rotate-right" /> {t("retry")}
                 </button>

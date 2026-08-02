@@ -119,7 +119,7 @@ export function TurnstileWidget({ siteKey, onToken, resetKey }: Props) {
         data-sitekey={siteKey}
         data-action="turnstile-spin-v2"
       />
-      <p className="text-[10px] text-gray-500">Protected by Cloudflare Turnstile</p>
+      <p className="text-[10px] text-ink-subtle">Protected by Cloudflare Turnstile</p>
     </div>
   );
 }

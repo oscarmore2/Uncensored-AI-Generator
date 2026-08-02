@@ -32,15 +32,15 @@ interface ListResp {
 }
 
 const STATUS_COLORS: Record<string, string> = {
-  finished: "bg-emerald-500/15 text-emerald-300",
-  confirmed: "bg-cyan-500/15 text-cyan-300",
-  confirming: "bg-cyan-500/15 text-cyan-300",
-  partially_paid: "bg-amber-500/15 text-amber-300",
-  amount_mismatch: "bg-red-500/15 text-red-300",
-  expired: "bg-gray-500/20 text-gray-400",
-  failed: "bg-red-500/15 text-red-300",
-  refunded: "bg-purple-500/15 text-purple-300",
-  create_failed: "bg-red-500/15 text-red-300",
+  finished: "bg-emerald-500/15 text-emerald-700",
+  confirmed: "bg-cyan-500/15 text-cyan-700",
+  confirming: "bg-cyan-500/15 text-cyan-700",
+  partially_paid: "bg-amber-500/15 text-amber-800",
+  amount_mismatch: "bg-red-500/15 text-red-700",
+  expired: "bg-gray-500/20 text-ink-muted",
+  failed: "bg-red-500/15 text-red-700",
+  refunded: "bg-purple-500/15 text-purple-700",
+  create_failed: "bg-red-500/15 text-red-700",
 };
 
 export default function AdminCryptoPage() {
@@ -107,7 +107,7 @@ export default function AdminCryptoPage() {
   return (
     <div>
       <h1 className="text-3xl font-bold tracking-tighter mb-1">加密订单</h1>
-      <p className="text-gray-400 text-sm mb-6">NOWPayments 支付订单 · IPN 状态与金额核对 · 支持人工入账</p>
+      <p className="text-ink-muted text-sm mb-6">NOWPayments 支付订单 · IPN 状态与金额核对 · 支持人工入账</p>
 
       <div className="flex gap-3 mb-5">
         <select
@@ -116,7 +116,7 @@ export default function AdminCryptoPage() {
             setCredited(e.target.value);
             setPage(1);
           }}
-          className="bg-[#111] border border-white/10 rounded-xl px-3 py-2 text-sm"
+          className="bg-surface border border-line rounded-xl px-3 py-2 text-sm"
         >
           <option value="">全部</option>
           <option value="1">已入账</option>
@@ -124,13 +124,13 @@ export default function AdminCryptoPage() {
         </select>
       </div>
 
-      {error && <p className="mb-4 text-sm text-red-400">{error}</p>}
-      {msg && <p className="mb-4 text-sm text-amber-300">{msg}</p>}
+      {error && <p className="mb-4 text-sm text-red-700">{error}</p>}
+      {msg && <p className="mb-4 text-sm text-amber-800">{msg}</p>}
 
       <div className="glass rounded-3xl overflow-x-auto">
         <table className="w-full text-sm min-w-[980px]">
           <thead>
-            <tr className="text-left text-xs text-gray-400 border-b border-white/10">
+            <tr className="text-left text-xs text-ink-muted border-b border-line">
               <th className="px-4 py-3">订单号</th>
               <th className="px-4 py-3">用户</th>
               <th className="px-4 py-3">点数</th>
@@ -145,43 +145,43 @@ export default function AdminCryptoPage() {
           </thead>
           <tbody>
             {data?.payments.map((p) => (
-              <tr key={p.id} className="border-b border-white/5 hover:bg-white/[0.02]">
-                <td className="px-4 py-3 font-mono text-xs text-gray-400" title={p.order_id}>
+              <tr key={p.id} className="border-b border-line hover:bg-black/[0.03]">
+                <td className="px-4 py-3 font-mono text-xs text-ink-muted" title={p.order_id}>
                   {p.order_id.length > 22 ? `${p.order_id.slice(0, 22)}…` : p.order_id}
-                  <div className="mt-1 font-sans text-[10px] text-gray-600">
+                  <div className="mt-1 font-sans text-[10px] text-ink-subtle">
                     {p.account ? p.account.label : "ENV / 旧订单"}
                   </div>
                 </td>
                 <td className="px-4 py-3">
-                  <Link href={`/admin/users/${p.user_id}`} className="hover:text-orange-300">
+                  <Link href={`/admin/users/${p.user_id}`} className="hover:text-orange-800">
                     {p.username}
                   </Link>{" "}
-                  <span className="text-gray-500 text-xs">#{p.user_id}</span>
+                  <span className="text-ink-subtle text-xs">#{p.user_id}</span>
                 </td>
                 <td className="px-4 py-3 font-mono">{p.credits}</td>
                 <td className="px-4 py-3 font-mono text-xs">${(p.amount_usd_cents / 100).toFixed(2)}</td>
                 <td className="px-4 py-3">
                   <span
-                    className={`text-xs px-2 py-0.5 rounded-full ${STATUS_COLORS[p.status] ?? "bg-amber-500/15 text-amber-300"}`}
+                    className={`text-xs px-2 py-0.5 rounded-full ${STATUS_COLORS[p.status] ?? "bg-amber-500/15 text-amber-800"}`}
                   >
                     {p.status}
                   </span>
                 </td>
                 <td className="px-4 py-3">
                   {p.credited ? (
-                    <i className="fas fa-check text-emerald-400" />
+                    <i className="fas fa-check text-emerald-700" />
                   ) : (
-                    <i className="fas fa-minus text-gray-500" />
+                    <i className="fas fa-minus text-ink-subtle" />
                   )}
                 </td>
-                <td className="px-4 py-3 text-xs text-gray-400">
+                <td className="px-4 py-3 text-xs text-ink-muted">
                   {p.payer_currency ?? "—"}
                   {p.network ? ` / ${p.network}` : ""}
                 </td>
-                <td className="px-4 py-3 font-mono text-[10px] text-gray-500" title={p.txid ?? ""}>
+                <td className="px-4 py-3 font-mono text-[10px] text-ink-subtle" title={p.txid ?? ""}>
                   {p.txid ? `${p.txid.slice(0, 10)}…` : "—"}
                 </td>
-                <td className="px-4 py-3 text-xs text-gray-500">{new Date(p.created_at).toLocaleString("zh-CN")}</td>
+                <td className="px-4 py-3 text-xs text-ink-subtle">{new Date(p.created_at).toLocaleString("zh-CN")}</td>
                 <td className="px-4 py-3 text-right">
                   {!p.credited && (
                     <button
@@ -197,7 +197,7 @@ export default function AdminCryptoPage() {
             ))}
             {data && data.payments.length === 0 && (
               <tr>
-                <td colSpan={10} className="px-4 py-10 text-center text-gray-500">
+                <td colSpan={10} className="px-4 py-10 text-center text-ink-subtle">
                   暂无加密支付订单
                 </td>
               </tr>
@@ -211,17 +211,17 @@ export default function AdminCryptoPage() {
           <button
             disabled={page <= 1}
             onClick={() => setPage((p) => p - 1)}
-            className="px-5 py-2 border border-white/10 rounded-2xl hover:bg-white/5 disabled:opacity-40"
+            className="px-5 py-2 border border-line rounded-2xl hover:bg-black/[0.04] disabled:opacity-40"
           >
             上一页
           </button>
-          <span className="px-4 py-2 text-gray-400">
+          <span className="px-4 py-2 text-ink-muted">
             {page} / {totalPages}
           </span>
           <button
             disabled={page >= totalPages}
             onClick={() => setPage((p) => p + 1)}
-            className="px-5 py-2 border border-white/10 rounded-2xl hover:bg-white/5 disabled:opacity-40"
+            className="px-5 py-2 border border-line rounded-2xl hover:bg-black/[0.04] disabled:opacity-40"
           >
             下一页
           </button>

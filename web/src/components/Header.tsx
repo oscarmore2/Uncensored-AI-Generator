@@ -62,7 +62,7 @@ export function Header() {
   }
 
   return (
-    <header className="sticky top-0 z-50 border-b border-white/10 bg-[#0a0a0a]/95 backdrop-blur-xl">
+    <header className="sticky top-0 z-50 border-b border-line bg-surface/95 backdrop-blur-xl">
       <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
         <BrandLogo href="/make" compact />
 
@@ -72,7 +72,7 @@ export function Header() {
               key={item.href}
               href={item.href}
               className={`nav-item px-5 py-2 text-sm font-medium ${
-                pathname === item.href ? "nav-active text-white" : "text-gray-300 hover:text-white"
+                pathname === item.href ? "nav-active text-ink" : "text-ink-muted hover:text-ink"
               }`}
             >
               {item.label}
@@ -89,25 +89,25 @@ export function Header() {
             className="credit-display flex items-center gap-x-2 px-4 h-9 rounded-2xl cursor-pointer hover:border-orange-500/50 transition-colors"
           >
             <div className="flex items-center gap-x-1.5">
-              <i className="fas fa-coins text-amber-400" />
+              <i className="fas fa-coins text-amber-800" />
               <span className="font-mono font-semibold text-lg stat-number">{user?.balance ?? "—"}</span>
             </div>
-            <span className="text-xs text-gray-400">{common("credits")}</span>
+            <span className="text-xs text-ink-muted">{common("credits")}</span>
           </div>
 
           <Link href="/profile" className="flex items-center gap-x-2 cursor-pointer">
-            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-orange-600 to-amber-800 border border-white/20 flex items-center justify-center text-xs font-bold uppercase">
+            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-orange-600 to-amber-800 border border-line-strong flex items-center justify-center text-xs font-bold uppercase">
               {user?.username.slice(0, 2) ?? "?"}
             </div>
             <div className="hidden md:block">
               <div className="text-sm font-medium">{user?.username ?? t("notLoggedIn")}</div>
-              <div className="text-[10px] text-emerald-400 -mt-0.5">{user ? t("loggedIn") : ""}</div>
+              <div className="text-[10px] text-emerald-700 -mt-0.5">{user ? t("loggedIn") : ""}</div>
             </div>
           </Link>
 
           <button
             onClick={() => router.push("/pricing")}
-            className="hidden md:flex items-center gap-x-2 px-4 h-9 text-sm font-semibold bg-white/5 hover:bg-white/10 border border-white/10 rounded-2xl transition-all active:scale-[0.985]"
+            className="hidden md:flex items-center gap-x-2 px-4 h-9 text-sm font-semibold bg-black/[0.03] hover:bg-black/[0.06] border border-line rounded-2xl transition-all active:scale-[0.985]"
           >
             <i className="fas fa-wallet" />
             <span>{t("recharge")}</span>
@@ -116,7 +116,7 @@ export function Header() {
           {user && (
             <button
               onClick={logout}
-              className="hidden md:block px-3 h-9 text-xs text-gray-400 hover:text-white border border-white/10 rounded-2xl"
+              className="hidden md:block px-3 h-9 text-xs text-ink-muted hover:text-ink border border-line rounded-2xl"
             >
               {t("logout")}
             </button>
@@ -132,7 +132,7 @@ export function Header() {
       </div>
 
       {mobileOpen && (
-        <div className="fixed inset-0 bg-black/90 z-[120] md:hidden flex flex-col p-6">
+        <div className="fixed inset-0 bg-black/90 z-[120] md:hidden flex flex-col p-6 text-white">
           <div className="flex justify-between mb-8">
             <BrandLogo href="/make" compact />
             <button className="text-4xl" onClick={() => setMobileOpen(false)}>
@@ -154,7 +154,7 @@ export function Header() {
               router.push("/pricing");
               setMobileOpen(false);
             }}
-            className="mt-auto py-4 bg-white text-black font-bold rounded-3xl"
+            className="mt-auto py-4 bg-orange-700 text-white font-bold rounded-3xl"
           >
             {t("rechargeCredits")}
           </button>

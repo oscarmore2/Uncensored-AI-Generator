@@ -112,12 +112,12 @@ export default function MediaCleanupPage() {
     <div className="space-y-7">
       <div>
         <h1 className="text-3xl font-bold tracking-tighter mb-1">自动媒体清理</h1>
-        <p className="text-sm text-gray-400">
+        <p className="text-sm text-ink-muted">
           精选作品不清理；修改策略会立即重算现有未精选媒体的到期时间。
         </p>
       </div>
 
-      {message && <div className="rounded-2xl border border-amber-400/20 bg-amber-500/10 px-4 py-3 text-sm text-amber-200">{message}</div>}
+      {message && <div className="rounded-2xl border border-amber-400/20 bg-amber-500/10 px-4 py-3 text-sm text-amber-800">{message}</div>}
 
       <div className="grid grid-cols-3 gap-4">
         {[
@@ -126,16 +126,16 @@ export default function MediaCleanupPage() {
           ["玩物专区", data?.pending.plaything_generations ?? 0],
         ].map(([label, value]) => (
           <div key={String(label)} className="glass rounded-2xl p-4">
-            <div className="text-xs text-gray-500">{label} · 有到期策略</div>
+            <div className="text-xs text-ink-subtle">{label} · 有到期策略</div>
             <div className="text-2xl font-bold mt-1">{value}</div>
           </div>
         ))}
       </div>
 
       <div className="glass rounded-3xl overflow-hidden">
-        <div className="p-5 border-b border-white/10">
+        <div className="p-5 border-b border-line">
           <h2 className="font-semibold">保留策略</h2>
-          <p className="text-xs text-gray-500 mt-1">保留天数从媒体创建时开始计算，可设 1–3650 天。</p>
+          <p className="text-xs text-ink-subtle mt-1">保留天数从媒体创建时开始计算，可设 1–3650 天。</p>
         </div>
         <div className="divide-y divide-white/5">
           {policies.map((item) => {
@@ -145,7 +145,7 @@ export default function MediaCleanupPage() {
               <div key={item.id} className="grid grid-cols-[1fr_170px_150px] items-center gap-5 px-5 py-4">
                 <div>
                   <div className="text-sm font-medium">{labels[key] ?? key}</div>
-                  <div className="text-[11px] text-gray-500 font-mono mt-1">{key}</div>
+                  <div className="text-[11px] text-ink-subtle font-mono mt-1">{key}</div>
                 </div>
                 <label className="flex items-center gap-2 text-sm">
                   <input
@@ -160,11 +160,11 @@ export default function MediaCleanupPage() {
                         retention_days: Math.max(1, Math.trunc(Number(event.target.value) || 1)),
                       })
                     }
-                    className="w-24 bg-black/30 border border-white/10 rounded-xl px-3 py-2 disabled:opacity-40"
+                    className="w-24 bg-black/[0.04] border border-line rounded-xl px-3 py-2 disabled:opacity-40"
                   />
-                  <span className="text-gray-400">天</span>
+                  <span className="text-ink-muted">天</span>
                 </label>
-                <label className="flex items-center gap-2 text-sm text-gray-300 cursor-pointer">
+                <label className="flex items-center gap-2 text-sm text-ink-muted cursor-pointer">
                   <input
                     type="checkbox"
                     checked={never}
@@ -178,12 +178,12 @@ export default function MediaCleanupPage() {
             );
           })}
         </div>
-        <div className="p-5 border-t border-white/10 flex justify-end">
+        <div className="p-5 border-t border-line flex justify-end">
           <button
             type="button"
             disabled={busy || !data}
             onClick={save}
-            className="px-5 py-2.5 rounded-2xl bg-white text-black text-sm font-semibold disabled:opacity-50"
+            className="px-5 py-2.5 rounded-2xl bg-orange-700 text-white text-sm font-semibold disabled:opacity-50"
           >
             保存并重算
           </button>
@@ -194,10 +194,10 @@ export default function MediaCleanupPage() {
         <div className="flex items-center justify-between gap-4 mb-4">
           <div>
             <h2 className="font-semibold">手动执行</h2>
-            <p className="text-xs text-gray-500 mt-1">先试运行确认数量；正式清理会删除对象存储文件并清空媒体地址。</p>
+            <p className="text-xs text-ink-subtle mt-1">先试运行确认数量；正式清理会删除对象存储文件并清空媒体地址。</p>
           </div>
           <div className="flex gap-2">
-            <button disabled={busy} onClick={() => run(true)} className="px-4 py-2 rounded-xl border border-white/10 text-sm disabled:opacity-50">
+            <button disabled={busy} onClick={() => run(true)} className="px-4 py-2 rounded-xl border border-line text-sm disabled:opacity-50">
               试运行
             </button>
             <button disabled={busy} onClick={() => run(false)} className="px-4 py-2 rounded-xl bg-red-600/80 text-sm disabled:opacity-50">
@@ -207,8 +207,8 @@ export default function MediaCleanupPage() {
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-xs">
-            <thead className="text-gray-500">
-              <tr className="border-b border-white/10">
+            <thead className="text-ink-subtle">
+              <tr className="border-b border-line">
                 <th className="text-left py-2">时间</th>
                 <th className="text-left">类型</th>
                 <th className="text-left">状态</th>
@@ -219,7 +219,7 @@ export default function MediaCleanupPage() {
             </thead>
             <tbody>
               {data?.runs.map((runItem) => (
-                <tr key={runItem.id} className="border-b border-white/5 text-gray-300">
+                <tr key={runItem.id} className="border-b border-line text-ink-muted">
                   <td className="py-2">{new Date(runItem.started_at).toLocaleString()}</td>
                   <td>{runItem.dry_run ? "试运行" : "正式"}</td>
                   <td>{runItem.status}</td>
@@ -230,7 +230,7 @@ export default function MediaCleanupPage() {
               ))}
             </tbody>
           </table>
-          {data?.runs.length === 0 && <p className="py-6 text-center text-gray-500">暂无执行记录</p>}
+          {data?.runs.length === 0 && <p className="py-6 text-center text-ink-subtle">暂无执行记录</p>}
         </div>
       </div>
     </div>

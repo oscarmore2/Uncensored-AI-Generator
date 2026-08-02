@@ -48,7 +48,7 @@ export default function ModUsersPage() {
   return (
     <div>
       <h1 className="text-3xl font-bold tracking-tighter mb-1">用户作品</h1>
-      <p className="text-gray-400 text-sm mb-6">按用户查看与管理生成内容</p>
+      <p className="text-ink-muted text-sm mb-6">按用户查看与管理生成内容</p>
 
       <input
         value={q}
@@ -57,15 +57,15 @@ export default function ModUsersPage() {
           setPage(1);
         }}
         placeholder="搜索用户名..."
-        className="w-full max-w-sm mb-5 bg-[#111] border border-white/10 focus:border-orange-500/60 rounded-2xl px-4 py-2.5 text-sm outline-none"
+        className="w-full max-w-sm mb-5 bg-surface border border-line focus:border-orange-500/60 rounded-2xl px-4 py-2.5 text-sm outline-none"
       />
 
-      {error && <p className="mb-4 text-sm text-red-400">{error}</p>}
+      {error && <p className="mb-4 text-sm text-red-700">{error}</p>}
 
       <div className="glass rounded-3xl overflow-hidden">
         <table className="w-full text-sm">
           <thead>
-            <tr className="text-left text-xs text-gray-400 border-b border-white/10">
+            <tr className="text-left text-xs text-ink-muted border-b border-line">
               <th className="px-5 py-3">ID</th>
               <th className="px-5 py-3">用户名</th>
               <th className="px-5 py-3">角色</th>
@@ -77,17 +77,17 @@ export default function ModUsersPage() {
           </thead>
           <tbody>
             {data?.users.map((u) => (
-              <tr key={u.id} className="border-b border-white/5 hover:bg-white/[0.02]">
-                <td className="px-5 py-3 font-mono text-gray-400">#{u.id}</td>
+              <tr key={u.id} className="border-b border-line hover:bg-black/[0.03]">
+                <td className="px-5 py-3 font-mono text-ink-muted">#{u.id}</td>
                 <td className="px-5 py-3 font-medium">{u.username}</td>
                 <td className="px-5 py-3">
                   <span
                     className={`text-xs px-2 py-0.5 rounded-full ${
                       u.role === "admin"
-                        ? "bg-orange-500/15 text-orange-300"
+                        ? "bg-orange-500/15 text-orange-700"
                         : u.role === "moderator"
-                          ? "bg-amber-500/15 text-amber-300"
-                          : "bg-white/10 text-gray-300"
+                          ? "bg-amber-500/15 text-amber-800"
+                          : "bg-black/[0.06] text-ink-muted"
                     }`}
                   >
                     {u.role}
@@ -95,11 +95,11 @@ export default function ModUsersPage() {
                 </td>
                 <td className="px-5 py-3 font-mono">{u.balance}</td>
                 <td className="px-5 py-3 font-mono">{u.generation_count}</td>
-                <td className="px-5 py-3 text-xs text-gray-500">
+                <td className="px-5 py-3 text-xs text-ink-subtle">
                   {new Date(u.created_at).toLocaleDateString("zh-CN")}
                 </td>
                 <td className="px-5 py-3 text-right">
-                  <Link href={`/mod/users/${u.id}`} className="text-xs text-orange-400 hover:text-orange-300">
+                  <Link href={`/mod/users/${u.id}`} className="text-xs text-orange-700 hover:text-orange-800">
                     查看作品 <i className="fas fa-arrow-right ml-1" />
                   </Link>
                 </td>
@@ -107,7 +107,7 @@ export default function ModUsersPage() {
             ))}
             {data && data.users.length === 0 && (
               <tr>
-                <td colSpan={7} className="px-5 py-10 text-center text-gray-500">
+                <td colSpan={7} className="px-5 py-10 text-center text-ink-subtle">
                   没有匹配的用户
                 </td>
               </tr>
@@ -121,17 +121,17 @@ export default function ModUsersPage() {
           <button
             disabled={page <= 1}
             onClick={() => setPage((p) => p - 1)}
-            className="px-5 py-2 border border-white/10 rounded-2xl hover:bg-white/5 disabled:opacity-40"
+            className="px-5 py-2 border border-line rounded-2xl hover:bg-black/[0.04] disabled:opacity-40"
           >
             上一页
           </button>
-          <span className="px-4 py-2 text-gray-400">
+          <span className="px-4 py-2 text-ink-muted">
             {page} / {totalPages}
           </span>
           <button
             disabled={page >= totalPages}
             onClick={() => setPage((p) => p + 1)}
-            className="px-5 py-2 border border-white/10 rounded-2xl hover:bg-white/5 disabled:opacity-40"
+            className="px-5 py-2 border border-line rounded-2xl hover:bg-black/[0.04] disabled:opacity-40"
           >
             下一页
           </button>

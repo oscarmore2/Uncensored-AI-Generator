@@ -64,13 +64,13 @@ export default async function ExplorePage({
         <div className="flex flex-wrap items-end justify-between gap-4 mb-8">
           <div>
             <h1 className="text-4xl font-bold tracking-tighter">{t("title")}</h1>
-            <p className="text-gray-400 mt-1">{t("subtitle")}</p>
+            <p className="text-ink-muted mt-1">{t("subtitle")}</p>
           </div>
           <div className="flex gap-2">
             <Link
               href="/explore"
               className={`px-4 py-2 text-sm rounded-2xl border ${
-                !mode ? "bg-orange-600 border-orange-600 text-white" : "border-white/10 text-gray-300 hover:bg-white/5"
+                !mode ? "bg-orange-700 border-orange-700 text-white" : "border-line text-ink-muted hover:bg-black/[0.04]"
               }`}
             >
               {t("all")}
@@ -81,8 +81,8 @@ export default async function ExplorePage({
                 href={`/explore?mode=${key}`}
                 className={`px-4 py-2 text-sm rounded-2xl border ${
                   mode === key
-                    ? "bg-orange-600 border-orange-600 text-white"
-                    : "border-white/10 text-gray-300 hover:bg-white/5"
+                    ? "bg-orange-700 border-orange-700 text-white"
+                    : "border-line text-ink-muted hover:bg-black/[0.04]"
                 }`}
               >
                 {t(`modes.${key}`)}
@@ -92,8 +92,8 @@ export default async function ExplorePage({
         </div>
 
         {works.length === 0 ? (
-          <div className="glass rounded-3xl p-16 text-center text-gray-400">
-            <i className="fas fa-images text-4xl mb-4 block text-gray-600" />
+          <div className="glass rounded-3xl p-16 text-center text-ink-muted">
+            <i className="fas fa-images text-4xl mb-4 block text-ink-subtle" />
             {t("empty")}
           </div>
         ) : (
@@ -111,18 +111,18 @@ export default async function ExplorePage({
             {page > 1 && (
               <Link
                 href={`/explore?page=${page - 1}${mode ? `&mode=${mode}` : ""}`}
-                className="px-5 py-2 border border-white/10 rounded-2xl hover:bg-white/5"
+                className="px-5 py-2 border border-line rounded-2xl hover:bg-black/[0.04]"
               >
                 {t("previous")}
               </Link>
             )}
-            <span className="px-5 py-2 text-gray-400">
+            <span className="px-5 py-2 text-ink-muted">
               {page} / {totalPages}
             </span>
             {page < totalPages && (
               <Link
                 href={`/explore?page=${page + 1}${mode ? `&mode=${mode}` : ""}`}
-                className="px-5 py-2 border border-white/10 rounded-2xl hover:bg-white/5"
+                className="px-5 py-2 border border-line rounded-2xl hover:bg-black/[0.04]"
               >
                 {t("next")}
               </Link>

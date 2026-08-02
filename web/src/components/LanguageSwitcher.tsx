@@ -18,14 +18,14 @@ export function LanguageSwitcher({ compact = false }: { compact?: boolean }) {
   }
 
   return (
-    <label className={`inline-flex items-center gap-1 text-gray-400 ${compact ? "text-xs" : "text-sm"}`}>
+    <label className={`inline-flex items-center gap-1 text-ink-muted ${compact ? "text-xs" : "text-sm"}`}>
       <i className="fas fa-language" aria-hidden />
       <span className="sr-only">{t("label")}</span>
       <select
         value={locale}
         onChange={(event) => change(event.target.value as AppLocale)}
         aria-label={t("label")}
-        className="rounded-lg border border-white/10 bg-[#111] px-2 py-1 text-gray-200 outline-none"
+        className="rounded-lg border border-line bg-surface px-2 py-1 text-ink outline-none"
       >
         <option value="zh-CN">简体中文</option>
         <option value="en">English</option>

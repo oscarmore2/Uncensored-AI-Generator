@@ -136,7 +136,7 @@ export function RechargeModal() {
 
   return (
     <div
-      className="fixed inset-0 bg-black/90 z-[90] flex items-center justify-center p-4"
+      className="fixed inset-0 bg-black/90 z-[90] flex items-center justify-center p-4 text-white"
       onClick={(e) => {
         if (e.target === e.currentTarget) setRechargeOpen(false);
       }}
@@ -144,7 +144,7 @@ export function RechargeModal() {
       <div className="max-w-lg w-full glass rounded-3xl p-7 modal-pop max-h-[90vh] overflow-y-auto">
         <div className="flex justify-between items-center mb-6">
           <h3 className="text-2xl font-bold">充值点数</h3>
-          <button onClick={() => setRechargeOpen(false)} className="text-2xl text-gray-400 hover:text-white">
+          <button onClick={() => setRechargeOpen(false)} className="text-2xl text-ink-muted hover:text-ink">
             &times;
           </button>
         </div>
@@ -157,12 +157,12 @@ export function RechargeModal() {
               <div
                 key={p.id}
                 onClick={() => setSelected(p.credits)}
-                className={`package-card cursor-pointer rounded-2xl p-4 bg-black/30 relative border ${
+                className={`package-card cursor-pointer rounded-2xl p-4 bg-black/[0.04] relative border ${
                   selected === p.credits
                     ? "selected border-orange-500"
                     : p.badge
                       ? "border-2 border-orange-500"
-                      : "border-white/20"
+                      : "border-line-strong"
                 }`}
               >
                 {p.badge && (
@@ -174,19 +174,19 @@ export function RechargeModal() {
                   <div>
                     <div className="font-semibold">{p.label}</div>
                     <div className="text-3xl font-mono font-bold mt-1">
-                      {p.credits} <span className="text-xs align-super text-gray-400">点</span>
+                      {p.credits} <span className="text-xs align-super text-ink-muted">点</span>
                     </div>
                   </div>
                   <div className="text-right">
                     <div className="text-xl font-semibold">${price.toFixed(0)}</div>
-                    <div className="text-[10px] text-emerald-400">${per.toFixed(3)}/点</div>
+                    <div className="text-[10px] text-emerald-700">${per.toFixed(3)}/点</div>
                   </div>
                 </div>
               </div>
             );
           })}
           {packages.length === 0 && (
-            <p className="text-sm text-gray-500 col-span-2">暂无充值套餐，请联系管理员配置</p>
+            <p className="text-sm text-ink-subtle col-span-2">暂无充值套餐，请联系管理员配置</p>
           )}
         </div>
 
@@ -198,9 +198,9 @@ export function RechargeModal() {
             <div className="flex items-center justify-between gap-3">
               <div>
                 <div className="font-semibold flex items-center gap-x-2">
-                  <i className="fas fa-crown text-amber-400" /> {plan.label}
+                  <i className="fas fa-crown text-amber-800" /> {plan.label}
                 </div>
-                <div className="text-xs text-gray-400">
+                <div className="text-xs text-ink-muted">
                   {plan.tier.name}
                   {plan.tier.discount_percent > 0
                     ? ` · 生成折扣 ${plan.tier.discount_percent}%`
@@ -247,7 +247,7 @@ export function RechargeModal() {
         <button
           onClick={() => void rechargeCrypto()}
           disabled={!pkg || busy || cryptoWaiting}
-          className="mt-3 w-full py-4 bg-white/5 hover:bg-white/10 border border-emerald-500/40 text-emerald-300 font-bold rounded-3xl flex items-center justify-center gap-x-2 disabled:opacity-50"
+          className="mt-3 w-full py-4 bg-black/[0.03] hover:bg-black/[0.06] border border-emerald-500/40 text-emerald-700 font-bold rounded-3xl flex items-center justify-center gap-x-2 disabled:opacity-50"
         >
           {cryptoWaiting ? (
             <span>
@@ -260,7 +260,7 @@ export function RechargeModal() {
             </span>
           )}
         </button>
-        <p className="text-center text-[10px] mt-3 text-gray-500">
+        <p className="text-center text-[10px] mt-3 text-ink-subtle">
           加密支付由 NOWPayments 处理 • 最终确认后点数自动到账
         </p>
       </div>

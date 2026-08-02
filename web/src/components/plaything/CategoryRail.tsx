@@ -29,8 +29,8 @@ export function CategoryRail({
             title={`${c.label} (${c.count})`}
             className={`flex flex-col items-center justify-center gap-1 min-w-[64px] lg:min-w-0 px-2 py-3 rounded-2xl text-[10px] font-medium transition-colors ${
               selected
-                ? "bg-orange-600/20 text-orange-200 border border-orange-500/40"
-                : "text-gray-400 hover:text-white hover:bg-white/5 border border-transparent"
+                ? "bg-orange-600/20 text-orange-700 border border-orange-500/40"
+                : "text-ink-muted hover:text-ink hover:bg-black/[0.04] border border-transparent"
             }`}
           >
             <i className={`fas ${c.icon} text-base`} />

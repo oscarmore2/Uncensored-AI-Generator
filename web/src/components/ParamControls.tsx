@@ -46,7 +46,7 @@ export function ParamControlField({
 }) {
   const a = accentOf(accent);
   const title = `${label ?? control.key}${control.required ? " *" : ""}`;
-  const inputClass = `w-full bg-[#111] border border-white/10 rounded-xl px-3 py-2 text-sm outline-none transition-colors ${a.focusBorder} disabled:opacity-50`;
+  const inputClass = `w-full bg-surface border border-line rounded-xl px-3 py-2 text-sm outline-none transition-colors ${a.focusBorder} disabled:opacity-50`;
 
   if (control.kind === "enum") {
     if (control.options.length === 0) return null;
@@ -54,7 +54,7 @@ export function ParamControlField({
     if (control.options.length <= CHIP_THRESHOLD) {
       return (
         <div>
-          <label className="text-xs text-gray-400 block mb-1.5">{title}</label>
+          <label className="text-xs text-ink-muted block mb-1.5">{title}</label>
           <div className="flex flex-wrap gap-1.5">
             {control.options.map((o) => {
               const active = value === o.value;
@@ -65,7 +65,7 @@ export function ParamControlField({
                   disabled={disabled}
                   onClick={() => onChange(o.value)}
                   className={`px-3 py-1.5 rounded-xl border text-xs transition-colors disabled:opacity-50 ${
-                    active ? a.activeChip : "bg-white/5 border-white/10 text-gray-300 hover:border-white/25"
+                    active ? a.activeChip : "bg-black/[0.03] border-line text-ink-muted hover:border-line-strong"
                   }`}
                 >
                   {o.label}
@@ -79,7 +79,7 @@ export function ParamControlField({
 
     return (
       <div>
-        <label className="text-xs text-gray-400 block mb-1">{title}</label>
+        <label className="text-xs text-ink-muted block mb-1">{title}</label>
         <select
           value={value}
           disabled={disabled}
@@ -100,7 +100,7 @@ export function ParamControlField({
     const on = value === "true";
     return (
       <div className="flex items-center justify-between gap-3 py-1">
-        <span className="text-xs text-gray-400">{title}</span>
+        <span className="text-xs text-ink-muted">{title}</span>
         <button
           type="button"
           role="switch"
@@ -108,7 +108,7 @@ export function ParamControlField({
           disabled={disabled}
           onClick={() => onChange(on ? "false" : "true")}
           className={`relative w-10 h-5 rounded-full transition-colors shrink-0 disabled:opacity-50 ${
-            on ? a.switchOn : "bg-white/15"
+            on ? a.switchOn : "bg-black/[0.08]"
           }`}
         >
           <span
@@ -132,7 +132,7 @@ export function ParamControlField({
       return (
         <div>
           <div className="flex items-center justify-between mb-1">
-            <label className="text-xs text-gray-400">{title}</label>
+            <label className="text-xs text-ink-muted">{title}</label>
             <span className={`text-xs font-mono ${a.text}`}>{value || control.min}</span>
           </div>
           <input
@@ -145,7 +145,7 @@ export function ParamControlField({
             onChange={(e) => onChange(e.target.value)}
             className={`w-full ${a.accent} disabled:opacity-50`}
           />
-          <div className="flex justify-between text-[10px] text-gray-600 mt-0.5">
+          <div className="flex justify-between text-[10px] text-ink-subtle mt-0.5">
             <span>{control.min}</span>
             <span>{control.max}</span>
           </div>
@@ -155,7 +155,7 @@ export function ParamControlField({
 
     return (
       <div>
-        <label className="text-xs text-gray-400 block mb-1">{title}</label>
+        <label className="text-xs text-ink-muted block mb-1">{title}</label>
         <input
           type="number"
           value={value}
@@ -178,7 +178,7 @@ export function ParamControlField({
 
   return (
     <div>
-      <label className="text-xs text-gray-400 block mb-1">{title}</label>
+      <label className="text-xs text-ink-muted block mb-1">{title}</label>
       <input
         type="text"
         value={value}
@@ -230,8 +230,8 @@ function SizeControlField({
   return (
     <div className="sm:col-span-2">
       <div className="flex items-center justify-between mb-1.5">
-        <label className="text-xs text-gray-400">{title}</label>
-        <label className="flex items-center gap-1.5 text-[11px] text-gray-400 cursor-pointer select-none">
+        <label className="text-xs text-ink-muted">{title}</label>
+        <label className="flex items-center gap-1.5 text-[11px] text-ink-muted cursor-pointer select-none">
           <input
             type="checkbox"
             checked={keepOriginal}
@@ -244,7 +244,7 @@ function SizeControlField({
       </div>
 
       {!keepOriginal && (
-        <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-3 space-y-3">
+        <div className="rounded-2xl border border-line bg-black/[0.03] p-3 space-y-3">
           <div className="flex flex-wrap gap-1.5">
             {SIZE_ASPECT_PRESETS.map((p) => {
               const target = sizeForRatio(p.w, p.h, min, max);
@@ -256,7 +256,7 @@ function SizeControlField({
                   disabled={disabled}
                   onClick={() => setSize(target.width, target.height)}
                   className={`px-2.5 py-1 rounded-lg border text-[11px] transition-colors disabled:opacity-50 ${
-                    active ? a.activeChip : "bg-white/5 border-white/10 text-gray-300 hover:border-white/25"
+                    active ? a.activeChip : "bg-black/[0.03] border-line text-ink-muted hover:border-line-strong"
                   }`}
                 >
                   {p.ratio}
@@ -267,7 +267,7 @@ function SizeControlField({
 
           <div>
             <div className="flex items-center justify-between mb-1">
-              <span className="text-[11px] text-gray-500">宽度 width</span>
+              <span className="text-[11px] text-ink-subtle">宽度 width</span>
               <span className={`text-[11px] font-mono ${a.text}`}>{width}</span>
             </div>
             <input
@@ -283,7 +283,7 @@ function SizeControlField({
 
           <div>
             <div className="flex items-center justify-between mb-1">
-              <span className="text-[11px] text-gray-500">高度 height</span>
+              <span className="text-[11px] text-ink-subtle">高度 height</span>
               <span className={`text-[11px] font-mono ${a.text}`}>{height}</span>
             </div>
             <input
@@ -297,7 +297,7 @@ function SizeControlField({
             />
           </div>
 
-          <div className="flex items-center justify-between text-[10px] text-gray-600">
+          <div className="flex items-center justify-between text-[10px] text-ink-subtle">
             <span>
               {width} × {height} px
             </span>
@@ -349,7 +349,7 @@ export function ParamControlGrid({
         </div>
       )}
       {toggles.length > 0 && (
-        <div className="rounded-2xl border border-white/10 bg-white/[0.02] px-3 divide-y divide-white/5">
+        <div className="rounded-2xl border border-line bg-black/[0.03] px-3 divide-y divide-white/5">
           {toggles.map((c) => (
             <ParamControlField
               key={c.key}

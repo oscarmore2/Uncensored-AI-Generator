@@ -96,24 +96,24 @@ export default function AdminHfAccountsPage() {
       <div className="flex items-end justify-between mb-6 gap-4 flex-wrap">
         <div>
           <h1 className="text-3xl font-bold tracking-tighter mb-1">Hugging Face</h1>
-          <p className="text-gray-400 text-sm">
+          <p className="text-ink-muted text-sm">
             魔法指令 · Dolphin-Mistral-24B-Venice · 同一时间仅一个 Token 激活
           </p>
         </div>
         <button
           onClick={() => setFormOpen((v) => !v)}
-          className="px-5 py-2.5 text-sm font-semibold bg-orange-600 hover:bg-orange-500 rounded-2xl"
+          className="px-5 py-2.5 text-sm font-semibold bg-orange-700 hover:bg-orange-600 rounded-2xl"
         >
           <i className="fas fa-plus mr-2" />
           添加 Token
         </button>
       </div>
 
-      {msg && <p className="mb-4 text-sm text-amber-300">{msg}</p>}
+      {msg && <p className="mb-4 text-sm text-amber-800">{msg}</p>}
 
       {data?.note && (
-        <div className="glass rounded-3xl p-4 mb-6 text-xs text-gray-400">
-          <i className="fas fa-circle-info mr-2 text-orange-400" />
+        <div className="glass rounded-3xl p-4 mb-6 text-xs text-ink-muted">
+          <i className="fas fa-circle-info mr-2 text-orange-700" />
           {data.note}
         </div>
       )}
@@ -126,19 +126,19 @@ export default function AdminHfAccountsPage() {
         >
           <div className="font-semibold mb-1">.env 兜底</div>
           {data.env_fallback.configured ? (
-            <p className="text-gray-400 text-xs">
+            <p className="text-ink-muted text-xs">
               Token {data.env_fallback.api_token_mask}
               {data.env_fallback.in_use
                 ? " · 当前无激活 DB 账户，魔法指令走 .env"
                 : " · 有激活 DB 账户时不会使用 .env"}
             </p>
           ) : (
-            <p className="text-gray-500 text-xs">
+            <p className="text-ink-subtle text-xs">
               未配置。添加并激活一个账户后，创作页才会显示「魔法指令」。
             </p>
           )}
           {data.defaults && (
-            <p className="text-gray-500 text-[11px] mt-2 font-mono break-all">
+            <p className="text-ink-subtle text-[11px] mt-2 font-mono break-all">
               默认 Base: {data.defaults.base_url}
               <br />
               默认 Model: {data.defaults.magic_model}
@@ -152,45 +152,45 @@ export default function AdminHfAccountsPage() {
           <h2 className="font-bold mb-4">添加 Hugging Face Token</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="text-xs text-gray-400 block mb-1">备注名 *</label>
+              <label className="text-xs text-ink-muted block mb-1">备注名 *</label>
               <input
                 required
                 value={form.label}
                 onChange={(e) => setForm({ ...form, label: e.target.value })}
                 placeholder="例如：主 Token"
-                className="w-full bg-[#111] border border-white/10 rounded-2xl px-3 py-2.5 text-sm outline-none"
+                className="w-full bg-surface border border-line rounded-2xl px-3 py-2.5 text-sm outline-none"
               />
             </div>
             <div>
-              <label className="text-xs text-gray-400 block mb-1">API Token *（hf_…）</label>
+              <label className="text-xs text-ink-muted block mb-1">API Token *（hf_…）</label>
               <input
                 required
                 type="password"
                 value={form.api_token}
                 onChange={(e) => setForm({ ...form, api_token: e.target.value })}
                 placeholder="https://huggingface.co/settings/tokens"
-                className="w-full bg-[#111] border border-white/10 rounded-2xl px-3 py-2.5 text-sm outline-none font-mono"
+                className="w-full bg-surface border border-line rounded-2xl px-3 py-2.5 text-sm outline-none font-mono"
               />
             </div>
             <div>
-              <label className="text-xs text-gray-400 block mb-1">Inference Base URL（选填）</label>
+              <label className="text-xs text-ink-muted block mb-1">Inference Base URL（选填）</label>
               <input
                 value={form.base_url}
                 onChange={(e) => setForm({ ...form, base_url: e.target.value })}
                 placeholder={data?.defaults.base_url ?? "https://router.huggingface.co/v1"}
-                className="w-full bg-[#111] border border-white/10 rounded-2xl px-3 py-2.5 text-sm outline-none font-mono"
+                className="w-full bg-surface border border-line rounded-2xl px-3 py-2.5 text-sm outline-none font-mono"
               />
             </div>
             <div>
-              <label className="text-xs text-gray-400 block mb-1">模型 ID（选填）</label>
+              <label className="text-xs text-ink-muted block mb-1">模型 ID（选填）</label>
               <input
                 value={form.magic_model}
                 onChange={(e) => setForm({ ...form, magic_model: e.target.value })}
                 placeholder={data?.defaults.magic_model}
-                className="w-full bg-[#111] border border-white/10 rounded-2xl px-3 py-2.5 text-sm outline-none font-mono text-xs"
+                className="w-full bg-surface border border-line rounded-2xl px-3 py-2.5 text-sm outline-none font-mono text-xs"
               />
             </div>
-            <label className="flex items-center gap-x-2 text-sm text-gray-300 cursor-pointer md:col-span-2">
+            <label className="flex items-center gap-x-2 text-sm text-ink-muted cursor-pointer md:col-span-2">
               <input
                 type="checkbox"
                 checked={form.activate}
@@ -203,14 +203,14 @@ export default function AdminHfAccountsPage() {
             <button
               type="submit"
               disabled={busy}
-              className="px-6 py-2.5 text-sm font-semibold bg-orange-600 hover:bg-orange-500 rounded-2xl disabled:opacity-50"
+              className="px-6 py-2.5 text-sm font-semibold bg-orange-700 hover:bg-orange-600 rounded-2xl disabled:opacity-50"
             >
               {busy ? "保存中..." : "确认添加"}
             </button>
             <button
               type="button"
               onClick={() => setFormOpen(false)}
-              className="px-6 py-2.5 text-sm border border-white/10 rounded-2xl hover:bg-white/5"
+              className="px-6 py-2.5 text-sm border border-line rounded-2xl hover:bg-black/[0.04]"
             >
               取消
             </button>
@@ -230,21 +230,21 @@ export default function AdminHfAccountsPage() {
               <div className="flex items-center gap-2 mb-1">
                 <span className="font-semibold">{a.label}</span>
                 {a.is_active ? (
-                  <span className="text-[10px] px-2 py-0.5 bg-emerald-500/20 text-emerald-300 rounded-full">
+                  <span className="text-[10px] px-2 py-0.5 bg-emerald-500/20 text-emerald-700 rounded-full">
                     激活中
                   </span>
                 ) : (
-                  <span className="text-[10px] px-2 py-0.5 bg-white/10 text-gray-400 rounded-full">
+                  <span className="text-[10px] px-2 py-0.5 bg-black/[0.06] text-ink-muted rounded-full">
                     未激活
                   </span>
                 )}
               </div>
-              <div className="text-xs font-mono text-gray-400">Token: {a.api_token_mask}</div>
+              <div className="text-xs font-mono text-ink-muted">Token: {a.api_token_mask}</div>
               {a.base_url && (
-                <div className="text-xs font-mono text-gray-500 truncate max-w-lg">Base: {a.base_url}</div>
+                <div className="text-xs font-mono text-ink-subtle truncate max-w-lg">Base: {a.base_url}</div>
               )}
               {a.magic_model && (
-                <div className="text-xs font-mono text-gray-500 truncate max-w-lg">
+                <div className="text-xs font-mono text-ink-subtle truncate max-w-lg">
                   Model: {a.magic_model}
                 </div>
               )}
@@ -281,7 +281,7 @@ export default function AdminHfAccountsPage() {
                       `已停用「${a.label}」`
                     )
                   }
-                  className="px-4 py-2 text-xs border border-white/10 rounded-xl hover:bg-white/5 disabled:opacity-50"
+                  className="px-4 py-2 text-xs border border-line rounded-xl hover:bg-black/[0.04] disabled:opacity-50"
                 >
                   停用
                 </button>
@@ -294,7 +294,7 @@ export default function AdminHfAccountsPage() {
                     `「${a.label}」连通正常`
                   )
                 }
-                className="px-4 py-2 text-xs border border-white/10 rounded-xl hover:bg-white/5 disabled:opacity-50"
+                className="px-4 py-2 text-xs border border-line rounded-xl hover:bg-black/[0.04] disabled:opacity-50"
               >
                 测试
               </button>
@@ -307,7 +307,7 @@ export default function AdminHfAccountsPage() {
                     "已删除"
                   );
                 }}
-                className="px-4 py-2 text-xs border border-red-500/30 text-red-300 rounded-xl hover:bg-red-500/10 disabled:opacity-50"
+                className="px-4 py-2 text-xs border border-red-500/30 text-red-700 rounded-xl hover:bg-red-500/10 disabled:opacity-50"
               >
                 删除
               </button>
@@ -315,7 +315,7 @@ export default function AdminHfAccountsPage() {
           </div>
         ))}
         {data && data.accounts.length === 0 && (
-          <div className="glass rounded-3xl p-8 text-center text-sm text-gray-500">
+          <div className="glass rounded-3xl p-8 text-center text-sm text-ink-subtle">
             暂无 DB 账户。可添加 Token，或在 Railway/.env 配置 HF_TOKEN 作为兜底。
           </div>
         )}

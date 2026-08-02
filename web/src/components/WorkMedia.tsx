@@ -70,14 +70,14 @@ export function AdaptiveMedia({
   if (!list.length) return null;
 
   const mediaClass =
-    "max-w-full max-h-[min(70vh,720px)] w-auto h-auto object-contain rounded-2xl bg-black/20";
+    "max-w-full max-h-[min(70vh,720px)] w-auto h-auto object-contain rounded-2xl bg-stage";
 
   if (list.length === 1) {
     const only = list[0];
     const video = isVideoSrc(mode, only);
     return (
       <div
-        className={`flex items-center justify-center bg-black/30 p-3 sm:p-5 min-h-[180px] ${className ?? ""}`}
+        className={`flex items-center justify-center rounded-2xl bg-stage p-3 sm:p-5 min-h-[180px] ${className ?? ""}`}
       >
         <WorkMedia
           mode={mode}
@@ -96,7 +96,7 @@ export function AdaptiveMedia({
 
   return (
     <div
-      className={`grid gap-3 p-3 sm:p-5 bg-black/30 ${
+      className={`grid gap-3 rounded-2xl p-3 sm:p-5 bg-stage ${
         list.length === 2 ? "grid-cols-1 sm:grid-cols-2" : "grid-cols-2"
       } ${className ?? ""}`}
     >

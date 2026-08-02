@@ -26,14 +26,14 @@ export function CookieConsent() {
 
   return (
     <aside
-      className="fixed inset-x-0 bottom-0 z-[200] border-t border-white/15 bg-[#101014]/95 px-5 py-4 shadow-2xl backdrop-blur-xl"
+      className="fixed inset-x-0 bottom-0 z-[200] border-t border-line bg-[#101014]/95 px-5 py-4 shadow-2xl backdrop-blur-xl"
       role="dialog"
       aria-label={t("aria")}
     >
       <div className="mx-auto flex max-w-7xl flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <p className="max-w-4xl text-sm leading-6 text-gray-300">
+        <p className="max-w-4xl text-sm leading-6 text-ink-muted">
           {t("message")}{" "}
-          <Link href="/privacy" className="text-teal-300 underline underline-offset-2">
+          <Link href="/privacy" className="text-teal-700 underline underline-offset-2">
             {t("policy")}
           </Link>
           。
@@ -42,14 +42,14 @@ export function CookieConsent() {
           <button
             type="button"
             onClick={() => choose("necessary")}
-            className="rounded-xl border border-white/15 px-4 py-2 text-sm font-medium text-gray-200 hover:bg-white/5"
+            className="rounded-xl border border-line px-4 py-2 text-sm font-medium text-ink hover:bg-black/[0.04]"
           >
             {t("necessary")}
           </button>
           <button
             type="button"
             onClick={() => choose("all")}
-            className="rounded-xl bg-teal-500 px-4 py-2 text-sm font-semibold text-white hover:bg-teal-400"
+            className="rounded-xl bg-teal-700 px-4 py-2 text-sm font-semibold text-white hover:bg-teal-700"
           >
             {t("accept")}
           </button>

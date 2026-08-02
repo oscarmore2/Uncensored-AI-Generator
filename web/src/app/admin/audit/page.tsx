@@ -57,7 +57,7 @@ export default function AdminAuditPage() {
   return (
     <div>
       <h1 className="text-3xl font-bold tracking-tighter mb-1">审计日志</h1>
-      <p className="text-gray-400 text-sm mb-6">管理端敏感操作记录</p>
+      <p className="text-ink-muted text-sm mb-6">管理端敏感操作记录</p>
 
       <select
         value={action}
@@ -65,7 +65,7 @@ export default function AdminAuditPage() {
           setAction(e.target.value);
           setPage(1);
         }}
-        className="mb-5 bg-[#111] border border-white/10 rounded-xl px-3 py-2 text-sm"
+        className="mb-5 bg-surface border border-line rounded-xl px-3 py-2 text-sm"
       >
         <option value="">全部操作</option>
         {Object.entries(ACTION_LABELS).map(([k, v]) => (
@@ -75,12 +75,12 @@ export default function AdminAuditPage() {
         ))}
       </select>
 
-      {error && <p className="mb-4 text-sm text-red-400">{error}</p>}
+      {error && <p className="mb-4 text-sm text-red-700">{error}</p>}
 
       <div className="glass rounded-3xl overflow-x-auto">
         <table className="w-full text-sm min-w-[800px]">
           <thead>
-            <tr className="text-left text-xs text-gray-400 border-b border-white/10">
+            <tr className="text-left text-xs text-ink-muted border-b border-line">
               <th className="px-4 py-3">时间</th>
               <th className="px-4 py-3">管理员</th>
               <th className="px-4 py-3">操作</th>
@@ -90,25 +90,25 @@ export default function AdminAuditPage() {
           </thead>
           <tbody>
             {data?.logs.map((l) => (
-              <tr key={l.id} className="border-b border-white/5 hover:bg-white/[0.02]">
-                <td className="px-4 py-3 text-xs text-gray-500">{new Date(l.created_at).toLocaleString("zh-CN")}</td>
+              <tr key={l.id} className="border-b border-line hover:bg-black/[0.03]">
+                <td className="px-4 py-3 text-xs text-ink-subtle">{new Date(l.created_at).toLocaleString("zh-CN")}</td>
                 <td className="px-4 py-3">{l.admin_username}</td>
                 <td className="px-4 py-3">
-                  <span className="text-xs px-2 py-0.5 bg-orange-500/15 text-orange-300 rounded-full">
+                  <span className="text-xs px-2 py-0.5 bg-orange-500/15 text-orange-700 rounded-full">
                     {ACTION_LABELS[l.action] ?? l.action}
                   </span>
                 </td>
-                <td className="px-4 py-3 text-xs text-gray-400">
+                <td className="px-4 py-3 text-xs text-ink-muted">
                   {l.target_type ? `${l.target_type}:${l.target_id}` : "—"}
                 </td>
-                <td className="px-4 py-3 text-xs font-mono text-gray-500 max-w-xs truncate">
+                <td className="px-4 py-3 text-xs font-mono text-ink-subtle max-w-xs truncate">
                   {l.detail ? JSON.stringify(l.detail) : "—"}
                 </td>
               </tr>
             ))}
             {data && data.logs.length === 0 && (
               <tr>
-                <td colSpan={5} className="px-4 py-10 text-center text-gray-500">
+                <td colSpan={5} className="px-4 py-10 text-center text-ink-subtle">
                   暂无审计记录
                 </td>
               </tr>
@@ -122,17 +122,17 @@ export default function AdminAuditPage() {
           <button
             disabled={page <= 1}
             onClick={() => setPage((p) => p - 1)}
-            className="px-5 py-2 border border-white/10 rounded-2xl hover:bg-white/5 disabled:opacity-40"
+            className="px-5 py-2 border border-line rounded-2xl hover:bg-black/[0.04] disabled:opacity-40"
           >
             上一页
           </button>
-          <span className="px-4 py-2 text-gray-400">
+          <span className="px-4 py-2 text-ink-muted">
             {page} / {totalPages}
           </span>
           <button
             disabled={page >= totalPages}
             onClick={() => setPage((p) => p + 1)}
-            className="px-5 py-2 border border-white/10 rounded-2xl hover:bg-white/5 disabled:opacity-40"
+            className="px-5 py-2 border border-line rounded-2xl hover:bg-black/[0.04] disabled:opacity-40"
           >
             下一页
           </button>

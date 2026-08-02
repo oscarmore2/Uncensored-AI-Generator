@@ -94,8 +94,8 @@ export default function AdminSettingsPage() {
     }
   }
 
-  if (error) return <p className="text-red-400">{error}</p>;
-  if (!settings) return <p className="text-gray-500">加载中...</p>;
+  if (error) return <p className="text-red-700">{error}</p>;
+  if (!settings) return <p className="text-ink-subtle">加载中...</p>;
 
   const rows: { label: string; value: string; warn?: boolean }[] = [
     { label: "APP_URL", value: settings.app_url },
@@ -167,11 +167,11 @@ export default function AdminSettingsPage() {
   return (
     <div>
       <h1 className="text-3xl font-bold tracking-tighter mb-1">系统配置</h1>
-      <p className="text-gray-400 text-sm mb-6">运营配置与运行快照 · 密钥等敏感信息已脱敏</p>
+      <p className="text-ink-muted text-sm mb-6">运营配置与运行快照 · 密钥等敏感信息已脱敏</p>
 
       <div className="glass rounded-3xl p-5 mb-8">
         <div className="text-sm font-semibold mb-1">新用户注册初始点数</div>
-        <p className="mb-4 text-xs text-gray-500">
+        <p className="mb-4 text-xs text-ink-subtle">
           适用于邮箱、Google 与 Facebook 首次注册；修改后不追溯已有用户。
         </p>
         <div className="flex flex-wrap items-center gap-3">
@@ -182,28 +182,28 @@ export default function AdminSettingsPage() {
             step={1}
             value={signupCredits}
             onChange={(event) => setSignupCredits(Math.trunc(Number(event.target.value) || 0))}
-            className="w-40 rounded-xl border border-white/10 bg-[#111] px-3 py-2"
+            className="w-40 rounded-xl border border-line bg-surface px-3 py-2"
           />
-          <span className="text-sm text-gray-400">点</span>
+          <span className="text-sm text-ink-muted">点</span>
           <button
             type="button"
             disabled={saving}
             onClick={() => void saveSignupCredits()}
-            className="rounded-xl bg-white px-4 py-2 text-sm font-semibold text-black disabled:opacity-50"
+            className="rounded-xl bg-orange-700 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
           >
             {saving ? "保存中…" : "保存"}
           </button>
         </div>
-        {message && <p className="mt-3 text-xs text-amber-300">{message}</p>}
+        {message && <p className="mt-3 text-xs text-amber-800">{message}</p>}
       </div>
 
       <div className="glass rounded-3xl p-5 mb-8">
         <div className="text-sm font-semibold mb-4">运行参数</div>
         <div className="space-y-3">
           {rows.map((r) => (
-            <div key={r.label} className="flex justify-between text-sm border-b border-white/5 pb-2">
-              <span className="text-gray-400">{r.label}</span>
-              <span className={r.warn ? "text-amber-300" : "text-gray-200 font-mono text-xs"}>{r.value}</span>
+            <div key={r.label} className="flex justify-between text-sm border-b border-line pb-2">
+              <span className="text-ink-muted">{r.label}</span>
+              <span className={r.warn ? "text-amber-800" : "text-ink font-mono text-xs"}>{r.value}</span>
             </div>
           ))}
         </div>
@@ -213,12 +213,12 @@ export default function AdminSettingsPage() {
         <div className="text-sm font-semibold mb-4">Webhook 端点</div>
         <div className="space-y-2 text-xs font-mono">
           <div>
-            <span className="text-gray-500">Stripe: </span>
-            <span className="text-gray-300">{settings.webhooks.stripe}</span>
+            <span className="text-ink-subtle">Stripe: </span>
+            <span className="text-ink-muted">{settings.webhooks.stripe}</span>
           </div>
           <div>
-            <span className="text-gray-500">NOWPayments: </span>
-            <span className="text-gray-300">{settings.webhooks.nowpayments}</span>
+            <span className="text-ink-subtle">NOWPayments: </span>
+            <span className="text-ink-muted">{settings.webhooks.nowpayments}</span>
           </div>
         </div>
       </div>

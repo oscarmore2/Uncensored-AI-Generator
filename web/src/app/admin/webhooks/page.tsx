@@ -21,9 +21,9 @@ interface ListResp {
 }
 
 const STATUS_COLORS: Record<string, string> = {
-  ok: "bg-emerald-500/15 text-emerald-300",
-  ignored: "bg-gray-500/20 text-gray-400",
-  error: "bg-red-500/15 text-red-300",
+  ok: "bg-emerald-500/15 text-emerald-700",
+  ignored: "bg-gray-500/20 text-ink-muted",
+  error: "bg-red-500/15 text-red-700",
 };
 
 export default function AdminWebhooksPage() {
@@ -52,7 +52,7 @@ export default function AdminWebhooksPage() {
   return (
     <div>
       <h1 className="text-3xl font-bold tracking-tighter mb-1">Webhook 日志</h1>
-      <p className="text-gray-400 text-sm mb-6">Stripe / NOWPayments 回调事件追踪</p>
+      <p className="text-ink-muted text-sm mb-6">Stripe / NOWPayments 回调事件追踪</p>
 
       <select
         value={provider}
@@ -60,19 +60,19 @@ export default function AdminWebhooksPage() {
           setProvider(e.target.value);
           setPage(1);
         }}
-        className="mb-5 bg-[#111] border border-white/10 rounded-xl px-3 py-2 text-sm"
+        className="mb-5 bg-surface border border-line rounded-xl px-3 py-2 text-sm"
       >
         <option value="">全部</option>
         <option value="stripe">Stripe</option>
         <option value="nowpayments">NOWPayments</option>
       </select>
 
-      {error && <p className="mb-4 text-sm text-red-400">{error}</p>}
+      {error && <p className="mb-4 text-sm text-red-700">{error}</p>}
 
       <div className="glass rounded-3xl overflow-x-auto">
         <table className="w-full text-sm min-w-[800px]">
           <thead>
-            <tr className="text-left text-xs text-gray-400 border-b border-white/10">
+            <tr className="text-left text-xs text-ink-muted border-b border-line">
               <th className="px-4 py-3">时间</th>
               <th className="px-4 py-3">来源</th>
               <th className="px-4 py-3">事件</th>
@@ -83,24 +83,24 @@ export default function AdminWebhooksPage() {
           </thead>
           <tbody>
             {data?.logs.map((l) => (
-              <tr key={l.id} className="border-b border-white/5 hover:bg-white/[0.02]">
-                <td className="px-4 py-3 text-xs text-gray-500">{new Date(l.created_at).toLocaleString("zh-CN")}</td>
+              <tr key={l.id} className="border-b border-line hover:bg-black/[0.03]">
+                <td className="px-4 py-3 text-xs text-ink-subtle">{new Date(l.created_at).toLocaleString("zh-CN")}</td>
                 <td className="px-4 py-3">{l.provider}</td>
                 <td className="px-4 py-3 text-xs">{l.event_type ?? "—"}</td>
-                <td className="px-4 py-3 font-mono text-xs text-gray-400">{l.external_id ?? "—"}</td>
+                <td className="px-4 py-3 font-mono text-xs text-ink-muted">{l.external_id ?? "—"}</td>
                 <td className="px-4 py-3">
-                  <span className={`text-xs px-2 py-0.5 rounded-full ${STATUS_COLORS[l.status] ?? "bg-white/10"}`}>
+                  <span className={`text-xs px-2 py-0.5 rounded-full ${STATUS_COLORS[l.status] ?? "bg-black/[0.06]"}`}>
                     {l.status}
                   </span>
                 </td>
-                <td className="px-4 py-3 text-xs font-mono text-gray-500 max-w-xs truncate" title={l.detail ?? ""}>
+                <td className="px-4 py-3 text-xs font-mono text-ink-subtle max-w-xs truncate" title={l.detail ?? ""}>
                   {l.detail ?? "—"}
                 </td>
               </tr>
             ))}
             {data && data.logs.length === 0 && (
               <tr>
-                <td colSpan={6} className="px-4 py-10 text-center text-gray-500">
+                <td colSpan={6} className="px-4 py-10 text-center text-ink-subtle">
                   暂无 Webhook 记录
                 </td>
               </tr>
@@ -114,17 +114,17 @@ export default function AdminWebhooksPage() {
           <button
             disabled={page <= 1}
             onClick={() => setPage((p) => p - 1)}
-            className="px-5 py-2 border border-white/10 rounded-2xl hover:bg-white/5 disabled:opacity-40"
+            className="px-5 py-2 border border-line rounded-2xl hover:bg-black/[0.04] disabled:opacity-40"
           >
             上一页
           </button>
-          <span className="px-4 py-2 text-gray-400">
+          <span className="px-4 py-2 text-ink-muted">
             {page} / {totalPages}
           </span>
           <button
             disabled={page >= totalPages}
             onClick={() => setPage((p) => p + 1)}
-            className="px-5 py-2 border border-white/10 rounded-2xl hover:bg-white/5 disabled:opacity-40"
+            className="px-5 py-2 border border-line rounded-2xl hover:bg-black/[0.04] disabled:opacity-40"
           >
             下一页
           </button>

@@ -139,8 +139,8 @@ export function MediaThumb({
           />
         )}
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-          <span className="w-11 h-11 rounded-full bg-black/55 backdrop-blur flex items-center justify-center">
-            <i className="fas fa-play text-white text-sm ml-0.5" />
+          <span className="w-11 h-11 rounded-full bg-black/55 backdrop-blur flex items-center justify-center text-white">
+            <i className="fas fa-play text-ink text-sm ml-0.5" />
           </span>
         </div>
       </>
@@ -155,8 +155,8 @@ export function MediaThumb({
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={poster} alt={alt ?? "作品"} className={className} loading="lazy" />
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-            <span className="w-11 h-11 rounded-full bg-black/55 backdrop-blur flex items-center justify-center">
-              <i className={`fas ${meta.icon} text-white text-sm`} />
+            <span className="w-11 h-11 rounded-full bg-black/55 backdrop-blur flex items-center justify-center text-white">
+              <i className={`fas ${meta.icon} text-ink text-sm`} />
             </span>
           </div>
         </>
@@ -164,8 +164,8 @@ export function MediaThumb({
     }
     return (
       <div className="w-full h-full flex flex-col items-center justify-center gap-2 bg-gradient-to-br from-white/[0.06] to-transparent">
-        <i className={`fas ${meta.icon} text-3xl text-gray-500`} />
-        <span className="text-[11px] text-gray-500">{meta.label}</span>
+        <i className={`fas ${meta.icon} text-3xl text-ink-subtle`} />
+        <span className="text-[11px] text-ink-subtle">{meta.label}</span>
       </div>
     );
   }
@@ -186,7 +186,7 @@ export function MediaKindBadge({
   if (kind === "image") return null;
   const meta = KIND_META[kind];
   return (
-    <span className="text-[10px] px-2 py-0.5 bg-black/70 rounded-full flex items-center gap-1">
+    <span className="text-[10px] px-2 py-0.5 bg-black/70 rounded-full flex items-center gap-1 text-white">
       <i className={`fas ${meta.icon}`} />
       {meta.label}
     </span>
@@ -209,11 +209,11 @@ function Model3DStage({ url }: { url: string }) {
         style={{ width: "100%", height: "min(65vh, 640px)", background: "#0c0c0c" }}
       />
       {error && (
-        <div className="absolute bottom-2 left-2 right-2 flex items-start gap-2 rounded-xl bg-amber-950/90 border border-amber-500/30 px-3 py-2 text-[11px] text-amber-200">
+        <div className="absolute bottom-2 left-2 right-2 flex items-start gap-2 rounded-xl bg-amber-950/90 border border-amber-500/30 px-3 py-2 text-[11px] text-amber-800">
           <i className="fas fa-triangle-exclamation mt-0.5 shrink-0" />
           <span>
             模型部分资源加载失败，可能导致贴图缺失或显示异常
-            <span className="block text-amber-400/70 font-mono mt-0.5 break-all">{error}</span>
+            <span className="block text-amber-800/70 font-mono mt-0.5 break-all">{error}</span>
           </span>
         </div>
       )}
@@ -246,7 +246,7 @@ function MediaStage({ url, kind }: { url: string; kind: PlaythingMediaKind }) {
   if (kind === "audio") {
     return (
       <div className="w-full max-w-lg flex flex-col items-center gap-4 py-10">
-        <i className="fas fa-music text-5xl text-gray-500" />
+        <i className="fas fa-music text-5xl text-ink-subtle" />
         <audio src={url} controls autoPlay className="w-full" />
       </div>
     );
@@ -257,14 +257,14 @@ function MediaStage({ url, kind }: { url: string; kind: PlaythingMediaKind }) {
     if (!viewable) {
       // obj/fbx 浏览器渲染不了，给下载入口而不是白屏
       return (
-        <div className="p-8 text-sm text-gray-400 text-center space-y-3">
-          <i className="fas fa-cube text-4xl text-gray-600" />
+        <div className="p-8 text-sm text-ink-muted text-center space-y-3">
+          <i className="fas fa-cube text-4xl text-ink-subtle" />
           <p>该 3D 格式无法在浏览器预览，请下载后查看</p>
           <a
             href={url}
             target="_blank"
             rel="noreferrer"
-            className="inline-block px-4 py-2 bg-white/10 hover:bg-white/20 rounded-xl text-orange-300 break-all"
+            className="inline-block px-4 py-2 bg-black/[0.06] hover:bg-black/[0.08] rounded-xl text-orange-700 break-all"
           >
             下载模型
           </a>
@@ -318,14 +318,14 @@ export function MediaPreviewModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4"
+      className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 text-white"
       onClick={onClose}
     >
       <div
         className="glass rounded-3xl w-full max-w-4xl max-h-[92vh] flex flex-col overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between px-5 py-3 border-b border-white/10 shrink-0">
+        <div className="flex items-center justify-between px-5 py-3 border-b border-line shrink-0">
           <div className="text-sm font-semibold flex items-center gap-2 min-w-0">{title}</div>
           <div className="flex items-center gap-2 shrink-0">
             {current && (
@@ -333,7 +333,7 @@ export function MediaPreviewModal({
                 href={current}
                 target="_blank"
                 rel="noreferrer"
-                className="px-3 py-1 text-xs border border-white/10 rounded-xl hover:bg-white/10"
+                className="px-3 py-1 text-xs border border-line rounded-xl hover:bg-black/[0.06]"
               >
                 <i className="fas fa-external-link-alt mr-1" />
                 原图
@@ -341,7 +341,7 @@ export function MediaPreviewModal({
             )}
             <button
               onClick={onClose}
-              className="w-8 h-8 rounded-xl border border-white/10 hover:bg-white/10 text-gray-400"
+              className="w-8 h-8 rounded-xl border border-line hover:bg-black/[0.06] text-ink-muted"
               aria-label="关闭"
             >
               <i className="fas fa-times" />
@@ -350,22 +350,22 @@ export function MediaPreviewModal({
         </div>
 
         <div className="flex-1 overflow-y-auto">
-          <div className="flex items-center justify-center bg-black/40 min-h-[240px] p-3 sm:p-5">
+          <div className="flex items-center justify-center bg-stage min-h-[240px] p-3 sm:p-5">
             {current ? (
               <MediaStage url={current} kind={kind} />
             ) : (
-              <p className="text-sm text-gray-500 py-16">没有可预览的结果</p>
+              <p className="text-sm text-ink-subtle py-16">没有可预览的结果</p>
             )}
           </div>
 
           {list.length > 1 && (
-            <div className="flex gap-2 p-3 overflow-x-auto border-t border-white/10">
+            <div className="flex gap-2 p-3 overflow-x-auto border-t border-line">
               {list.map((u, i) => (
                 <button
                   key={`${u}-${i}`}
                   onClick={() => setIndex(i)}
                   className={`relative shrink-0 w-20 h-14 rounded-lg overflow-hidden border ${
-                    i === index ? "border-orange-500" : "border-white/10 hover:border-white/30"
+                    i === index ? "border-orange-500" : "border-line hover:border-line-strong"
                   }`}
                 >
                   <MediaThumb urls={[u]} mode={mode} />
@@ -374,7 +374,7 @@ export function MediaPreviewModal({
             </div>
           )}
 
-          {children && <div className="p-5 border-t border-white/10">{children}</div>}
+          {children && <div className="p-5 border-t border-line">{children}</div>}
         </div>
       </div>
     </div>

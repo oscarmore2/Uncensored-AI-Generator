@@ -94,14 +94,14 @@ export default async function WorkDetailPage({ params }: { params: Promise<{ id:
     <div className="min-h-screen">
       <GuestHeader />
       <div className="max-w-6xl mx-auto px-6 pt-8 pb-16">
-        <Link href="/explore" className="text-sm text-gray-400 hover:text-white">
+        <Link href="/explore" className="text-sm text-ink-muted hover:text-ink">
           <i className="fas fa-arrow-left mr-2" />
           {t("back")}
         </Link>
 
         <div className="mt-6 grid grid-cols-1 lg:grid-cols-12 gap-8">
           <div className="lg:col-span-7">
-            <div className="rounded-3xl overflow-hidden border border-white/10 bg-[#111]">
+            <div className="rounded-3xl overflow-hidden border border-line bg-surface">
               <AdaptiveMedia mode={work.mode} src={work.mediaUrl} poster={work.thumbUrl} />
             </div>
           </div>
@@ -110,30 +110,30 @@ export default async function WorkDetailPage({ params }: { params: Promise<{ id:
             <div>
               <span className="media-badge">{MODE_KEYS.has(work.mode) ? t(`modes.${work.mode}` as "modes.txt2img") : work.mode}</span>
               {work.isAdult && (
-                <span className="ml-2 rounded-full bg-red-600 px-2 py-0.5 text-[10px] font-bold text-white">18+</span>
+                <span className="ml-2 rounded-full bg-red-700 px-2 py-0.5 text-[10px] font-bold text-white">18+</span>
               )}
               <h1 className="text-2xl font-bold tracking-tight mt-3">{work.title ?? t("communityWork")}</h1>
             </div>
 
             <div className="glass rounded-3xl p-5">
-              <div className="text-xs font-semibold text-gray-400 mb-2">{t("prompt")}</div>
+              <div className="text-xs font-semibold text-ink-muted mb-2">{t("prompt")}</div>
               <p className="text-sm leading-relaxed whitespace-pre-wrap">{work.prompt}</p>
             </div>
 
             {work.negativePrompt && (
               <div className="glass rounded-3xl p-5">
-                <div className="text-xs font-semibold text-gray-400 mb-2">{t("negativePrompt")}</div>
-                <p className="text-sm text-gray-300">{work.negativePrompt}</p>
+                <div className="text-xs font-semibold text-ink-muted mb-2">{t("negativePrompt")}</div>
+                <p className="text-sm text-ink-muted">{work.negativePrompt}</p>
               </div>
             )}
 
             {paramEntries.length > 0 && (
               <div className="glass rounded-3xl p-5">
-                <div className="text-xs font-semibold text-gray-400 mb-3">{t("parameters")}</div>
+                <div className="text-xs font-semibold text-ink-muted mb-3">{t("parameters")}</div>
                 <div className="space-y-2 text-xs">
                   {paramEntries.map(([k, v]) => (
                     <div key={k} className="flex justify-between gap-x-4">
-                      <span className="text-gray-400 font-mono">{k}</span>
+                      <span className="text-ink-muted font-mono">{k}</span>
                       <span className="font-mono text-right break-all">{String(v)}</span>
                     </div>
                   ))}
@@ -144,13 +144,13 @@ export default async function WorkDetailPage({ params }: { params: Promise<{ id:
             <div className="pt-2">
               <Link
                 href={ctaHref}
-                className="generate-btn block w-full py-4 text-white font-bold text-lg rounded-3xl text-center shadow-xl active:scale-[0.985]"
+                className="generate-btn block w-full py-4 text-ink font-bold text-lg rounded-3xl text-center shadow-xl active:scale-[0.985]"
               >
                 <i className="fas fa-magic mr-2" />
                 {user ? t("createSame") : t("registerCreateSame")}
               </Link>
               {!user && (
-                <p className="text-center text-xs text-gray-500 mt-3">{t("signupHint")}</p>
+                <p className="text-center text-xs text-ink-subtle mt-3">{t("signupHint")}</p>
               )}
             </div>
           </div>

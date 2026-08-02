@@ -61,7 +61,7 @@ export default function ModUserGenerationsPage({ params }: { params: Promise<{ i
 
   return (
     <div>
-      <Link href="/mod/users" className="text-sm text-gray-400 hover:text-white">
+      <Link href="/mod/users" className="text-sm text-ink-muted hover:text-ink">
         <i className="fas fa-arrow-left mr-2" />
         返回用户列表
       </Link>
@@ -69,21 +69,21 @@ export default function ModUserGenerationsPage({ params }: { params: Promise<{ i
       <div className="mt-4 mb-6">
         <h1 className="text-3xl font-bold tracking-tighter">
           {data?.user.username ?? `用户 #${id}`}
-          {data && <span className="ml-3 text-sm font-normal text-gray-400">余额 {data.user.balance} 点 · 共 {data.total} 件作品</span>}
+          {data && <span className="ml-3 text-sm font-normal text-ink-muted">余额 {data.user.balance} 点 · 共 {data.total} 件作品</span>}
         </h1>
       </div>
 
-      {msg && <p className="mb-4 text-sm text-amber-300">{msg}</p>}
+      {msg && <p className="mb-4 text-sm text-amber-800">{msg}</p>}
 
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
         {data?.generations.map((g) => (
           <div key={g.id} className={`glass rounded-3xl overflow-hidden ${g.deleted_at ? "opacity-60" : ""}`}>
-            <div className="relative aspect-video bg-[#111]">
+            <div className="relative aspect-video bg-surface">
               {g.result_urls?.[0] ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={g.result_urls[0]} alt={`#${g.id}`} className="w-full h-full object-cover" loading="lazy" />
               ) : (
-                <div className="fake-image w-full h-full flex items-center justify-center text-xs text-gray-500">
+                <div className="fake-image w-full h-full flex items-center justify-center text-xs text-ink-subtle">
                   无结果图（{g.status}）
                 </div>
               )}
@@ -95,16 +95,16 @@ export default function ModUserGenerationsPage({ params }: { params: Promise<{ i
               </div>
             </div>
             <div className="p-4">
-              <div className="text-xs text-gray-400 font-mono mb-2">
+              <div className="text-xs text-ink-muted font-mono mb-2">
                 #{g.id} · {g.mode} · {g.status}
               </div>
-              <p className="text-xs text-gray-300 line-clamp-2 mb-3">{g.prompt}</p>
+              <p className="text-xs text-ink-muted line-clamp-2 mb-3">{g.prompt}</p>
               <div className="flex gap-2">
                 {g.deleted_at ? (
                   <button
                     onClick={() => action(() => api(`/api/mod/generations/${g.id}/restore`, { method: "POST" }), `#${g.id} 已恢复`)}
                     disabled={busy}
-                    className="flex-1 py-1.5 text-xs bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl disabled:opacity-50"
+                    className="flex-1 py-1.5 text-xs bg-black/[0.03] hover:bg-black/[0.06] border border-line rounded-xl disabled:opacity-50"
                   >
                     恢复
                   </button>
@@ -115,7 +115,7 @@ export default function ModUserGenerationsPage({ params }: { params: Promise<{ i
                         action(() => api(`/api/mod/generations/${g.id}/soft-delete`, { method: "POST" }), `#${g.id} 已软删除`)
                       }
                       disabled={busy}
-                      className="flex-1 py-1.5 text-xs bg-white/5 hover:bg-red-600/30 border border-white/10 rounded-xl disabled:opacity-50"
+                      className="flex-1 py-1.5 text-xs bg-black/[0.03] hover:bg-red-600/30 border border-line rounded-xl disabled:opacity-50"
                     >
                       软删除
                     </button>
@@ -139,7 +139,7 @@ export default function ModUserGenerationsPage({ params }: { params: Promise<{ i
       </div>
 
       {data && data.generations.length === 0 && (
-        <div className="glass rounded-3xl p-16 text-center text-gray-500">该用户暂无作品</div>
+        <div className="glass rounded-3xl p-16 text-center text-ink-subtle">该用户暂无作品</div>
       )}
 
       {totalPages > 1 && (
@@ -147,17 +147,17 @@ export default function ModUserGenerationsPage({ params }: { params: Promise<{ i
           <button
             disabled={page <= 1}
             onClick={() => setPage((p) => p - 1)}
-            className="px-5 py-2 border border-white/10 rounded-2xl hover:bg-white/5 disabled:opacity-40"
+            className="px-5 py-2 border border-line rounded-2xl hover:bg-black/[0.04] disabled:opacity-40"
           >
             上一页
           </button>
-          <span className="px-4 py-2 text-gray-400">
+          <span className="px-4 py-2 text-ink-muted">
             {page} / {totalPages}
           </span>
           <button
             disabled={page >= totalPages}
             onClick={() => setPage((p) => p + 1)}
-            className="px-5 py-2 border border-white/10 rounded-2xl hover:bg-white/5 disabled:opacity-40"
+            className="px-5 py-2 border border-line rounded-2xl hover:bg-black/[0.04] disabled:opacity-40"
           >
             下一页
           </button>

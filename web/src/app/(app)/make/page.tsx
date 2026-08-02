@@ -586,20 +586,20 @@ function MakePageInner() {
             ? product.spicy
               ? "bg-fuchsia-600/20 border-fuchsia-500"
               : "bg-orange-600/20 border-orange-500"
-            : "bg-white/5 border-white/10 hover:border-white/25"
+            : "bg-black/[0.03] border-line hover:border-line-strong"
         } ${locked ? "opacity-60" : ""}`}
       >
         <div className="flex items-center gap-2 mb-1">
           <span className="text-sm font-semibold">{product.label}</span>
           {product.spicy && (
-            <span className="px-1.5 py-px rounded text-[10px] font-bold bg-fuchsia-600 text-white">
+            <span className="px-1.5 py-px rounded text-[10px] font-bold bg-fuchsia-700 text-white">
               SPICY
             </span>
           )}
-          {locked && <i className="fas fa-lock text-[10px] text-amber-400" />}
+          {locked && <i className="fas fa-lock text-[10px] text-amber-800" />}
         </div>
-        <div className="text-[11px] text-gray-400 leading-snug">{product.description}</div>
-        <div className="mt-1.5 text-[11px] font-mono text-orange-300">
+        <div className="text-[11px] text-ink-muted leading-snug">{product.description}</div>
+        <div className="mt-1.5 text-[11px] font-mono text-orange-700">
           {product.credit_cost}
           {t("creditsUnit")}
           {product.unit_seconds > 0 ? ` / ${product.unit_seconds}s` : ""}
@@ -615,7 +615,7 @@ function MakePageInner() {
       <div className="flex items-end justify-between mb-6">
         <div>
           <h1 className="text-4xl font-bold tracking-tighter">{t("title")}</h1>
-          <p className="text-gray-400 mt-1">
+          <p className="text-ink-muted mt-1">
             {t("subtitle")}
             {!user?.is_vip ? ` • ${t("safetyNotice")}` : ""}
           </p>
@@ -632,7 +632,7 @@ function MakePageInner() {
               key={m.mode}
               onClick={() => setMode(m.mode)}
               className={`mode-tab flex-1 md:flex-none px-5 py-3 text-sm font-semibold rounded-3xl flex items-center justify-center gap-x-2 border ${
-                m.mode === mode ? "active border-orange-600" : "bg-white/5 border-white/10"
+                m.mode === mode ? "active border-orange-600" : "bg-black/[0.03] border-line"
               }`}
             >
               <i className={`fas ${m.icon}`} />
@@ -640,7 +640,7 @@ function MakePageInner() {
                 {t.has(`modes.${m.mode}`) ? t(`modes.${m.mode}` as "modes.txt2img") : m.fallbackLabel}
               </span>
               {cheapest && (
-                <span className="text-[10px] px-1.5 py-px bg-white/10 rounded">
+                <span className="text-[10px] px-1.5 py-px bg-black/[0.06] rounded">
                   {cheapest.credit_cost}
                   {t("creditsUnit")}起
                 </span>
@@ -651,7 +651,7 @@ function MakePageInner() {
       </div>
 
       {noTiers && (
-        <div className="mb-6 rounded-2xl bg-amber-500/10 border border-amber-500/20 px-4 py-3 text-sm text-amber-100/90">
+        <div className="mb-6 rounded-2xl bg-amber-500/10 border border-amber-500/20 px-4 py-3 text-sm text-amber-800/90">
           {t("tierUnavailable")}
         </div>
       )}
@@ -659,7 +659,7 @@ function MakePageInner() {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         <div className="lg:col-span-7 glass rounded-3xl p-6">
           <div className="mb-5">
-            <label className="text-sm font-semibold text-gray-300 mb-2 block">{t("tierLabel")}</label>
+            <label className="text-sm font-semibold text-ink-muted mb-2 block">{t("tierLabel")}</label>
             <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
               {normalTiers.map((p) => (
                 <TierCard key={p.id} product={p} />
@@ -669,12 +669,12 @@ function MakePageInner() {
             {spicyTiers.length > 0 && (
               <div className="mt-4">
                 <div className="flex items-center gap-2 mb-2">
-                  <span className="text-xs font-semibold text-fuchsia-300">{t("spicyLabel")}</span>
+                  <span className="text-xs font-semibold text-fuchsia-700">{t("spicyLabel")}</span>
                   {!isVip && (
                     <button
                       type="button"
                       onClick={() => router.push("/pricing")}
-                      className="text-[11px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-200 hover:bg-amber-500/30"
+                      className="text-[11px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-800 hover:bg-amber-500/30"
                     >
                       {t("spicyUnlock")}
                     </button>
@@ -685,7 +685,7 @@ function MakePageInner() {
                     <TierCard key={p.id} product={p} />
                   ))}
                 </div>
-                <p className="mt-2 text-[11px] text-gray-500 leading-relaxed">
+                <p className="mt-2 text-[11px] text-ink-subtle leading-relaxed">
                   {t("spicyNotice")}
                 </p>
               </div>
@@ -694,7 +694,7 @@ function MakePageInner() {
 
           {isUndress ? (
             <div className="mb-5">
-              <label className="text-sm font-semibold text-gray-300 mb-2 block">{t("genderLabel")}</label>
+              <label className="text-sm font-semibold text-ink-muted mb-2 block">{t("genderLabel")}</label>
               <div className="flex flex-wrap gap-2">
                 {UNDRESS_GENDERS.map((g) => (
                   <button
@@ -703,16 +703,16 @@ function MakePageInner() {
                     onClick={() => setGender(g)}
                     className={`px-4 py-2 rounded-2xl text-sm font-medium border transition-colors ${
                       gender === g
-                        ? "bg-orange-600/20 border-orange-500 text-orange-100"
-                        : "bg-white/5 border-white/10 text-gray-300 hover:border-white/25"
+                        ? "bg-orange-600/20 border-orange-500 text-orange-700"
+                        : "bg-black/[0.03] border-line text-ink-muted hover:border-line-strong"
                     }`}
                   >
                     {t(`genders.${g}` as "genders.female")}
                   </button>
                 ))}
               </div>
-              <p className="mt-2 text-[11px] text-gray-500 leading-relaxed">{t("undressHint")}</p>
-              <p className="mt-1 text-[11px] text-gray-500 leading-relaxed">{t("undressAspectHint")}</p>
+              <p className="mt-2 text-[11px] text-ink-subtle leading-relaxed">{t("undressHint")}</p>
+              <p className="mt-1 text-[11px] text-ink-subtle leading-relaxed">{t("undressAspectHint")}</p>
             </div>
           ) : null}
 
@@ -727,7 +727,7 @@ function MakePageInner() {
           {isUndress ? null : (
             <div className="mb-5">
               <div className="flex items-center justify-between mb-2 gap-2 flex-wrap">
-                <label className="text-sm font-semibold text-gray-300">{t("prompt")}</label>
+                <label className="text-sm font-semibold text-ink-muted">{t("prompt")}</label>
                 <div className="flex items-center gap-2">
                   {magicEnabled && (
                     <button
@@ -756,7 +756,7 @@ function MakePageInner() {
                   <button
                     type="button"
                     onClick={() => setPrompt(examplePrompts[Math.floor(Math.random() * examplePrompts.length)])}
-                    className="text-xs flex items-center gap-x-1 text-orange-400 hover:text-orange-300"
+                    className="text-xs flex items-center gap-x-1 text-orange-700 hover:text-orange-800"
                   >
                     <i className="fas fa-dice" /> <span>{t("random")}</span>
                   </button>
@@ -765,7 +765,7 @@ function MakePageInner() {
               <textarea
                 value={prompt}
                 onChange={(e) => setPrompt(e.target.value)}
-                className="prompt-box w-full bg-[#111] border border-white/10 focus:border-orange-500/60 rounded-2xl p-4 text-sm placeholder:text-gray-500 outline-none min-h-[120px]"
+                className="prompt-box w-full bg-surface border border-line focus:border-orange-500/60 rounded-2xl p-4 text-sm placeholder:text-ink-subtle outline-none min-h-[120px]"
                 placeholder={mode === "imgedit" ? t("editPlaceholder") : t("promptPlaceholder")}
               />
             </div>
@@ -773,19 +773,19 @@ function MakePageInner() {
 
           {!isUndress && meta.supportsNegative && (
             <div className="mb-5">
-              <label className="text-sm font-semibold text-gray-300 mb-2 block">{t("negative")}</label>
+              <label className="text-sm font-semibold text-ink-muted mb-2 block">{t("negative")}</label>
               <input
                 value={negative}
                 onChange={(e) => setNegative(e.target.value)}
-                className="w-full bg-[#111] border border-white/10 focus:border-orange-500/60 rounded-2xl px-4 py-3 text-sm outline-none"
+                className="w-full bg-surface border border-line focus:border-orange-500/60 rounded-2xl px-4 py-3 text-sm outline-none"
               />
             </div>
           )}
 
           {meta.needsImage && (
             <div className="mb-5">
-              <label className="text-sm font-semibold text-gray-300 mb-2 block">{t("referenceImage")}</label>
-              <label className="block border-2 border-dashed border-white/20 hover:border-orange-500/40 rounded-3xl p-8 text-center cursor-pointer transition-colors">
+              <label className="text-sm font-semibold text-ink-muted mb-2 block">{t("referenceImage")}</label>
+              <label className="block border-2 border-dashed border-line-strong hover:border-orange-500/40 rounded-3xl p-8 text-center cursor-pointer transition-colors">
                 <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
                 {imageBase64 || reusedImageUrl ? (
                   <div>
@@ -796,7 +796,7 @@ function MakePageInner() {
                       className="mx-auto max-h-48 rounded-2xl shadow-xl mb-3"
                     />
                     {!imageBase64 && reusedImageUrl && (
-                      <div className="mb-2 text-[11px] text-gray-500">{t("reusedImage")}</div>
+                      <div className="mb-2 text-[11px] text-ink-subtle">{t("reusedImage")}</div>
                     )}
                     <button
                       onClick={(e) => {
@@ -805,16 +805,16 @@ function MakePageInner() {
                         setImageFilename(null);
                         setReusedImageUrl(null);
                       }}
-                      className="text-xs px-4 py-1 bg-white/10 hover:bg-white/20 rounded-full"
+                      className="text-xs px-4 py-1 bg-black/[0.06] hover:bg-black/[0.08] rounded-full"
                     >
                       {t("removeImage")}
                     </button>
                   </div>
                 ) : (
                   <div>
-                    <i className="fas fa-cloud-upload-alt text-4xl text-gray-500 mb-3" />
+                    <i className="fas fa-cloud-upload-alt text-4xl text-ink-subtle mb-3" />
                     <p className="text-sm">{t("uploadReference")}</p>
-                    <p className="text-xs text-gray-500 mt-1">{t("uploadHint")}</p>
+                    <p className="text-xs text-ink-subtle mt-1">{t("uploadHint")}</p>
                   </div>
                 )}
               </label>
@@ -823,10 +823,10 @@ function MakePageInner() {
 
           <div className="mb-2">
             <div className="flex items-center justify-between mb-3">
-              <label className="text-sm font-semibold text-gray-300">{t("advanced")}</label>
+              <label className="text-sm font-semibold text-ink-muted">{t("advanced")}</label>
               <button
                 onClick={() => setAdvancedOpen(!advancedOpen)}
-                className="text-xs text-gray-400 flex items-center gap-1"
+                className="text-xs text-ink-muted flex items-center gap-1"
               >
                 <span>{advancedOpen ? t("collapse") : t("expand")}</span>
                 <i className={`fas fa-chevron-${advancedOpen ? "up" : "down"} text-xs`} />
@@ -847,11 +847,11 @@ function MakePageInner() {
                 {meta.supportsBatch && (
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
-                      <label className="text-xs text-gray-400 block mb-1">{t("quantity")}</label>
+                      <label className="text-xs text-ink-muted block mb-1">{t("quantity")}</label>
                       <select
                         value={batch}
                         onChange={(e) => setBatch(Number(e.target.value))}
-                        className={`w-full bg-[#111] border border-white/10 rounded-xl px-3 py-2 text-sm outline-none ${
+                        className={`w-full bg-surface border border-line rounded-xl px-3 py-2 text-sm outline-none ${
                           accent === "fuchsia" ? "focus:border-fuchsia-500/60" : "focus:border-orange-500/60"
                         }`}
                       >
@@ -863,7 +863,7 @@ function MakePageInner() {
                   </div>
                 )}
                 {controls.length === 0 && (
-                  <p className="text-xs text-gray-500">{t("noExtraParams")}</p>
+                  <p className="text-xs text-ink-subtle">{t("noExtraParams")}</p>
                 )}
               </div>
             )}
@@ -874,57 +874,57 @@ function MakePageInner() {
           <div className="flex-1">
             <div className="flex justify-between items-center mb-4">
               <div>
-                <div className="text-xs text-gray-400">{t("estimatedCost")}</div>
+                <div className="text-xs text-ink-muted">{t("estimatedCost")}</div>
                 <div className="flex items-baseline">
-                  <span className="text-5xl font-bold font-mono text-orange-400">{cost}</span>
-                  <span className="ml-2 text-lg text-gray-400">{t("credits")}</span>
+                  <span className="text-5xl font-bold font-mono text-orange-700">{cost}</span>
+                  <span className="ml-2 text-lg text-ink-muted">{t("credits")}</span>
                 </div>
               </div>
               <div className="text-right">
-                <div className="text-xs text-gray-400">{t("balance")}</div>
+                <div className="text-xs text-ink-muted">{t("balance")}</div>
                 <div className="flex items-center justify-end gap-x-1">
-                  <i className="fas fa-coins text-amber-400" />
+                  <i className="fas fa-coins text-amber-800" />
                   <span className="font-mono text-2xl font-semibold stat-number">{user?.balance ?? "—"}</span>
                 </div>
               </div>
             </div>
 
-            <div className="bg-black/40 rounded-2xl p-4 text-xs space-y-2 mb-6">
+            <div className="bg-black/[0.04] rounded-2xl p-4 text-xs space-y-2 mb-6">
               <div className="flex justify-between">
-                <span className="text-gray-400">{t("tierLabel")}</span>
+                <span className="text-ink-muted">{t("tierLabel")}</span>
                 <span className="text-right max-w-[65%] truncate flex items-center gap-1 justify-end">
                   {selectedProduct?.spicy && (
-                    <span className="px-1 rounded text-[9px] font-bold bg-fuchsia-600 text-white">SPICY</span>
+                    <span className="px-1 rounded text-[9px] font-bold bg-fuchsia-700 text-white">SPICY</span>
                   )}
                   {selectedProduct?.label ?? "—"}
                 </span>
               </div>
               {catalog?.user_vip.is_active && (catalog.user_vip.tier?.discount_bps ?? 0) > 0 && (
                 <div className="flex justify-between">
-                  <span className="text-gray-400">{t("vipDiscount")}</span>
-                  <span className="text-amber-300">
+                  <span className="text-ink-muted">{t("vipDiscount")}</span>
+                  <span className="text-amber-800">
                     {catalog.user_vip.tier?.name} -{catalog.user_vip.tier?.discount_percent}%
                   </span>
                 </div>
               )}
               <div className="flex justify-between">
-                <span className="text-gray-400">{t("estimatedTime")}</span>
+                <span className="text-ink-muted">{t("estimatedTime")}</span>
                 <span>{meta.category === "video" ? "60–240s" : "8–40s"}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-gray-400">{t("ratio")}</span>{" "}
+                <span className="text-ink-muted">{t("ratio")}</span>{" "}
                 <span>{isUndress ? t("undressAspectFollow") : ratio}</span>
               </div>
               {meta.category === "video" && (
                 <div className="flex justify-between">
-                  <span className="text-gray-400">{t("params.duration")}</span> <span>{duration}s</span>
+                  <span className="text-ink-muted">{t("params.duration")}</span> <span>{duration}s</span>
                 </div>
               )}
             </div>
           </div>
 
           {insufficientCredits && phase === "idle" && (
-            <div className="mb-3 rounded-2xl bg-amber-500/10 border border-amber-500/25 px-4 py-2.5 text-xs text-amber-200 flex items-start gap-2">
+            <div className="mb-3 rounded-2xl bg-amber-500/10 border border-amber-500/25 px-4 py-2.5 text-xs text-amber-800 flex items-start gap-2">
               <i className="fas fa-coins mt-0.5 shrink-0" />
               <span>{t("insufficientCredits", { cost, balance })}</span>
             </div>
@@ -933,7 +933,7 @@ function MakePageInner() {
           <button
             onClick={startGeneration}
             disabled={phase !== "idle" || !selectedProduct || insufficientCredits}
-            className="generate-btn w-full py-4 text-white font-bold text-lg rounded-3xl flex items-center justify-center gap-x-3 shadow-xl active:scale-[0.985] disabled:opacity-60 disabled:cursor-not-allowed"
+            className="generate-btn w-full py-4 text-ink font-bold text-lg rounded-3xl flex items-center justify-center gap-x-3 shadow-xl active:scale-[0.985] disabled:opacity-60 disabled:cursor-not-allowed"
           >
             {phase === "idle" ? (
               insufficientCredits ? (
@@ -958,8 +958,8 @@ function MakePageInner() {
               onClick={() => router.push("/pricing")}
               className={`text-xs flex items-center justify-center gap-x-1 mx-auto ${
                 insufficientCredits
-                  ? "text-amber-300 hover:text-amber-200 font-semibold"
-                  : "text-gray-400 hover:text-orange-400"
+                  ? "text-amber-800 hover:text-amber-900 font-semibold"
+                  : "text-ink-muted hover:text-orange-800"
               }`}
             >
               <i className="fas fa-coins fa-sm" /> <span>{t("recharge")}</span>
@@ -972,7 +972,7 @@ function MakePageInner() {
         <div className="mt-8 glass rounded-3xl p-8 text-center">
           <div className="w-16 h-16 mx-auto mb-4 border-4 border-orange-500/30 border-t-orange-500 rounded-full animate-spin" />
           <div className="text-sm mb-3">{t("progress", { progress })}</div>
-          <div className="max-w-md mx-auto h-2 bg-white/10 rounded-full overflow-hidden">
+          <div className="max-w-md mx-auto h-2 bg-black/[0.06] rounded-full overflow-hidden">
             <div
               className="h-full bg-orange-500 rounded-full transition-all duration-500"
               style={{ width: `${Math.max(2, progress)}%` }}
@@ -985,13 +985,13 @@ function MakePageInner() {
         <div className="mt-8">
           <div className="flex justify-between mb-3">
             <h3 className="font-semibold flex items-center gap-x-2">
-              <i className="fas fa-check-circle text-emerald-400" /> {t("completed")}
+              <i className="fas fa-check-circle text-emerald-700" /> {t("completed")}
               {result.isAdult && (
-                <span className="rounded-full bg-red-600 px-2 py-0.5 text-[10px] font-bold text-white">18+</span>
+                <span className="rounded-full bg-red-700 px-2 py-0.5 text-[10px] font-bold text-white">18+</span>
               )}
               <MediaExpiryBadge expiresAt={result.mediaExpiresAt} deletedAt={null} compact />
             </h3>
-            <button onClick={() => setResult(null)} className="text-xs px-3 py-1 bg-white/5 rounded-full">
+            <button onClick={() => setResult(null)} className="text-xs px-3 py-1 bg-black/[0.03] rounded-full">
               {t("close")}
             </button>
           </div>
@@ -1003,13 +1003,13 @@ function MakePageInner() {
                 download={`wanwankewu_${Date.now()}${result.mode.endsWith("vid") ? ".mp4" : ".jpg"}`}
                 target="_blank"
                 rel="noopener"
-                className="flex-1 py-2.5 text-sm font-semibold bg-white/5 hover:bg-white/10 border border-white/10 rounded-2xl flex items-center justify-center gap-x-2"
+                className="flex-1 py-2.5 text-sm font-semibold bg-black/[0.03] hover:bg-black/[0.06] border border-line rounded-2xl flex items-center justify-center gap-x-2"
               >
                 <i className="fas fa-download" /> <span>{t("download")}</span>
               </a>
               <a
                 href="/history"
-                className="flex-1 py-2.5 text-sm font-semibold bg-white/5 hover:bg-white/10 border border-white/10 rounded-2xl text-center leading-8"
+                className="flex-1 py-2.5 text-sm font-semibold bg-black/[0.03] hover:bg-black/[0.06] border border-line rounded-2xl text-center leading-8"
               >
                 {t("viewAll")}
               </a>

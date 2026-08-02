@@ -49,13 +49,13 @@ export function ImageAlbum({
                 setLightbox(g.result_urls);
                 setLbIndex(0);
               }}
-              className={`relative aspect-square rounded-2xl overflow-hidden border bg-[#111] ${
-                active ? "border-orange-500/60 ring-1 ring-orange-500/30" : "border-white/10 hover:border-white/25"
+              className={`relative aspect-square rounded-2xl overflow-hidden border bg-stage ${
+                active ? "border-orange-500/60 ring-1 ring-orange-500/30" : "border-line hover:border-line-strong"
               }`}
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={thumb} alt="" className="w-full h-full object-cover" />
-              <span className="absolute bottom-1 left-1 text-[10px] px-1.5 py-0.5 rounded bg-black/60 font-mono">
+              <span className="absolute bottom-1 left-1 text-[10px] px-1.5 py-0.5 rounded bg-black/60 font-mono text-white">
                 #{g.id}
               </span>
               {g.is_adult && (
@@ -72,7 +72,7 @@ export function ImageAlbum({
       {failed.length > 0 && (
         <div className="space-y-1">
           {failed.slice(0, 5).map((g) => (
-            <p key={g.id} className="text-xs text-red-400/80">
+            <p key={g.id} className="text-xs text-red-700/80">
               #{g.id} {t("failed")}{g.error ? `: ${g.error.slice(0, 80)}` : ""}
             </p>
           ))}
@@ -93,11 +93,11 @@ export function ImageAlbum({
 
 function StatusRow({ g }: { g: PlaythingGen }) {
   return (
-    <div className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2 text-xs text-gray-400 flex justify-between gap-2">
+    <div className="rounded-xl border border-line bg-black/[0.03] px-3 py-2 text-xs text-ink-muted flex justify-between gap-2">
       <span>
         #{g.id} · {g.product_label || g.model_id} · {g.status}
       </span>
-      <span className="font-mono text-orange-300">{g.progress}%</span>
+      <span className="font-mono text-orange-700">{g.progress}%</span>
     </div>
   );
 }
@@ -126,7 +126,7 @@ function Lightbox({
 
   return (
     <div
-      className="fixed inset-0 z-[80] bg-black/85 flex items-center justify-center p-4"
+      className="fixed inset-0 z-[80] bg-black/85 flex items-center justify-center p-4 text-white"
       onClick={onClose}
     >
       <div className="relative max-w-5xl w-full" onClick={(e) => e.stopPropagation()}>
@@ -140,25 +140,25 @@ function Lightbox({
           <button
             type="button"
             disabled={index <= 0}
-            className="px-3 py-1.5 text-sm rounded-xl border border-white/20 disabled:opacity-40"
+            className="px-3 py-1.5 text-sm rounded-xl border border-line-strong disabled:opacity-40"
             onClick={() => onIndex(index - 1)}
           >
             {t("previousImage")}
           </button>
-          <span className="text-sm text-gray-400 self-center">
+          <span className="text-sm text-ink-muted self-center">
             {index + 1} / {urls.length}
           </span>
           <button
             type="button"
             disabled={index >= urls.length - 1}
-            className="px-3 py-1.5 text-sm rounded-xl border border-white/20 disabled:opacity-40"
+            className="px-3 py-1.5 text-sm rounded-xl border border-line-strong disabled:opacity-40"
             onClick={() => onIndex(index + 1)}
           >
             {t("nextImage")}
           </button>
           <button
             type="button"
-            className="px-3 py-1.5 text-sm rounded-xl border border-white/20"
+            className="px-3 py-1.5 text-sm rounded-xl border border-line-strong"
             onClick={onClose}
           >
             {t("close")}
@@ -172,11 +172,11 @@ function Lightbox({
 export function EmptyState({ title, hint }: { title: string; hint: string }) {
   return (
     <div className="flex flex-col items-center justify-center min-h-[280px] text-center px-6">
-      <div className="w-14 h-14 rounded-2xl bg-white/5 flex items-center justify-center mb-4">
-        <i className="fas fa-images text-gray-500 text-xl" />
+      <div className="w-14 h-14 rounded-2xl bg-black/[0.03] flex items-center justify-center mb-4">
+        <i className="fas fa-images text-ink-subtle text-xl" />
       </div>
-      <p className="text-gray-300 font-medium mb-1">{title}</p>
-      <p className="text-xs text-gray-500 max-w-xs">{hint}</p>
+      <p className="text-ink-muted font-medium mb-1">{title}</p>
+      <p className="text-xs text-ink-subtle max-w-xs">{hint}</p>
     </div>
   );
 }

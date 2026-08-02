@@ -87,7 +87,7 @@ export default function AdminUsersPage() {
   return (
     <div>
       <h1 className="text-3xl font-bold tracking-tighter mb-1">用户管理</h1>
-      <p className="text-gray-400 text-sm mb-6">改角色 / 调余额 / 封禁解封</p>
+      <p className="text-ink-muted text-sm mb-6">改角色 / 调余额 / 封禁解封</p>
 
       <input
         value={q}
@@ -96,15 +96,15 @@ export default function AdminUsersPage() {
           setPage(1);
         }}
         placeholder="搜索用户名或邮箱..."
-        className="w-full max-w-sm mb-5 bg-[#111] border border-white/10 focus:border-orange-500/60 rounded-2xl px-4 py-2.5 text-sm outline-none"
+        className="w-full max-w-sm mb-5 bg-surface border border-line focus:border-orange-500/60 rounded-2xl px-4 py-2.5 text-sm outline-none"
       />
 
-      {msg && <p className="mb-4 text-sm text-amber-300">{msg}</p>}
+      {msg && <p className="mb-4 text-sm text-amber-800">{msg}</p>}
 
       <div className="glass rounded-3xl overflow-x-auto">
         <table className="w-full text-sm min-w-[820px]">
           <thead>
-            <tr className="text-left text-xs text-gray-400 border-b border-white/10">
+            <tr className="text-left text-xs text-ink-muted border-b border-line">
               <th className="px-4 py-3">ID</th>
               <th className="px-4 py-3">用户名</th>
               <th className="px-4 py-3">注册地</th>
@@ -119,15 +119,15 @@ export default function AdminUsersPage() {
           </thead>
           <tbody>
             {data?.users.map((u) => (
-              <tr key={u.id} className={`border-b border-white/5 hover:bg-white/[0.02] ${u.disabled_at ? "opacity-60" : ""}`}>
-                <td className="px-4 py-3 font-mono text-gray-400">#{u.id}</td>
+              <tr key={u.id} className={`border-b border-line hover:bg-black/[0.03] ${u.disabled_at ? "opacity-60" : ""}`}>
+                <td className="px-4 py-3 font-mono text-ink-muted">#{u.id}</td>
                 <td className="px-4 py-3 font-medium">
-                  <Link href={`/admin/users/${u.id}`} className="hover:text-orange-300">
+                  <Link href={`/admin/users/${u.id}`} className="hover:text-orange-800">
                     {u.username}
                   </Link>
-                  {u.email && <div className="mt-0.5 text-[10px] font-normal text-gray-600">{u.email}</div>}
+                  {u.email && <div className="mt-0.5 text-[10px] font-normal text-ink-subtle">{u.email}</div>}
                 </td>
-                <td className="px-4 py-3 text-xs text-gray-400">
+                <td className="px-4 py-3 text-xs text-ink-muted">
                   {[u.registration_country_code, u.registration_region].filter(Boolean).join(" · ") || "—"}
                 </td>
                 <td className="px-4 py-3">
@@ -135,7 +135,7 @@ export default function AdminUsersPage() {
                     value={u.role}
                     disabled={busy}
                     onChange={(e) => void patch(u.id, { role: e.target.value }, `${u.username} 角色改为 ${e.target.value}`)}
-                    className="bg-[#111] border border-white/10 rounded-lg px-2 py-1 text-xs"
+                    className="bg-surface border border-line rounded-lg px-2 py-1 text-xs"
                   >
                     {ROLES.map((r) => (
                       <option key={r} value={r}>
@@ -149,17 +149,17 @@ export default function AdminUsersPage() {
                 <td className="px-4 py-3 font-mono">{u.generation_count}</td>
                 <td className="px-4 py-3">
                   {u.disabled_at ? (
-                    <span className="text-xs px-2 py-0.5 bg-red-500/15 text-red-300 rounded-full">已封禁</span>
+                    <span className="text-xs px-2 py-0.5 bg-red-500/15 text-red-700 rounded-full">已封禁</span>
                   ) : (
-                    <span className="text-xs px-2 py-0.5 bg-emerald-500/15 text-emerald-300 rounded-full">正常</span>
+                    <span className="text-xs px-2 py-0.5 bg-emerald-500/15 text-emerald-700 rounded-full">正常</span>
                   )}
                 </td>
-                <td className="px-4 py-3 text-xs text-gray-500">{new Date(u.created_at).toLocaleDateString("zh-CN")}</td>
+                <td className="px-4 py-3 text-xs text-ink-subtle">{new Date(u.created_at).toLocaleDateString("zh-CN")}</td>
                 <td className="px-4 py-3 text-right whitespace-nowrap">
                   <button
                     onClick={() => adjustBalance(u)}
                     disabled={busy}
-                    className="text-xs px-3 py-1 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg mr-2 disabled:opacity-50"
+                    className="text-xs px-3 py-1 bg-black/[0.03] hover:bg-black/[0.06] border border-line rounded-lg mr-2 disabled:opacity-50"
                   >
                     调余额
                   </button>
@@ -179,7 +179,7 @@ export default function AdminUsersPage() {
             ))}
             {data && data.users.length === 0 && (
               <tr>
-                <td colSpan={10} className="px-4 py-10 text-center text-gray-500">
+                <td colSpan={10} className="px-4 py-10 text-center text-ink-subtle">
                   没有匹配的用户
                 </td>
               </tr>
@@ -193,17 +193,17 @@ export default function AdminUsersPage() {
           <button
             disabled={page <= 1}
             onClick={() => setPage((p) => p - 1)}
-            className="px-5 py-2 border border-white/10 rounded-2xl hover:bg-white/5 disabled:opacity-40"
+            className="px-5 py-2 border border-line rounded-2xl hover:bg-black/[0.04] disabled:opacity-40"
           >
             上一页
           </button>
-          <span className="px-4 py-2 text-gray-400">
+          <span className="px-4 py-2 text-ink-muted">
             {page} / {totalPages}
           </span>
           <button
             disabled={page >= totalPages}
             onClick={() => setPage((p) => p + 1)}
-            className="px-5 py-2 border border-white/10 rounded-2xl hover:bg-white/5 disabled:opacity-40"
+            className="px-5 py-2 border border-line rounded-2xl hover:bg-black/[0.04] disabled:opacity-40"
           >
             下一页
           </button>

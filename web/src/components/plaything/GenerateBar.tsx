@@ -40,9 +40,9 @@ export function GenerateBar({
         : t("progress", { progress });
 
   return (
-    <div className="space-y-2 pt-2 border-t border-white/10">
+    <div className="space-y-2 pt-2 border-t border-line">
       {insufficient && (
-        <div className="rounded-xl bg-amber-500/10 border border-amber-500/25 px-3 py-2 text-[11px] text-amber-200 flex items-start gap-1.5">
+        <div className="rounded-xl bg-amber-500/10 border border-amber-500/25 px-3 py-2 text-[11px] text-amber-800 flex items-start gap-1.5">
           <i className="fas fa-coins mt-0.5 shrink-0" />
           <span>{t("insufficientCredits", { cost: creditCost, balance })}</span>
         </div>
@@ -51,21 +51,21 @@ export function GenerateBar({
         type="button"
         disabled={busy || disabled || quoting || insufficient}
         onClick={onGenerate}
-        className="w-full py-3 rounded-2xl text-sm font-semibold bg-orange-600 hover:bg-orange-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+        className="w-full py-3 rounded-2xl text-sm font-semibold bg-orange-700 hover:bg-orange-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
       >
         {label}
       </button>
       {phase === "polling" && (
-        <div className="h-1.5 rounded-full bg-white/10 overflow-hidden">
+        <div className="h-1.5 rounded-full bg-black/[0.06] overflow-hidden">
           <div
             className="h-full bg-orange-500 transition-all"
             style={{ width: `${Math.max(5, progress)}%` }}
           />
         </div>
       )}
-      <div className="flex items-center justify-between text-xs text-gray-500 gap-2">
+      <div className="flex items-center justify-between text-xs text-ink-subtle gap-2">
         <span>
-          {t("balance")} <span className="font-mono text-gray-300">{balance}</span> {t("credits")} · {t("noDiscount")}
+          {t("balance")} <span className="font-mono text-ink-muted">{balance}</span> {t("credits")} · {t("noDiscount")}
           {quoteSource === "wavespeed" && (
             <span className="text-emerald-500/80 ml-1">· {t("dynamicPrice")}</span>
           )}
@@ -73,7 +73,7 @@ export function GenerateBar({
             <span className="text-amber-500/80 ml-1">· {t("basePrice")}</span>
           )}
         </span>
-        <button type="button" onClick={onTopUp} className="text-orange-400 hover:text-orange-300 shrink-0">
+        <button type="button" onClick={onTopUp} className="text-orange-700 hover:text-orange-800 shrink-0">
           {t("topUp")}
         </button>
       </div>

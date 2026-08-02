@@ -242,7 +242,7 @@ export default function AdminPricingPage() {
     <div>
       <div className="mb-6">
         <h1 className="text-3xl font-bold tracking-tighter mb-1">价格体系</h1>
-        <p className="text-gray-400 text-sm">
+        <p className="text-ink-muted text-sm">
           生成产品扣点 · 参数映射 · 充值套餐 · 多等级 VIP 折扣
         </p>
       </div>
@@ -255,8 +255,8 @@ export default function AdminPricingPage() {
             onClick={() => setTab(t.id)}
             className={`px-4 py-2 text-sm rounded-2xl border ${
               tab === t.id
-                ? "bg-orange-600 border-orange-500 text-white"
-                : "bg-white/5 border-white/10 text-gray-300"
+                ? "bg-orange-700 border-orange-600 text-white"
+                : "bg-black/[0.03] border-line text-ink-muted"
             }`}
           >
             {t.label}
@@ -264,24 +264,24 @@ export default function AdminPricingPage() {
         ))}
       </div>
 
-      {msg && <p className="mb-4 text-sm text-amber-300">{msg}</p>}
+      {msg && <p className="mb-4 text-sm text-amber-800">{msg}</p>}
 
       {tab === "products" && (
         <div className="space-y-6">
           <div className="glass rounded-3xl p-5">
             <div className="flex flex-wrap items-center gap-3 justify-between">
-              <div className="text-sm text-gray-300">
+              <div className="text-sm text-ink-muted">
                 档位矩阵固定为 <b>5 模式 × 档位 × 普通/Spicy</b>，不支持增删；管理端只做绑定模型、调价与上下架。
-                <div className="text-xs text-gray-500 mt-1">
+                <div className="text-xs text-ink-subtle mt-1">
                   桥接模型<b>全部由你手工指定</b>，目录同步与版本升级都不会自动改动绑定。
                   未绑定的档位对用户隐藏，不会出现点了必然失败的情况。
                 </div>
-                <div className="text-xs text-gray-500 mt-1">
+                <div className="text-xs text-ink-subtle mt-1">
                   已同步 WaveSpeed 模型 {catalogSynced} 个
                   {unbound > 0 && (
-                    <span className="text-amber-300"> · {unbound} 个档位未绑定</span>
+                    <span className="text-amber-800"> · {unbound} 个档位未绑定</span>
                   )}
-                  <span className="text-gray-600">
+                  <span className="text-ink-subtle">
                     {" "}
                     · 在「玩物专区 → 模型库」给模型贴类型标签后，这里可按标签筛选
                   </span>
@@ -290,7 +290,7 @@ export default function AdminPricingPage() {
               <button
                 disabled={busy}
                 title="仅填补当前未绑定的档位，已绑定的不会被覆盖"
-                className="px-4 py-2 text-sm font-semibold border border-white/15 hover:border-white/30 rounded-2xl disabled:opacity-50"
+                className="px-4 py-2 text-sm font-semibold border border-line hover:border-line-strong rounded-2xl disabled:opacity-50"
                 onClick={() => {
                   if (!confirm("按内置候选表填补未绑定的档位？已绑定的不受影响。")) return;
                   void action(
@@ -306,8 +306,8 @@ export default function AdminPricingPage() {
 
           {MODES.map((mode) => (
             <div key={mode} className="space-y-2">
-              <h2 className="text-sm font-semibold text-gray-300">
-                {MODE_LABEL[mode]} <span className="text-gray-600 font-mono">{mode}</span>
+              <h2 className="text-sm font-semibold text-ink-muted">
+                {MODE_LABEL[mode]} <span className="text-ink-subtle font-mono">{mode}</span>
               </h2>
               {(productsByMode[mode] ?? []).map((p) => (
                 <div
@@ -319,23 +319,23 @@ export default function AdminPricingPage() {
                   <div className="flex-1 min-w-[260px]">
                     <div className="font-medium flex items-center gap-2 flex-wrap">
                       <span>{p.label}</span>
-                      <span className="text-[10px] px-1.5 py-0.5 bg-white/10 rounded">
+                      <span className="text-[10px] px-1.5 py-0.5 bg-black/[0.06] rounded">
                         {TIER_LABEL[p.tier] ?? p.tier}
                       </span>
                       {p.spicy && (
-                        <span className="text-[10px] px-1.5 py-0.5 bg-fuchsia-600 text-white rounded font-bold">
+                        <span className="text-[10px] px-1.5 py-0.5 bg-fuchsia-700 text-white rounded font-bold">
                           SPICY · 会员专属
                         </span>
                       )}
-                      {!p.is_active && <span className="text-xs text-gray-500">停用</span>}
+                      {!p.is_active && <span className="text-xs text-ink-subtle">停用</span>}
                       {!p.is_bound && (
-                        <span className="text-[10px] px-1.5 py-0.5 bg-amber-500/20 text-amber-300 rounded">
+                        <span className="text-[10px] px-1.5 py-0.5 bg-amber-500/20 text-amber-800 rounded">
                           未绑定模型
                         </span>
                       )}
                     </div>
 
-                    <div className="text-xs text-gray-400 mt-1">
+                    <div className="text-xs text-ink-muted mt-1">
                       {p.credit_cost} 点
                       {p.unit_seconds > 0 ? ` / ${p.unit_seconds}s` : ""} · 售价 $
                       {p.retail_usd.toFixed(3)}
@@ -347,10 +347,10 @@ export default function AdminPricingPage() {
                             <span
                               className={
                                 p.margin_percent >= 40
-                                  ? " text-emerald-400"
+                                  ? " text-emerald-700"
                                   : p.margin_percent >= 0
-                                    ? " text-amber-300"
-                                    : " text-red-400"
+                                    ? " text-amber-800"
+                                    : " text-red-700"
                               }
                             >
                               {" "}
@@ -361,22 +361,22 @@ export default function AdminPricingPage() {
                       )}
                     </div>
 
-                    <div className="text-[11px] text-gray-500 mt-0.5">
+                    <div className="text-[11px] text-ink-subtle mt-0.5">
                       对标 {p.ref_label || `${p.ref_credits} 分`} × {p.price_multiplier_bps / 100}%
                       {p.effective_multiplier_bps > 0 &&
                         p.effective_multiplier_bps !== p.price_multiplier_bps && (
-                          <span className="text-amber-400">
+                          <span className="text-amber-800">
                             {" "}
                             （取整后实际 {p.effective_multiplier_bps / 100}%）
                           </span>
                         )}
                     </div>
 
-                    <div className="text-[11px] font-mono text-gray-500 mt-0.5 truncate">
+                    <div className="text-[11px] font-mono text-ink-subtle mt-0.5 truncate">
                       {p.is_bound ? `${p.provider}: ${p.provider_model_id}` : "—"}
                     </div>
                     {(p.ignored_params?.length || p.ignored_default_inputs?.length) && (
-                      <div className="text-[11px] text-amber-400/90 mt-1">
+                      <div className="text-[11px] text-amber-800/90 mt-1">
                         <i className="fas fa-triangle-exclamation mr-1" />
                         该模型不支持，配置将被忽略：
                         {[...(p.ignored_params ?? []), ...(p.ignored_default_inputs ?? [])].join("、")}
@@ -386,14 +386,14 @@ export default function AdminPricingPage() {
 
                   <button
                     disabled={busy}
-                    className="px-3 py-1.5 text-xs border border-sky-500/30 text-sky-300 rounded-xl"
+                    className="px-3 py-1.5 text-xs border border-sky-500/30 text-sky-700 rounded-xl"
                     onClick={() => void openBridge(p)}
                   >
                     绑定模型
                   </button>
                   <button
                     disabled={busy}
-                    className="px-3 py-1.5 text-xs border border-white/10 rounded-xl"
+                    className="px-3 py-1.5 text-xs border border-line rounded-xl"
                     onClick={() => {
                       const cost = prompt(`「${p.label}」新扣点`, String(p.credit_cost));
                       if (!cost) return;
@@ -411,7 +411,7 @@ export default function AdminPricingPage() {
                   </button>
                   <button
                     disabled={busy}
-                    className="px-3 py-1.5 text-xs border border-white/10 rounded-xl"
+                    className="px-3 py-1.5 text-xs border border-line rounded-xl"
                     onClick={() => {
                       const pct = prompt(
                         `「${p.label}」倍率（%，相对 ZenCreator 对标价 ${p.ref_credits} 分）`,
@@ -434,7 +434,7 @@ export default function AdminPricingPage() {
                   </button>
                   <button
                     disabled={busy}
-                    className="px-3 py-1.5 text-xs border border-white/10 rounded-xl"
+                    className="px-3 py-1.5 text-xs border border-line rounded-xl"
                     onClick={() =>
                       action(
                         () =>
@@ -455,7 +455,7 @@ export default function AdminPricingPage() {
 
           {bridgeFor && (
             <div
-              className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4"
+              className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4 text-white"
               onClick={() => setBridgeFor(null)}
             >
               <div
@@ -464,7 +464,7 @@ export default function AdminPricingPage() {
               >
                 <div className="mb-3">
                   <div className="font-semibold">绑定桥接模型 · {bridgeFor.label}</div>
-                  <div className="text-xs text-gray-400 mt-1">
+                  <div className="text-xs text-ink-muted mt-1">
                     售价 ${bridgeFor.retail_usd.toFixed(3)} / 次；选成本低于此值的模型才有毛利。
                     生成端不会看到任何模型信息。
                   </div>
@@ -477,11 +477,11 @@ export default function AdminPricingPage() {
                     setBridgeQuery(e.target.value);
                     void fetchBridge(bridgeFor, e.target.value, bridgeTag);
                   }}
-                  className="bg-[#111] border border-white/10 rounded-xl px-3 py-2 text-sm mb-2"
+                  className="bg-surface border border-line rounded-xl px-3 py-2 text-sm mb-2"
                 />
                 {bridgeTags.length > 0 && (
                   <div className="flex flex-wrap gap-1.5 mb-3 items-center">
-                    <span className="text-[11px] text-gray-500">按标签：</span>
+                    <span className="text-[11px] text-ink-subtle">按标签：</span>
                     <button
                       type="button"
                       onClick={() => {
@@ -490,8 +490,8 @@ export default function AdminPricingPage() {
                       }}
                       className={`px-2 py-0.5 text-[11px] rounded-full border ${
                         bridgeTag === ""
-                          ? "bg-sky-600/25 border-sky-500 text-sky-200"
-                          : "border-white/15 text-gray-400"
+                          ? "bg-sky-600/25 border-sky-500 text-sky-700"
+                          : "border-line text-ink-muted"
                       }`}
                     >
                       全部
@@ -507,8 +507,8 @@ export default function AdminPricingPage() {
                         }}
                         className={`px-2 py-0.5 text-[11px] rounded-full border ${
                           bridgeTag === t
-                            ? "bg-sky-600/25 border-sky-500 text-sky-200"
-                            : "border-white/15 text-gray-400 hover:text-gray-200"
+                            ? "bg-sky-600/25 border-sky-500 text-sky-700"
+                            : "border-line text-ink-muted hover:text-ink"
                         }`}
                       >
                         {t}
@@ -518,7 +518,7 @@ export default function AdminPricingPage() {
                 )}
                 <div className="overflow-y-auto space-y-1.5 flex-1">
                   {bridgeModels.length === 0 && (
-                    <p className="text-sm text-gray-500 py-6 text-center">
+                    <p className="text-sm text-ink-subtle py-6 text-center">
                       没有匹配的模型。请先到「玩物专区 → 模型库」同步目录，并给模型贴上类型标签。
                     </p>
                   )}
@@ -547,24 +547,24 @@ export default function AdminPricingPage() {
                         className={`w-full text-left px-3 py-2 rounded-xl border text-sm ${
                           m.model_id === bridgeFor.provider_model_id
                             ? "bg-sky-600/20 border-sky-500"
-                            : "bg-white/5 border-white/10 hover:border-white/25"
+                            : "bg-black/[0.03] border-line hover:border-line-strong"
                         }`}
                       >
                         <div className="font-mono text-xs truncate">{m.model_id}</div>
-                        <div className="text-[11px] text-gray-400 flex gap-2 flex-wrap items-center">
+                        <div className="text-[11px] text-ink-muted flex gap-2 flex-wrap items-center">
                           <span>{m.name}</span>
                           {m.tags.map((t) => (
                             <span
                               key={t}
-                              className="px-1.5 py-px rounded bg-sky-500/15 text-sky-300 border border-sky-500/25"
+                              className="px-1.5 py-px rounded bg-sky-500/15 text-sky-700 border border-sky-500/25"
                             >
                               {t}
                             </span>
                           ))}
-                          {m.type && <span className="text-gray-600">{m.type}</span>}
+                          {m.type && <span className="text-ink-subtle">{m.type}</span>}
                           <span>${cost.toFixed(4)}</span>
                           {margin !== null && (
-                            <span className={margin >= 40 ? "text-emerald-400" : margin >= 0 ? "text-amber-300" : "text-red-400"}>
+                            <span className={margin >= 40 ? "text-emerald-700" : margin >= 0 ? "text-amber-800" : "text-red-700"}>
                               毛利 {margin.toFixed(0)}%
                             </span>
                           )}
@@ -575,7 +575,7 @@ export default function AdminPricingPage() {
                 </div>
                 <div className="mt-3 flex justify-between">
                   <button
-                    className="px-3 py-1.5 text-xs border border-red-500/30 text-red-300 rounded-xl"
+                    className="px-3 py-1.5 text-xs border border-red-500/30 text-red-700 rounded-xl"
                     onClick={() => {
                       const id = bridgeFor.id;
                       setBridgeFor(null);
@@ -592,7 +592,7 @@ export default function AdminPricingPage() {
                     解绑
                   </button>
                   <button
-                    className="px-3 py-1.5 text-xs border border-white/10 rounded-xl"
+                    className="px-3 py-1.5 text-xs border border-line rounded-xl"
                     onClick={() => setBridgeFor(null)}
                   >
                     关闭
@@ -639,7 +639,7 @@ export default function AdminPricingPage() {
             <select
               value={mappingForm.mode}
               onChange={(e) => setMappingForm({ ...mappingForm, mode: e.target.value })}
-              className="bg-[#111] border border-white/10 rounded-xl px-3 py-2 text-sm"
+              className="bg-surface border border-line rounded-xl px-3 py-2 text-sm"
             >
               {MODES.map((m) => (
                 <option key={m} value={m}>
@@ -652,19 +652,19 @@ export default function AdminPricingPage() {
               placeholder="UI key（如 ratio）"
               value={mappingForm.ui_key}
               onChange={(e) => setMappingForm({ ...mappingForm, ui_key: e.target.value })}
-              className="bg-[#111] border border-white/10 rounded-xl px-3 py-2 text-sm"
+              className="bg-surface border border-line rounded-xl px-3 py-2 text-sm"
             />
             <input
               required
               placeholder="上游字段名（如 aspect_ratio；下划线开头仅本地）"
               value={mappingForm.provider_path}
               onChange={(e) => setMappingForm({ ...mappingForm, provider_path: e.target.value })}
-              className="bg-[#111] border border-white/10 rounded-xl px-3 py-2 text-sm"
+              className="bg-surface border border-line rounded-xl px-3 py-2 text-sm"
             />
             <textarea
               value={mappingForm.options_json}
               onChange={(e) => setMappingForm({ ...mappingForm, options_json: e.target.value })}
-              className="md:col-span-2 bg-[#111] border border-white/10 rounded-xl px-3 py-2 text-xs font-mono min-h-[80px]"
+              className="md:col-span-2 bg-surface border border-line rounded-xl px-3 py-2 text-xs font-mono min-h-[80px]"
             />
             <button
               type="submit"
@@ -680,15 +680,15 @@ export default function AdminPricingPage() {
               <div className="flex-1 text-sm">
                 <div className="font-medium">
                   {m.mode} · {m.ui_key} → {m.provider_path}
-                  {!m.enabled && <span className="text-gray-500 text-xs ml-2">停用</span>}
+                  {!m.enabled && <span className="text-ink-subtle text-xs ml-2">停用</span>}
                 </div>
-                <div className="text-xs text-gray-500 font-mono">
+                <div className="text-xs text-ink-subtle font-mono">
                   options: {m.options.map((o) => o.value).join(", ") || "—"}
                 </div>
               </div>
               <button
                 disabled={busy}
-                className="px-3 py-1.5 text-xs border border-white/10 rounded-xl"
+                className="px-3 py-1.5 text-xs border border-line rounded-xl"
                 onClick={() =>
                   action(
                     () =>
@@ -704,7 +704,7 @@ export default function AdminPricingPage() {
               </button>
               <button
                 disabled={busy}
-                className="px-3 py-1.5 text-xs border border-red-500/30 text-red-300 rounded-xl"
+                className="px-3 py-1.5 text-xs border border-red-500/30 text-red-700 rounded-xl"
                 onClick={() => {
                   if (!confirm("删除该映射？")) return;
                   void action(
@@ -746,7 +746,7 @@ export default function AdminPricingPage() {
               placeholder="点数"
               value={pkgForm.credits}
               onChange={(e) => setPkgForm({ ...pkgForm, credits: Number(e.target.value) })}
-              className="bg-[#111] border border-white/10 rounded-xl px-3 py-2 text-sm"
+              className="bg-surface border border-line rounded-xl px-3 py-2 text-sm"
             />
             <input
               type="number"
@@ -754,14 +754,14 @@ export default function AdminPricingPage() {
               placeholder="美分"
               value={pkgForm.price_cents}
               onChange={(e) => setPkgForm({ ...pkgForm, price_cents: Number(e.target.value) })}
-              className="bg-[#111] border border-white/10 rounded-xl px-3 py-2 text-sm"
+              className="bg-surface border border-line rounded-xl px-3 py-2 text-sm"
             />
             <input
               required
               placeholder="名称"
               value={pkgForm.label}
               onChange={(e) => setPkgForm({ ...pkgForm, label: e.target.value })}
-              className="bg-[#111] border border-white/10 rounded-xl px-3 py-2 text-sm"
+              className="bg-surface border border-line rounded-xl px-3 py-2 text-sm"
             />
             <button
               type="submit"
@@ -777,12 +777,12 @@ export default function AdminPricingPage() {
                 <div className="font-medium">
                   {p.label} · {p.credits} 点 = ${(p.price_cents / 100).toFixed(2)}
                   {p.badge ? ` · ${p.badge}` : ""}
-                  {!p.is_active && <span className="text-gray-500 text-xs ml-2">停用</span>}
+                  {!p.is_active && <span className="text-ink-subtle text-xs ml-2">停用</span>}
                 </div>
               </div>
               <button
                 disabled={busy}
-                className="px-3 py-1.5 text-xs border border-white/10 rounded-xl"
+                className="px-3 py-1.5 text-xs border border-line rounded-xl"
                 onClick={() => {
                   const cents = prompt("新价格（美分）", String(p.price_cents));
                   if (!cents) return;
@@ -800,7 +800,7 @@ export default function AdminPricingPage() {
               </button>
               <button
                 disabled={busy}
-                className="px-3 py-1.5 text-xs border border-white/10 rounded-xl"
+                className="px-3 py-1.5 text-xs border border-line rounded-xl"
                 onClick={() =>
                   action(
                     () =>
@@ -816,7 +816,7 @@ export default function AdminPricingPage() {
               </button>
               <button
                 disabled={busy}
-                className="px-3 py-1.5 text-xs border border-red-500/30 text-red-300 rounded-xl"
+                className="px-3 py-1.5 text-xs border border-red-500/30 text-red-700 rounded-xl"
                 onClick={() => {
                   if (!confirm("删除套餐？")) return;
                   void action(
@@ -854,14 +854,14 @@ export default function AdminPricingPage() {
               placeholder="code（vip3）"
               value={tierForm.code}
               onChange={(e) => setTierForm({ ...tierForm, code: e.target.value })}
-              className="bg-[#111] border border-white/10 rounded-xl px-3 py-2 text-sm"
+              className="bg-surface border border-line rounded-xl px-3 py-2 text-sm"
             />
             <input
               required
               placeholder="名称"
               value={tierForm.name}
               onChange={(e) => setTierForm({ ...tierForm, name: e.target.value })}
-              className="bg-[#111] border border-white/10 rounded-xl px-3 py-2 text-sm"
+              className="bg-surface border border-line rounded-xl px-3 py-2 text-sm"
             />
             <input
               type="number"
@@ -872,7 +872,7 @@ export default function AdminPricingPage() {
               onChange={(e) =>
                 setTierForm({ ...tierForm, discount_percent: Number(e.target.value) })
               }
-              className="bg-[#111] border border-white/10 rounded-xl px-3 py-2 text-sm"
+              className="bg-surface border border-line rounded-xl px-3 py-2 text-sm"
             />
             <button
               type="submit"
@@ -888,16 +888,16 @@ export default function AdminPricingPage() {
                 <div className="font-medium">
                   {t.name} ({t.code}) · 折扣 {t.discount_percent}% · rank {t.rank}
                   {t.plaything_access && (
-                    <span className="ml-2 text-[10px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300">
+                    <span className="ml-2 text-[10px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-800">
                       玩物专区
                     </span>
                   )}
-                  {!t.is_active && <span className="text-gray-500 text-xs ml-2">停用</span>}
+                  {!t.is_active && <span className="text-ink-subtle text-xs ml-2">停用</span>}
                 </div>
               </div>
               <button
                 disabled={busy}
-                className="px-3 py-1.5 text-xs border border-white/10 rounded-xl"
+                className="px-3 py-1.5 text-xs border border-line rounded-xl"
                 onClick={() => {
                   const pct = prompt("折扣百分比（0-100）", String(t.discount_percent));
                   if (pct === null) return;
@@ -915,7 +915,7 @@ export default function AdminPricingPage() {
               </button>
               <button
                 disabled={busy}
-                className="px-3 py-1.5 text-xs border border-white/10 rounded-xl"
+                className="px-3 py-1.5 text-xs border border-line rounded-xl"
                 onClick={() =>
                   action(
                     () =>
@@ -931,7 +931,7 @@ export default function AdminPricingPage() {
               </button>
               <button
                 disabled={busy}
-                className="px-3 py-1.5 text-xs border border-white/10 rounded-xl"
+                className="px-3 py-1.5 text-xs border border-line rounded-xl"
                 onClick={() =>
                   action(
                     () =>
@@ -969,7 +969,7 @@ export default function AdminPricingPage() {
             <select
               value={planForm.tier_id}
               onChange={(e) => setPlanForm({ ...planForm, tier_id: Number(e.target.value) })}
-              className="bg-[#111] border border-white/10 rounded-xl px-3 py-2 text-sm"
+              className="bg-surface border border-line rounded-xl px-3 py-2 text-sm"
             >
               {tiers.map((t) => (
                 <option key={t.id} value={t.id}>
@@ -982,7 +982,7 @@ export default function AdminPricingPage() {
               placeholder="套餐名"
               value={planForm.label}
               onChange={(e) => setPlanForm({ ...planForm, label: e.target.value })}
-              className="bg-[#111] border border-white/10 rounded-xl px-3 py-2 text-sm"
+              className="bg-surface border border-line rounded-xl px-3 py-2 text-sm"
             />
             <input
               type="number"
@@ -990,7 +990,7 @@ export default function AdminPricingPage() {
               placeholder="美分"
               value={planForm.price_cents}
               onChange={(e) => setPlanForm({ ...planForm, price_cents: Number(e.target.value) })}
-              className="bg-[#111] border border-white/10 rounded-xl px-3 py-2 text-sm"
+              className="bg-surface border border-line rounded-xl px-3 py-2 text-sm"
             />
             <input
               type="number"
@@ -999,7 +999,7 @@ export default function AdminPricingPage() {
               onChange={(e) =>
                 setPlanForm({ ...planForm, bonus_credits: Number(e.target.value) })
               }
-              className="bg-[#111] border border-white/10 rounded-xl px-3 py-2 text-sm"
+              className="bg-surface border border-line rounded-xl px-3 py-2 text-sm"
             />
             <input
               type="number"
@@ -1008,7 +1008,7 @@ export default function AdminPricingPage() {
               onChange={(e) =>
                 setPlanForm({ ...planForm, duration_days: Number(e.target.value) })
               }
-              className="bg-[#111] border border-white/10 rounded-xl px-3 py-2 text-sm"
+              className="bg-surface border border-line rounded-xl px-3 py-2 text-sm"
             />
             <button
               type="submit"
@@ -1024,12 +1024,12 @@ export default function AdminPricingPage() {
                 <div className="font-medium">
                   {p.label} → {p.tier.name} · ${(p.price_cents / 100).toFixed(2)} · 赠
                   {p.bonus_credits}点 · {p.duration_days}天
-                  {!p.is_active && <span className="text-gray-500 text-xs ml-2">停用</span>}
+                  {!p.is_active && <span className="text-ink-subtle text-xs ml-2">停用</span>}
                 </div>
               </div>
               <button
                 disabled={busy}
-                className="px-3 py-1.5 text-xs border border-white/10 rounded-xl"
+                className="px-3 py-1.5 text-xs border border-line rounded-xl"
                 onClick={() => {
                   const cents = prompt("新月费（美分）", String(p.price_cents));
                   if (!cents) return;
@@ -1047,7 +1047,7 @@ export default function AdminPricingPage() {
               </button>
               <button
                 disabled={busy}
-                className="px-3 py-1.5 text-xs border border-white/10 rounded-xl"
+                className="px-3 py-1.5 text-xs border border-line rounded-xl"
                 onClick={() =>
                   action(
                     () =>
@@ -1063,7 +1063,7 @@ export default function AdminPricingPage() {
               </button>
               <button
                 disabled={busy}
-                className="px-3 py-1.5 text-xs border border-red-500/30 text-red-300 rounded-xl"
+                className="px-3 py-1.5 text-xs border border-red-500/30 text-red-700 rounded-xl"
                 onClick={() => {
                   if (!confirm("删除套餐？")) return;
                   void action(

@@ -85,18 +85,18 @@ export default function AdminWaveSpeedAccountsPage() {
       <div className="flex items-end justify-between mb-6 gap-4 flex-wrap">
         <div>
           <h1 className="text-3xl font-bold tracking-tighter mb-1">WaveSpeed</h1>
-          <p className="text-gray-400 text-sm">玩物专区 API Key · 同一时间仅一个激活</p>
+          <p className="text-ink-muted text-sm">玩物专区 API Key · 同一时间仅一个激活</p>
         </div>
         <div className="flex gap-2">
           <Link
             href="/admin/wavespeed/models"
-            className="px-5 py-2.5 text-sm font-semibold bg-white/5 hover:bg-white/10 border border-white/10 rounded-2xl"
+            className="px-5 py-2.5 text-sm font-semibold bg-black/[0.03] hover:bg-black/[0.06] border border-line rounded-2xl"
           >
             玩物模型库
           </Link>
           <button
             onClick={() => setFormOpen((v) => !v)}
-            className="px-5 py-2.5 text-sm font-semibold bg-orange-600 hover:bg-orange-500 rounded-2xl"
+            className="px-5 py-2.5 text-sm font-semibold bg-orange-700 hover:bg-orange-600 rounded-2xl"
           >
             <i className="fas fa-plus mr-2" />
             添加 Key
@@ -104,11 +104,11 @@ export default function AdminWaveSpeedAccountsPage() {
         </div>
       </div>
 
-      {msg && <p className="mb-4 text-sm text-amber-300">{msg}</p>}
+      {msg && <p className="mb-4 text-sm text-amber-800">{msg}</p>}
 
       {data?.note && (
-        <div className="glass rounded-3xl p-4 mb-6 text-xs text-gray-400">
-          <i className="fas fa-circle-info mr-2 text-orange-400" />
+        <div className="glass rounded-3xl p-4 mb-6 text-xs text-ink-muted">
+          <i className="fas fa-circle-info mr-2 text-orange-700" />
           {data.note}
         </div>
       )}
@@ -121,17 +121,17 @@ export default function AdminWaveSpeedAccountsPage() {
         >
           <div className="font-semibold mb-1">.env 兜底</div>
           {data.env_fallback.configured ? (
-            <p className="text-gray-400 text-xs">
+            <p className="text-ink-muted text-xs">
               Key {data.env_fallback.api_key_mask}
               {data.env_fallback.in_use
                 ? " · 当前无激活 DB 账户，走 .env"
                 : " · 有激活 DB 账户时不会使用 .env"}
             </p>
           ) : (
-            <p className="text-gray-500 text-xs">未配置 WAVESPEED_API_KEY。请添加并激活一个账户。</p>
+            <p className="text-ink-subtle text-xs">未配置 WAVESPEED_API_KEY。请添加并激活一个账户。</p>
           )}
           {data.defaults && (
-            <p className="text-gray-500 text-[11px] mt-2 font-mono break-all">
+            <p className="text-ink-subtle text-[11px] mt-2 font-mono break-all">
               Base: {data.defaults.base_url}
             </p>
           )}
@@ -143,27 +143,27 @@ export default function AdminWaveSpeedAccountsPage() {
           <h2 className="font-bold mb-4">添加 WaveSpeed API Key</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="text-xs text-gray-400 block mb-1">备注名 *</label>
+              <label className="text-xs text-ink-muted block mb-1">备注名 *</label>
               <input
                 required
                 value={form.label}
                 onChange={(e) => setForm({ ...form, label: e.target.value })}
                 placeholder="例如：主账户"
-                className="w-full bg-[#111] border border-white/10 rounded-2xl px-3 py-2.5 text-sm outline-none"
+                className="w-full bg-surface border border-line rounded-2xl px-3 py-2.5 text-sm outline-none"
               />
             </div>
             <div>
-              <label className="text-xs text-gray-400 block mb-1">API Key *</label>
+              <label className="text-xs text-ink-muted block mb-1">API Key *</label>
               <input
                 required
                 type="password"
                 value={form.api_key}
                 onChange={(e) => setForm({ ...form, api_key: e.target.value })}
                 placeholder="https://wavespeed.ai/accesskey"
-                className="w-full bg-[#111] border border-white/10 rounded-2xl px-3 py-2.5 text-sm outline-none font-mono"
+                className="w-full bg-surface border border-line rounded-2xl px-3 py-2.5 text-sm outline-none font-mono"
               />
             </div>
-            <label className="flex items-center gap-x-2 text-sm text-gray-300 cursor-pointer md:col-span-2">
+            <label className="flex items-center gap-x-2 text-sm text-ink-muted cursor-pointer md:col-span-2">
               <input
                 type="checkbox"
                 checked={form.activate}
@@ -189,17 +189,17 @@ export default function AdminWaveSpeedAccountsPage() {
               <div className="font-medium">
                 {a.label}
                 {a.is_active && (
-                  <span className="ml-2 text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300">
+                  <span className="ml-2 text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-700">
                     激活
                   </span>
                 )}
               </div>
-              <div className="text-xs text-gray-500 font-mono mt-1">{a.api_key_mask}</div>
+              <div className="text-xs text-ink-subtle font-mono mt-1">{a.api_key_mask}</div>
             </div>
             {!a.is_active && (
               <button
                 disabled={busy}
-                className="px-3 py-1.5 text-xs border border-white/10 rounded-xl"
+                className="px-3 py-1.5 text-xs border border-line rounded-xl"
                 onClick={() =>
                   action(
                     () =>
@@ -217,7 +217,7 @@ export default function AdminWaveSpeedAccountsPage() {
             {a.is_active && (
               <button
                 disabled={busy}
-                className="px-3 py-1.5 text-xs border border-white/10 rounded-xl"
+                className="px-3 py-1.5 text-xs border border-line rounded-xl"
                 onClick={() =>
                   action(
                     () =>
@@ -234,7 +234,7 @@ export default function AdminWaveSpeedAccountsPage() {
             )}
             <button
               disabled={busy}
-              className="px-3 py-1.5 text-xs border border-white/10 rounded-xl"
+              className="px-3 py-1.5 text-xs border border-line rounded-xl"
               onClick={() =>
                 action(
                   () => api(`/api/admin/wavespeed-accounts/${a.id}/test`, { method: "POST" }),
@@ -246,7 +246,7 @@ export default function AdminWaveSpeedAccountsPage() {
             </button>
             <button
               disabled={busy}
-              className="px-3 py-1.5 text-xs border border-red-500/30 text-red-300 rounded-xl"
+              className="px-3 py-1.5 text-xs border border-red-500/30 text-red-700 rounded-xl"
               onClick={() => {
                 if (!window.confirm("确定删除该账户？")) return;
                 void action(
@@ -260,7 +260,7 @@ export default function AdminWaveSpeedAccountsPage() {
           </div>
         ))}
         {data && data.accounts.length === 0 && (
-          <p className="text-gray-500 text-sm">暂无账户，请添加 Key 或配置 .env</p>
+          <p className="text-ink-subtle text-sm">暂无账户，请添加 Key 或配置 .env</p>
         )}
       </div>
     </div>

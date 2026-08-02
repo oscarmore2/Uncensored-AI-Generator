@@ -37,7 +37,7 @@ export default function ProfilePage() {
 
       <div className="glass rounded-3xl p-8 mb-6">
         <div className="flex items-center gap-x-6">
-          <div className="w-20 h-20 rounded-3xl bg-gradient-to-br from-orange-600 to-amber-800 border-2 border-white/20 flex-shrink-0 flex items-center justify-center text-2xl font-black uppercase">
+          <div className="w-20 h-20 rounded-3xl bg-gradient-to-br from-orange-600 to-amber-800 border-2 border-line-strong flex-shrink-0 flex items-center justify-center text-2xl font-black uppercase">
             {user?.username.slice(0, 2) ?? "?"}
           </div>
           <div className="flex-1">
@@ -49,18 +49,18 @@ export default function ProfilePage() {
                 </span>
               )}
             </div>
-            <p className="text-gray-400 text-sm">{t("session")}</p>
+            <p className="text-ink-muted text-sm">{t("session")}</p>
 
             <div className="mt-4 flex gap-2">
               <button
                 onClick={() => router.push("/pricing")}
-                className="px-5 py-2 text-sm font-semibold bg-white text-black rounded-2xl flex items-center gap-x-2 hover:bg-gray-100"
+                className="px-5 py-2 text-sm font-semibold bg-orange-700 text-white rounded-2xl flex items-center gap-x-2 hover:bg-orange-700"
               >
                 <i className="fas fa-wallet" /> <span>{t("buyCredits")}</span>
               </button>
               <button
                 onClick={logout}
-                className="px-5 py-2 text-sm font-semibold border border-white/20 hover:bg-white/5 rounded-2xl"
+                className="px-5 py-2 text-sm font-semibold border border-line-strong hover:bg-black/[0.04] rounded-2xl"
               >
                 {t("logout")}
               </button>
@@ -71,28 +71,28 @@ export default function ProfilePage() {
 
       <div className="grid grid-cols-3 gap-4 mb-6">
         <div className="glass rounded-3xl p-5 text-center">
-          <div className="text-4xl font-mono font-bold text-orange-400 stat-number">{totalGens ?? "—"}</div>
-          <div className="text-xs text-gray-400 mt-1">{t("creations")}</div>
+          <div className="text-4xl font-mono font-bold text-orange-700 stat-number">{totalGens ?? "—"}</div>
+          <div className="text-xs text-ink-muted mt-1">{t("creations")}</div>
         </div>
         <div className="glass rounded-3xl p-5 text-center">
-          <div className="text-4xl font-mono font-bold text-amber-400 stat-number">{user?.balance ?? "—"}</div>
-          <div className="text-xs text-gray-400 mt-1">{t("balance")}</div>
+          <div className="text-4xl font-mono font-bold text-amber-800 stat-number">{user?.balance ?? "—"}</div>
+          <div className="text-xs text-ink-muted mt-1">{t("balance")}</div>
         </div>
         <div className="glass rounded-3xl p-5 text-center">
-          <div className="text-4xl font-mono font-bold text-emerald-400">
+          <div className="text-4xl font-mono font-bold text-emerald-700">
             {user?.is_vip ? user.vip_tier?.name ?? "VIP" : t("standard")}
           </div>
-          <div className="text-xs text-gray-400 mt-1">{t("level")}</div>
+          <div className="text-xs text-ink-muted mt-1">{t("level")}</div>
         </div>
       </div>
 
       {user?.is_vip && user.vip_expires_at && (
         <div className="glass rounded-3xl p-6">
           <h3 className="font-semibold mb-2 flex items-center">
-            <i className="fas fa-crown text-amber-400 mr-2" />{" "}
+            <i className="fas fa-crown text-amber-800 mr-2" />{" "}
             {t("validity", { tier: user.vip_tier?.name ?? "VIP" })}
           </h3>
-          <p className="text-sm text-gray-400">
+          <p className="text-sm text-ink-muted">
             {t("expires", { date: new Date(user.vip_expires_at).toLocaleDateString(locale) })}
             {user.vip_tier && user.vip_tier.discount_percent > 0
               ? ` · ${t("discount", { percent: user.vip_tier.discount_percent })}`

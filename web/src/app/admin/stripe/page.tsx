@@ -89,20 +89,20 @@ export default function AdminStripeAccountsPage() {
       <div className="flex items-end justify-between mb-6">
         <div>
           <h1 className="text-3xl font-bold tracking-tighter mb-1">Stripe 账户</h1>
-          <p className="text-gray-400 text-sm">
+          <p className="text-ink-muted text-sm">
             Secret Key + Webhook Secret 成对管理；同一时间仅一个账户激活用于收款
           </p>
         </div>
         <button
           onClick={() => setFormOpen((v) => !v)}
-          className="px-5 py-2.5 text-sm font-semibold bg-orange-600 hover:bg-orange-500 rounded-2xl"
+          className="px-5 py-2.5 text-sm font-semibold bg-orange-700 hover:bg-orange-600 rounded-2xl"
         >
           <i className="fas fa-plus mr-2" />
           添加账户
         </button>
       </div>
 
-      {msg && <p className="mb-4 text-sm text-amber-300">{msg}</p>}
+      {msg && <p className="mb-4 text-sm text-amber-800">{msg}</p>}
 
       {data?.env_fallback && (
         <div
@@ -112,7 +112,7 @@ export default function AdminStripeAccountsPage() {
         >
           <div className="font-semibold mb-1">.env 兜底配置</div>
           {data.env_fallback.configured ? (
-            <p className="text-gray-400 text-xs">
+            <p className="text-ink-muted text-xs">
               Secret {data.env_fallback.secret_key_mask}
               {data.env_fallback.webhook_configured ? " · Webhook Secret 已配置" : " · Webhook Secret 未配置"}
               {data.env_fallback.in_use
@@ -120,19 +120,19 @@ export default function AdminStripeAccountsPage() {
                 : " · 有激活 DB 账户时不会使用 .env"}
             </p>
           ) : (
-            <p className="text-gray-500 text-xs">未配置。添加并激活一个 DB 账户后即可用 Stripe 收款（需 DEMO_MODE=false）。</p>
+            <p className="text-ink-subtle text-xs">未配置。添加并激活一个 DB 账户后即可用 Stripe 收款（需 DEMO_MODE=false）。</p>
           )}
         </div>
       )}
 
-      <div className="glass rounded-3xl p-4 mb-6 text-xs text-gray-400 space-y-1">
+      <div className="glass rounded-3xl p-4 mb-6 text-xs text-ink-muted space-y-1">
         <p>
-          <i className="fas fa-circle-info mr-2 text-orange-400" />
+          <i className="fas fa-circle-info mr-2 text-orange-700" />
           在 Stripe Dashboard → Developers → API keys 获取 Secret Key；在 Webhooks 添加端点{" "}
-          <code className="text-gray-300">/api/payments/webhook</code>，事件选{" "}
-          <code className="text-gray-300">checkout.session.completed</code>，复制 Signing secret（whsec_…）。
+          <code className="text-ink-muted">/api/payments/webhook</code>，事件选{" "}
+          <code className="text-ink-muted">checkout.session.completed</code>，复制 Signing secret（whsec_…）。
         </p>
-        <p>生产环境请将 <code className="text-gray-300">DEMO_MODE=false</code>，否则充值会走本地模拟入账。</p>
+        <p>生产环境请将 <code className="text-ink-muted">DEMO_MODE=false</code>，否则充值会走本地模拟入账。</p>
       </div>
 
       {formOpen && (
@@ -140,44 +140,44 @@ export default function AdminStripeAccountsPage() {
           <h2 className="font-bold mb-4">添加 Stripe 账户</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="md:col-span-2">
-              <label className="text-xs text-gray-400 block mb-1">备注名 *</label>
+              <label className="text-xs text-ink-muted block mb-1">备注名 *</label>
               <input
                 required
                 value={form.label}
                 onChange={(e) => setForm({ ...form, label: e.target.value })}
                 placeholder="例如：主账户 / 美国站"
-                className="w-full bg-[#111] border border-white/10 rounded-2xl px-3 py-2.5 text-sm outline-none"
+                className="w-full bg-surface border border-line rounded-2xl px-3 py-2.5 text-sm outline-none"
               />
             </div>
             <div className="md:col-span-2">
-              <label className="text-xs text-gray-400 block mb-1">Secret Key *（sk_…）</label>
+              <label className="text-xs text-ink-muted block mb-1">Secret Key *（sk_…）</label>
               <input
                 required
                 type="password"
                 value={form.secret_key}
                 onChange={(e) => setForm({ ...form, secret_key: e.target.value })}
-                className="w-full bg-[#111] border border-white/10 rounded-2xl px-3 py-2.5 text-sm outline-none font-mono"
+                className="w-full bg-surface border border-line rounded-2xl px-3 py-2.5 text-sm outline-none font-mono"
               />
             </div>
             <div className="md:col-span-2">
-              <label className="text-xs text-gray-400 block mb-1">Webhook Signing Secret *（whsec_…）</label>
+              <label className="text-xs text-ink-muted block mb-1">Webhook Signing Secret *（whsec_…）</label>
               <input
                 required
                 type="password"
                 value={form.webhook_secret}
                 onChange={(e) => setForm({ ...form, webhook_secret: e.target.value })}
-                className="w-full bg-[#111] border border-white/10 rounded-2xl px-3 py-2.5 text-sm outline-none font-mono"
+                className="w-full bg-surface border border-line rounded-2xl px-3 py-2.5 text-sm outline-none font-mono"
               />
             </div>
             <div className="md:col-span-2">
-              <label className="text-xs text-gray-400 block mb-1">Publishable Key（选填，pk_…）</label>
+              <label className="text-xs text-ink-muted block mb-1">Publishable Key（选填，pk_…）</label>
               <input
                 value={form.publishable_key}
                 onChange={(e) => setForm({ ...form, publishable_key: e.target.value })}
-                className="w-full bg-[#111] border border-white/10 rounded-2xl px-3 py-2.5 text-sm outline-none font-mono"
+                className="w-full bg-surface border border-line rounded-2xl px-3 py-2.5 text-sm outline-none font-mono"
               />
             </div>
-            <label className="flex items-center gap-x-2 text-sm text-gray-300 cursor-pointer md:col-span-2">
+            <label className="flex items-center gap-x-2 text-sm text-ink-muted cursor-pointer md:col-span-2">
               <input
                 type="checkbox"
                 checked={form.activate}
@@ -190,14 +190,14 @@ export default function AdminStripeAccountsPage() {
             <button
               type="submit"
               disabled={busy}
-              className="px-6 py-2.5 text-sm font-semibold bg-orange-600 hover:bg-orange-500 rounded-2xl disabled:opacity-50"
+              className="px-6 py-2.5 text-sm font-semibold bg-orange-700 hover:bg-orange-600 rounded-2xl disabled:opacity-50"
             >
               {busy ? "保存中..." : "确认添加"}
             </button>
             <button
               type="button"
               onClick={() => setFormOpen(false)}
-              className="px-6 py-2.5 text-sm border border-white/10 rounded-2xl hover:bg-white/5"
+              className="px-6 py-2.5 text-sm border border-line rounded-2xl hover:bg-black/[0.04]"
             >
               取消
             </button>
@@ -217,15 +217,15 @@ export default function AdminStripeAccountsPage() {
               <div className="flex items-center gap-2 mb-1">
                 <span className="font-semibold">{a.label}</span>
                 {a.is_active ? (
-                  <span className="text-[10px] px-2 py-0.5 bg-emerald-500/20 text-emerald-300 rounded-full">激活中</span>
+                  <span className="text-[10px] px-2 py-0.5 bg-emerald-500/20 text-emerald-700 rounded-full">激活中</span>
                 ) : (
-                  <span className="text-[10px] px-2 py-0.5 bg-white/10 text-gray-400 rounded-full">未激活</span>
+                  <span className="text-[10px] px-2 py-0.5 bg-black/[0.06] text-ink-muted rounded-full">未激活</span>
                 )}
               </div>
-              <div className="text-xs font-mono text-gray-400">Secret: {a.secret_key_mask}</div>
-              <div className="text-xs font-mono text-gray-500">Webhook: {a.webhook_secret_mask}</div>
+              <div className="text-xs font-mono text-ink-muted">Secret: {a.secret_key_mask}</div>
+              <div className="text-xs font-mono text-ink-subtle">Webhook: {a.webhook_secret_mask}</div>
               {a.publishable_key && (
-                <div className="text-xs font-mono text-gray-500 truncate max-w-md">pk: {a.publishable_key}</div>
+                <div className="text-xs font-mono text-ink-subtle truncate max-w-md">pk: {a.publishable_key}</div>
               )}
             </div>
             <div className="flex gap-2 flex-wrap">
@@ -260,7 +260,7 @@ export default function AdminStripeAccountsPage() {
                       `已停用「${a.label}」（将回退 .env）`
                     )
                   }
-                  className="px-4 py-2 text-xs bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl disabled:opacity-50"
+                  className="px-4 py-2 text-xs bg-black/[0.03] hover:bg-black/[0.06] border border-line rounded-xl disabled:opacity-50"
                 >
                   停用
                 </button>
@@ -279,7 +279,7 @@ export default function AdminStripeAccountsPage() {
                     "Secret Key 已更新"
                   );
                 }}
-                className="px-4 py-2 text-xs bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl disabled:opacity-50"
+                className="px-4 py-2 text-xs bg-black/[0.03] hover:bg-black/[0.06] border border-line rounded-xl disabled:opacity-50"
               >
                 换 Secret
               </button>
@@ -297,7 +297,7 @@ export default function AdminStripeAccountsPage() {
                     "Webhook Secret 已更新"
                   );
                 }}
-                className="px-4 py-2 text-xs bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl disabled:opacity-50"
+                className="px-4 py-2 text-xs bg-black/[0.03] hover:bg-black/[0.06] border border-line rounded-xl disabled:opacity-50"
               >
                 换 Webhook
               </button>
@@ -318,7 +318,7 @@ export default function AdminStripeAccountsPage() {
           </div>
         ))}
         {data && data.accounts.length === 0 && (
-          <div className="glass rounded-3xl p-12 text-center text-gray-500">
+          <div className="glass rounded-3xl p-12 text-center text-ink-subtle">
             尚未添加 DB 账户。可添加一组后激活，或继续使用 .env 中的凭证。
           </div>
         )}

@@ -83,7 +83,7 @@ export function ExploreGallery({
             <article
               key={work.id}
               onClick={() => open(work)}
-              className={`result-card group relative aspect-[3/4] overflow-hidden rounded-3xl border border-white/10 bg-[#111] ${
+              className={`result-card group relative aspect-[3/4] overflow-hidden rounded-3xl border border-line bg-surface ${
                 locked ? "cursor-default" : "cursor-pointer"
               }`}
             >
@@ -98,7 +98,7 @@ export function ExploreGallery({
               <div className="absolute left-3 top-3 flex gap-1.5">
                 <span className="media-badge">{MODE_KEYS.has(work.mode) ? t(`modes.${work.mode}` as "modes.txt2img") : work.mode}</span>
                 {work.is_adult && (
-                  <span className="rounded-full bg-red-600 px-2 py-0.5 text-[10px] font-bold text-white">18+</span>
+                  <span className="rounded-full bg-red-700 px-2 py-0.5 text-[10px] font-bold text-white">18+</span>
                 )}
               </div>
               {locked && (
@@ -114,11 +114,11 @@ export function ExploreGallery({
                   >
                     <i className="fas fa-eye" />
                   </button>
-                  <p className="mt-3 text-xs font-medium text-white">{t("showAdult")}</p>
+                  <p className="mt-3 text-xs font-medium text-ink">{t("showAdult")}</p>
                 </div>
               )}
               <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 to-transparent p-4">
-                <p className="line-clamp-2 text-xs text-gray-300">{work.title ?? work.prompt}</p>
+                <p className="line-clamp-2 text-xs text-ink-muted">{work.title ?? work.prompt}</p>
               </div>
             </article>
           );
@@ -127,7 +127,7 @@ export function ExploreGallery({
 
       {selected && (
         <div
-          className="fixed inset-0 z-[220] flex items-center justify-center bg-black/90 p-3 sm:p-6"
+          className="fixed inset-0 z-[220] flex items-center justify-center bg-black/90 p-3 sm:p-6 text-white"
           role="dialog"
           aria-modal="true"
           aria-label={t("dialogAria")}
@@ -135,8 +135,8 @@ export function ExploreGallery({
             if (event.target === event.currentTarget) setSelected(null);
           }}
         >
-          <div className="modal-pop grid max-h-[94vh] w-full max-w-6xl overflow-hidden rounded-3xl border border-white/10 bg-[#111] lg:grid-cols-[minmax(0,1.45fr)_minmax(330px,.75fr)]">
-            <div className="min-h-0 overflow-auto bg-black/30">
+          <div className="modal-pop grid max-h-[94vh] w-full max-w-6xl overflow-hidden rounded-3xl border border-line bg-surface lg:grid-cols-[minmax(0,1.45fr)_minmax(330px,.75fr)]">
+            <div className="min-h-0 overflow-auto bg-black/[0.04]">
               <AdaptiveMedia
                 mode={selected.mode}
                 src={selected.media_url}
@@ -144,7 +144,7 @@ export function ExploreGallery({
                 className="min-h-[45vh]"
               />
             </div>
-            <aside className="min-h-0 overflow-y-auto border-l border-white/10 p-6">
+            <aside className="min-h-0 overflow-y-auto border-l border-line p-6">
               <div className="flex items-start justify-between gap-4">
                 <div>
                   <div className="flex gap-2">
@@ -155,32 +155,32 @@ export function ExploreGallery({
                   </div>
                   <h2 className="mt-3 text-xl font-bold">{selected.title ?? t("communityWork")}</h2>
                 </div>
-                <button type="button" onClick={() => setSelected(null)} className="text-3xl text-gray-500 hover:text-white">
+                <button type="button" onClick={() => setSelected(null)} className="text-3xl text-ink-subtle hover:text-ink">
                   &times;
                 </button>
               </div>
 
               <div className="mt-5">
-                <div className="mb-2 text-xs font-semibold text-gray-500">PROMPT</div>
-                <p className="whitespace-pre-wrap text-sm leading-6 text-gray-200">{selected.prompt}</p>
+                <div className="mb-2 text-xs font-semibold text-ink-subtle">PROMPT</div>
+                <p className="whitespace-pre-wrap text-sm leading-6 text-ink">{selected.prompt}</p>
               </div>
               {selected.negative_prompt && (
                 <div className="mt-5">
-                  <div className="mb-2 text-xs font-semibold text-gray-500">NEGATIVE PROMPT</div>
-                  <p className="text-sm leading-6 text-gray-400">{selected.negative_prompt}</p>
+                  <div className="mb-2 text-xs font-semibold text-ink-subtle">NEGATIVE PROMPT</div>
+                  <p className="text-sm leading-6 text-ink-muted">{selected.negative_prompt}</p>
                 </div>
               )}
 
               <div className="mt-5 grid grid-cols-2 gap-3">
-                <div className="rounded-2xl border border-white/10 bg-white/[0.025] p-3">
-                  <div className="text-[10px] font-semibold text-gray-500">TIER</div>
-                  <div className="mt-1 truncate text-xs font-mono text-gray-200">
+                <div className="rounded-2xl border border-line bg-black/[0.03] p-3">
+                  <div className="text-[10px] font-semibold text-ink-subtle">TIER</div>
+                  <div className="mt-1 truncate text-xs font-mono text-ink">
                     {displayValue(selected.params.tier, t("inlineMedia"))}
                   </div>
                 </div>
-                <div className="rounded-2xl border border-white/10 bg-white/[0.025] p-3">
-                  <div className="text-[10px] font-semibold text-gray-500">SEED</div>
-                  <div className="mt-1 truncate text-xs font-mono text-gray-200">
+                <div className="rounded-2xl border border-line bg-black/[0.03] p-3">
+                  <div className="text-[10px] font-semibold text-ink-subtle">SEED</div>
+                  <div className="mt-1 truncate text-xs font-mono text-ink">
                     {displayValue(selected.params.seed, t("inlineMedia"))}
                   </div>
                 </div>
@@ -188,7 +188,7 @@ export function ExploreGallery({
 
               {refs.length > 0 && (
                 <div className="mt-5">
-                  <div className="mb-2 text-xs font-semibold text-gray-500">{t("referenceImages")}</div>
+                  <div className="mb-2 text-xs font-semibold text-ink-subtle">{t("referenceImages")}</div>
                   <div className="grid grid-cols-3 gap-2">
                     {refs.map((src, index) => (
                       // eslint-disable-next-line @next/next/no-img-element
@@ -200,12 +200,12 @@ export function ExploreGallery({
 
               {paramEntries.length > 0 && (
                 <div className="mt-5">
-                  <div className="mb-2 text-xs font-semibold text-gray-500">{t("parameters")}</div>
-                  <div className="divide-y divide-white/5 rounded-2xl border border-white/10 px-4">
+                  <div className="mb-2 text-xs font-semibold text-ink-subtle">{t("parameters")}</div>
+                  <div className="divide-y divide-white/5 rounded-2xl border border-line px-4">
                     {paramEntries.map(([key, value]) => (
                       <div key={key} className="flex justify-between gap-4 py-2.5 text-xs">
-                        <span className="font-mono text-gray-500">{key}</span>
-                        <span className="max-w-[65%] break-all text-right font-mono text-gray-300">{displayValue(value, t("inlineMedia"))}</span>
+                        <span className="font-mono text-ink-subtle">{key}</span>
+                        <span className="max-w-[65%] break-all text-right font-mono text-ink-muted">{displayValue(value, t("inlineMedia"))}</span>
                       </div>
                     ))}
                   </div>
@@ -215,7 +215,7 @@ export function ExploreGallery({
               <button
                 type="button"
                 onClick={() => remix(selected)}
-                className="mt-6 w-full rounded-2xl bg-teal-500 py-3 font-bold text-white hover:bg-teal-400"
+                className="mt-6 w-full rounded-2xl bg-teal-700 py-3 font-bold text-white hover:bg-teal-700"
               >
                 <i className="fas fa-copy mr-2" />
                 {signedIn ? t("copyToGenerator") : t("registerToCopy")}

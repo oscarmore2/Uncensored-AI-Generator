@@ -136,7 +136,7 @@ export default function AdminNowPaymentsPage() {
       <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="mb-1 text-3xl font-bold tracking-tighter">NOWPayments</h1>
-          <p className="text-sm text-gray-400">
+          <p className="text-sm text-ink-muted">
             数据库激活配置优先；无激活配置时才使用环境变量兜底
           </p>
         </div>
@@ -150,12 +150,12 @@ export default function AdminNowPaymentsPage() {
         </button>
       </div>
 
-      {message && <p className="mb-4 text-sm text-amber-300">{message}</p>}
+      {message && <p className="mb-4 text-sm text-amber-800">{message}</p>}
 
       {data?.env_fallback && (
         <div className={`glass mb-6 rounded-3xl p-5 ${data.env_fallback.in_use ? "border border-amber-500/30" : ""}`}>
           <div className="font-semibold">ENV 兜底配置</div>
-          <p className="mt-1 text-xs text-gray-500">
+          <p className="mt-1 text-xs text-ink-subtle">
             {data.env_fallback.configured
               ? `API Key ${data.env_fallback.api_key_mask} · IPN Secret 已设置 · ${data.env_fallback.base_url}`
               : "API Key 或 IPN Secret 未完整配置"}
@@ -166,10 +166,10 @@ export default function AdminNowPaymentsPage() {
         </div>
       )}
 
-      <div className="glass mb-6 rounded-3xl p-5 text-xs text-gray-400">
+      <div className="glass mb-6 rounded-3xl p-5 text-xs text-ink-muted">
         <p>
           IPN 回调：
-          <code className="ml-2 break-all text-teal-200">{data?.webhook_url ?? "加载中…"}</code>
+          <code className="ml-2 break-all text-teal-700">{data?.webhook_url ?? "加载中…"}</code>
         </p>
         <p className="mt-2">
           API Key 与 IPN Secret 会使用 AUTH_SECRET 派生的 AES-256-GCM 密钥加密后保存。切换配置后，
@@ -185,17 +185,17 @@ export default function AdminNowPaymentsPage() {
           <h2 className="mb-4 font-bold">{editingId ? "编辑配置" : "添加配置"}</h2>
           <div className="grid gap-4 md:grid-cols-2">
             <label className="md:col-span-2">
-              <span className="mb-1 block text-xs text-gray-400">备注名</span>
+              <span className="mb-1 block text-xs text-ink-muted">备注名</span>
               <input
                 required
                 value={form.label}
                 onChange={(event) => setForm({ ...form, label: event.target.value })}
                 placeholder="例如：主商户账户"
-                className="w-full rounded-2xl border border-white/10 bg-[#111] px-3 py-2.5 text-sm"
+                className="w-full rounded-2xl border border-line bg-surface px-3 py-2.5 text-sm"
               />
             </label>
             <label className="md:col-span-2">
-              <span className="mb-1 block text-xs text-gray-400">
+              <span className="mb-1 block text-xs text-ink-muted">
                 API Key {editingId ? "（留空表示不修改）" : ""}
               </span>
               <input
@@ -203,11 +203,11 @@ export default function AdminNowPaymentsPage() {
                 type="password"
                 value={form.api_key}
                 onChange={(event) => setForm({ ...form, api_key: event.target.value })}
-                className="w-full rounded-2xl border border-white/10 bg-[#111] px-3 py-2.5 font-mono text-sm"
+                className="w-full rounded-2xl border border-line bg-surface px-3 py-2.5 font-mono text-sm"
               />
             </label>
             <label className="md:col-span-2">
-              <span className="mb-1 block text-xs text-gray-400">
+              <span className="mb-1 block text-xs text-ink-muted">
                 IPN Secret {editingId ? "（留空表示不修改）" : ""}
               </span>
               <input
@@ -215,20 +215,20 @@ export default function AdminNowPaymentsPage() {
                 type="password"
                 value={form.ipn_secret}
                 onChange={(event) => setForm({ ...form, ipn_secret: event.target.value })}
-                className="w-full rounded-2xl border border-white/10 bg-[#111] px-3 py-2.5 font-mono text-sm"
+                className="w-full rounded-2xl border border-line bg-surface px-3 py-2.5 font-mono text-sm"
               />
             </label>
             <label className="md:col-span-2">
-              <span className="mb-1 block text-xs text-gray-400">API Base URL</span>
+              <span className="mb-1 block text-xs text-ink-muted">API Base URL</span>
               <input
                 required
                 type="url"
                 value={form.base_url}
                 onChange={(event) => setForm({ ...form, base_url: event.target.value })}
-                className="w-full rounded-2xl border border-white/10 bg-[#111] px-3 py-2.5 font-mono text-sm"
+                className="w-full rounded-2xl border border-line bg-surface px-3 py-2.5 font-mono text-sm"
               />
             </label>
-            <label className="flex cursor-pointer items-center gap-2 text-sm text-gray-300 md:col-span-2">
+            <label className="flex cursor-pointer items-center gap-2 text-sm text-ink-muted md:col-span-2">
               <input
                 type="checkbox"
                 checked={form.activate}
@@ -248,7 +248,7 @@ export default function AdminNowPaymentsPage() {
             <button
               type="button"
               onClick={() => setFormOpen(false)}
-              className="rounded-2xl border border-white/10 px-6 py-2.5 text-sm"
+              className="rounded-2xl border border-line px-6 py-2.5 text-sm"
             >
               取消
             </button>
@@ -268,15 +268,15 @@ export default function AdminNowPaymentsPage() {
               <div className="flex items-center gap-2">
                 <span className="font-semibold">{account.label}</span>
                 {account.is_active && (
-                  <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] text-emerald-300">
+                  <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] text-emerald-700">
                     激活中
                   </span>
                 )}
               </div>
-              <div className="mt-1 text-xs text-gray-500">
+              <div className="mt-1 text-xs text-ink-subtle">
                 API {account.api_key_mask} · IPN {account.ipn_secret_mask}
               </div>
-              <div className="mt-1 break-all font-mono text-[10px] text-gray-600">
+              <div className="mt-1 break-all font-mono text-[10px] text-ink-subtle">
                 {account.base_url}
               </div>
             </div>
@@ -293,7 +293,7 @@ export default function AdminNowPaymentsPage() {
                     "API Key 测试通过"
                   )
                 }
-                className="rounded-xl border border-white/10 px-3 py-2 text-xs disabled:opacity-50"
+                className="rounded-xl border border-line px-3 py-2 text-xs disabled:opacity-50"
               >
                 测试
               </button>
@@ -311,7 +311,7 @@ export default function AdminNowPaymentsPage() {
                       "配置已激活"
                     )
                   }
-                  className="rounded-xl bg-emerald-600/20 px-3 py-2 text-xs text-emerald-300 disabled:opacity-50"
+                  className="rounded-xl bg-emerald-600/20 px-3 py-2 text-xs text-emerald-700 disabled:opacity-50"
                 >
                   激活
                 </button>
@@ -320,7 +320,7 @@ export default function AdminNowPaymentsPage() {
                 type="button"
                 disabled={busy}
                 onClick={() => openEdit(account)}
-                className="rounded-xl border border-white/10 px-3 py-2 text-xs disabled:opacity-50"
+                className="rounded-xl border border-line px-3 py-2 text-xs disabled:opacity-50"
               >
                 编辑
               </button>
@@ -337,7 +337,7 @@ export default function AdminNowPaymentsPage() {
                     "配置已删除"
                   );
                 }}
-                className="rounded-xl bg-red-600/15 px-3 py-2 text-xs text-red-300 disabled:opacity-50"
+                className="rounded-xl bg-red-600/15 px-3 py-2 text-xs text-red-700 disabled:opacity-50"
               >
                 删除
               </button>
@@ -345,7 +345,7 @@ export default function AdminNowPaymentsPage() {
           </div>
         ))}
         {data && data.accounts.length === 0 && (
-          <div className="glass rounded-3xl p-12 text-center text-sm text-gray-500">
+          <div className="glass rounded-3xl p-12 text-center text-sm text-ink-subtle">
             暂无数据库配置；添加并激活后即可覆盖 ENV。
           </div>
         )}

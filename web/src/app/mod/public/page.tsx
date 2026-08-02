@@ -131,42 +131,42 @@ export default function ModPublicPage() {
       <div className="flex items-end justify-between mb-6">
         <div>
           <h1 className="text-3xl font-bold tracking-tighter mb-1">公共库</h1>
-          <p className="text-gray-400 text-sm">上下架、排序、删除；支持外部内容采集导入</p>
+          <p className="text-ink-muted text-sm">上下架、排序、删除；支持外部内容采集导入</p>
         </div>
         <button
           onClick={() => setFormOpen((v) => !v)}
-          className="px-5 py-2.5 text-sm font-semibold bg-orange-600 hover:bg-orange-500 rounded-2xl"
+          className="px-5 py-2.5 text-sm font-semibold bg-orange-700 hover:bg-orange-600 rounded-2xl"
         >
           <i className="fas fa-file-import mr-2" />
           采集导入
         </button>
       </div>
 
-      {msg && <p className="mb-4 text-sm text-amber-300">{msg}</p>}
+      {msg && <p className="mb-4 text-sm text-amber-800">{msg}</p>}
 
       {formOpen && (
         <form onSubmit={submitImport} className="glass rounded-3xl p-6 mb-8 modal-pop">
           <h2 className="font-bold mb-4">采集导入公共库</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="md:col-span-2">
-              <label className="text-xs text-gray-400 block mb-1">提示词 Prompt *</label>
+              <label className="text-xs text-ink-muted block mb-1">提示词 Prompt *</label>
               <textarea
                 required
                 value={form.prompt}
                 onChange={(e) => setForm({ ...form, prompt: e.target.value })}
-                className="w-full bg-[#111] border border-white/10 focus:border-orange-500/60 rounded-2xl p-3 text-sm outline-none min-h-20"
+                className="w-full bg-surface border border-line focus:border-orange-500/60 rounded-2xl p-3 text-sm outline-none min-h-20"
               />
             </div>
             <div>
-              <label className="text-xs text-gray-400 block mb-1">媒体 URL（必填）</label>
+              <label className="text-xs text-ink-muted block mb-1">媒体 URL（必填）</label>
               <input
                 value={form.media_url}
                 onChange={(e) => setForm({ ...form, media_url: e.target.value })}
                 placeholder="https://..."
-                className="w-full bg-[#111] border border-white/10 rounded-2xl px-3 py-2.5 text-sm outline-none"
+                className="w-full bg-surface border border-line rounded-2xl px-3 py-2.5 text-sm outline-none"
               />
             </div>
-            <label className="flex items-center gap-2 text-sm text-gray-300">
+            <label className="flex items-center gap-2 text-sm text-ink-muted">
               <input
                 type="checkbox"
                 checked={form.is_adult}
@@ -175,19 +175,19 @@ export default function ModPublicPage() {
               标记为 18+ 成人作品
             </label>
             <div>
-              <label className="text-xs text-gray-400 block mb-1">上游任务 ID（仅作溯源备注）</label>
+              <label className="text-xs text-ink-muted block mb-1">上游任务 ID（仅作溯源备注）</label>
               <input
                 value={form.source_job_id}
                 onChange={(e) => setForm({ ...form, source_job_id: e.target.value })}
-                className="w-full bg-[#111] border border-white/10 rounded-2xl px-3 py-2.5 text-sm outline-none"
+                className="w-full bg-surface border border-line rounded-2xl px-3 py-2.5 text-sm outline-none"
               />
             </div>
             <div>
-              <label className="text-xs text-gray-400 block mb-1">模式 *</label>
+              <label className="text-xs text-ink-muted block mb-1">模式 *</label>
               <select
                 value={form.mode}
                 onChange={(e) => setForm({ ...form, mode: e.target.value })}
-                className="w-full bg-[#111] border border-white/10 rounded-2xl px-3 py-2.5 text-sm"
+                className="w-full bg-surface border border-line rounded-2xl px-3 py-2.5 text-sm"
               >
                 <option value="txt2img">txt2img</option>
                 <option value="txt2vid">txt2vid</option>
@@ -197,19 +197,19 @@ export default function ModPublicPage() {
               </select>
             </div>
             <div>
-              <label className="text-xs text-gray-400 block mb-1">标题（选填）</label>
+              <label className="text-xs text-ink-muted block mb-1">标题（选填）</label>
               <input
                 value={form.title}
                 onChange={(e) => setForm({ ...form, title: e.target.value })}
-                className="w-full bg-[#111] border border-white/10 rounded-2xl px-3 py-2.5 text-sm outline-none"
+                className="w-full bg-surface border border-line rounded-2xl px-3 py-2.5 text-sm outline-none"
               />
             </div>
             <div className="md:col-span-2">
-              <label className="text-xs text-gray-400 block mb-1">负面提示词（选填）</label>
+              <label className="text-xs text-ink-muted block mb-1">负面提示词（选填）</label>
               <input
                 value={form.negative_prompt}
                 onChange={(e) => setForm({ ...form, negative_prompt: e.target.value })}
-                className="w-full bg-[#111] border border-white/10 rounded-2xl px-3 py-2.5 text-sm outline-none"
+                className="w-full bg-surface border border-line rounded-2xl px-3 py-2.5 text-sm outline-none"
               />
             </div>
           </div>
@@ -217,14 +217,14 @@ export default function ModPublicPage() {
             <button
               type="submit"
               disabled={busy}
-              className="px-6 py-2.5 text-sm font-semibold bg-orange-600 hover:bg-orange-500 rounded-2xl disabled:opacity-50"
+              className="px-6 py-2.5 text-sm font-semibold bg-orange-700 hover:bg-orange-600 rounded-2xl disabled:opacity-50"
             >
               {busy ? "导入中..." : "确认导入"}
             </button>
             <button
               type="button"
               onClick={() => setFormOpen(false)}
-              className="px-6 py-2.5 text-sm border border-white/10 rounded-2xl hover:bg-white/5"
+              className="px-6 py-2.5 text-sm border border-line rounded-2xl hover:bg-black/[0.04]"
             >
               取消
             </button>
@@ -235,27 +235,27 @@ export default function ModPublicPage() {
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
         {data?.works.map((w) => (
           <div key={w.id} className={`glass rounded-3xl overflow-hidden ${w.is_published ? "" : "opacity-60"}`}>
-            <div className="relative aspect-video bg-[#111]">
+            <div className="relative aspect-video bg-surface">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={w.thumb_url ?? w.media_url} alt={`#${w.id}`} className="w-full h-full object-cover" loading="lazy" />
               <div className="absolute top-3 right-3 flex gap-1">
-                <span className="text-[10px] px-2 py-0.5 bg-black/70 rounded-full">{w.source}</span>
+                <span className="text-[10px] px-2 py-0.5 bg-black/70 rounded-full text-white">{w.source}</span>
                 {w.is_adult && <span className="text-[10px] px-2 py-0.5 bg-red-600 rounded-full font-bold">18+</span>}
                 {!w.is_published && <span className="text-[10px] px-2 py-0.5 bg-gray-600/90 rounded-full">未上架</span>}
               </div>
             </div>
             <div className="p-4">
-              <div className="text-xs text-gray-400 font-mono mb-2">
+              <div className="text-xs text-ink-muted font-mono mb-2">
                 #{w.id} · {w.mode} · 排序 {w.sort_order}
               </div>
-              <p className="text-xs text-gray-300 line-clamp-2 mb-3">{w.title ?? w.prompt}</p>
+              <p className="text-xs text-ink-muted line-clamp-2 mb-3">{w.title ?? w.prompt}</p>
               <div className="flex gap-2 text-xs">
                 <button
                   onClick={() => togglePublish(w)}
                   disabled={busy}
                   className={`flex-1 py-1.5 border rounded-xl disabled:opacity-50 ${
                     w.is_published
-                      ? "bg-white/5 hover:bg-white/10 border-white/10"
+                      ? "bg-black/[0.03] hover:bg-black/[0.06] border-line"
                       : "bg-emerald-600/20 hover:bg-emerald-600/40 border-emerald-500/30 text-emerald-300"
                   }`}
                 >
@@ -264,7 +264,7 @@ export default function ModPublicPage() {
                 <button
                   onClick={() => changeSort(w, -1)}
                   disabled={busy}
-                  className="px-3 py-1.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl disabled:opacity-50"
+                  className="px-3 py-1.5 bg-black/[0.03] hover:bg-black/[0.06] border border-line rounded-xl disabled:opacity-50"
                   title="排序值 -1（越小越靠前）"
                 >
                   <i className="fas fa-arrow-up" />
@@ -273,7 +273,7 @@ export default function ModPublicPage() {
                   onClick={() => toggleAdult(w)}
                   disabled={busy}
                   className={`px-3 py-1.5 border rounded-xl disabled:opacity-50 ${
-                    w.is_adult ? "border-red-500/40 bg-red-500/15 text-red-300" : "border-white/10 bg-white/5"
+                    w.is_adult ? "border-red-500/40 bg-red-500/15 text-red-700" : "border-line bg-black/[0.03]"
                   }`}
                   title="切换 18+ 标记"
                 >
@@ -282,7 +282,7 @@ export default function ModPublicPage() {
                 <button
                   onClick={() => changeSort(w, 1)}
                   disabled={busy}
-                  className="px-3 py-1.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl disabled:opacity-50"
+                  className="px-3 py-1.5 bg-black/[0.03] hover:bg-black/[0.06] border border-line rounded-xl disabled:opacity-50"
                   title="排序值 +1"
                 >
                   <i className="fas fa-arrow-down" />
@@ -301,7 +301,7 @@ export default function ModPublicPage() {
       </div>
 
       {data && data.works.length === 0 && (
-        <div className="glass rounded-3xl p-16 text-center text-gray-500">公共库为空，去「作品审核」曝光作品或使用采集导入</div>
+        <div className="glass rounded-3xl p-16 text-center text-ink-subtle">公共库为空，去「作品审核」曝光作品或使用采集导入</div>
       )}
 
       {totalPages > 1 && (
@@ -309,17 +309,17 @@ export default function ModPublicPage() {
           <button
             disabled={page <= 1}
             onClick={() => setPage((p) => p - 1)}
-            className="px-5 py-2 border border-white/10 rounded-2xl hover:bg-white/5 disabled:opacity-40"
+            className="px-5 py-2 border border-line rounded-2xl hover:bg-black/[0.04] disabled:opacity-40"
           >
             上一页
           </button>
-          <span className="px-4 py-2 text-gray-400">
+          <span className="px-4 py-2 text-ink-muted">
             {page} / {totalPages}
           </span>
           <button
             disabled={page >= totalPages}
             onClick={() => setPage((p) => p + 1)}
-            className="px-5 py-2 border border-white/10 rounded-2xl hover:bg-white/5 disabled:opacity-40"
+            className="px-5 py-2 border border-line rounded-2xl hover:bg-black/[0.04] disabled:opacity-40"
           >
             下一页
           </button>

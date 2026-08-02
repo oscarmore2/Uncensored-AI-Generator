@@ -112,37 +112,37 @@ export default function AdminUserDetailPage() {
     }
   }
 
-  if (error) return <p className="text-red-400">{error}</p>;
-  if (!data) return <p className="text-gray-500">加载中...</p>;
+  if (error) return <p className="text-red-700">{error}</p>;
+  if (!data) return <p className="text-ink-subtle">加载中...</p>;
 
   const u = data.user;
 
   return (
     <div>
-      <Link href="/admin/users" className="text-xs text-gray-400 hover:text-white mb-4 inline-block">
+      <Link href="/admin/users" className="text-xs text-ink-muted hover:text-ink mb-4 inline-block">
         ← 返回用户列表
       </Link>
       <h1 className="text-3xl font-bold tracking-tighter mb-1">{u.username}</h1>
-      <p className="text-gray-400 text-sm mb-6">
+      <p className="text-ink-muted text-sm mb-6">
         用户 #{u.id} · 注册于 {new Date(u.created_at).toLocaleString("zh-CN")}
       </p>
 
-      {msg && <p className="mb-4 text-sm text-amber-300">{msg}</p>}
+      {msg && <p className="mb-4 text-sm text-amber-800">{msg}</p>}
 
       <div className="glass rounded-3xl p-5 mb-6 grid gap-4 md:grid-cols-2">
         <div>
-          <div className="text-xs text-gray-500">注册邮箱</div>
+          <div className="text-xs text-ink-subtle">注册邮箱</div>
           <div className="mt-1 text-sm">
             {u.email ?? "旧账户未记录"}
             {u.email && (
-              <span className={`ml-2 text-[10px] ${u.email_verified_at ? "text-emerald-300" : "text-amber-300"}`}>
+              <span className={`ml-2 text-[10px] ${u.email_verified_at ? "text-emerald-700" : "text-amber-800"}`}>
                 {u.email_verified_at ? "已验证" : "未验证"}
               </span>
             )}
           </div>
         </div>
         <div>
-          <div className="text-xs text-gray-500">注册所在地（IP 粗略推测）</div>
+          <div className="text-xs text-ink-subtle">注册所在地（IP 粗略推测）</div>
           <div className="mt-1 text-sm">
             {[
               u.registration_geo.country ?? u.registration_geo.country_code,
@@ -153,7 +153,7 @@ export default function AdminUserDetailPage() {
               .join(" · ") || "未获取"}
           </div>
           {u.registration_geo.source && (
-            <div className="mt-1 text-[10px] text-gray-600">
+            <div className="mt-1 text-[10px] text-ink-subtle">
               来源 {u.registration_geo.source}
               {u.registration_geo.captured_at
                 ? ` · ${new Date(u.registration_geo.captured_at).toLocaleString("zh-CN")}`
@@ -166,31 +166,31 @@ export default function AdminUserDetailPage() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
         <div className="glass rounded-3xl p-5">
           <div className="text-2xl font-bold font-mono">{u.balance}</div>
-          <div className="text-xs text-gray-400">余额（点）</div>
+          <div className="text-xs text-ink-muted">余额（点）</div>
         </div>
         <div className="glass rounded-3xl p-5">
           <div className="text-2xl font-bold font-mono">${(u.total_recharge_cents / 100).toFixed(2)}</div>
-          <div className="text-xs text-gray-400">累计充值</div>
+          <div className="text-xs text-ink-muted">累计充值</div>
         </div>
         <div className="glass rounded-3xl p-5">
           <div className="text-2xl font-bold font-mono">
             {u.generation_count + u.wavespeed_generation_count}
           </div>
-          <div className="text-xs text-gray-400">
+          <div className="text-xs text-ink-muted">
             生成任务 · 上传 {u.upload_count}
           </div>
         </div>
         <div className="glass rounded-3xl p-5">
           <div className="text-lg font-bold">
             {u.is_vip ? (
-              <span className="text-purple-300">
+              <span className="text-purple-700">
                 {u.vip_tier ? `${u.vip_tier.name}` : "VIP"}
               </span>
             ) : (
-              <span className="text-gray-500">普通</span>
+              <span className="text-ink-subtle">普通</span>
             )}
           </div>
-          <div className="text-xs text-gray-400">
+          <div className="text-xs text-ink-muted">
             {u.vip_expires_at ? `到期 ${new Date(u.vip_expires_at).toLocaleDateString("zh-CN")}` : "无 VIP"}
           </div>
         </div>
@@ -203,7 +203,7 @@ export default function AdminUserDetailPage() {
             value={u.role}
             disabled={busy}
             onChange={(e) => void patch({ role: e.target.value }, `角色已改为 ${e.target.value}`)}
-            className="bg-[#111] border border-white/10 rounded-xl px-3 py-2 text-sm"
+            className="bg-surface border border-line rounded-xl px-3 py-2 text-sm"
           >
             {ROLES.map((r) => (
               <option key={r} value={r}>
@@ -220,7 +220,7 @@ export default function AdminUserDetailPage() {
               if (!Number.isInteger(delta) || delta === 0) return;
               void patch({ balance_delta: delta }, `余额已调整 ${delta > 0 ? "+" : ""}${delta}`);
             }}
-            className="text-sm px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl disabled:opacity-50"
+            className="text-sm px-4 py-2 bg-black/[0.03] hover:bg-black/[0.06] border border-line rounded-xl disabled:opacity-50"
           >
             调余额
           </button>
@@ -277,8 +277,8 @@ export default function AdminUserDetailPage() {
             }}
             className={`text-sm px-4 py-2 border rounded-xl disabled:opacity-50 ${
               u.disabled_at
-                ? "bg-emerald-600/20 border-emerald-500/30 text-emerald-300"
-                : "bg-red-600/20 border-red-500/30 text-red-300"
+                ? "bg-emerald-600/20 border-emerald-500/30 text-emerald-700"
+                : "bg-red-600/20 border-red-500/30 text-red-700"
             }`}
           >
             {u.disabled_at ? "解封" : "封禁"}
@@ -293,15 +293,15 @@ export default function AdminUserDetailPage() {
             }
             className={`text-sm px-4 py-2 border rounded-xl disabled:opacity-50 ${
               u.plaything_access
-                ? "bg-amber-600/20 border-amber-500/30 text-amber-300"
-                : "bg-white/5 border-white/10 text-gray-300"
+                ? "bg-amber-600/20 border-amber-500/30 text-amber-800"
+                : "bg-black/[0.03] border-line text-ink-muted"
             }`}
           >
             {u.plaything_access ? "关闭玩物" : "开通玩物"}
           </button>
           <Link
             href={`/admin/transactions?user_id=${u.id}`}
-            className="text-sm px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl"
+            className="text-sm px-4 py-2 bg-black/[0.03] hover:bg-black/[0.06] border border-line rounded-xl"
           >
             查看流水
           </Link>
@@ -312,13 +312,13 @@ export default function AdminUserDetailPage() {
         <div className="glass rounded-3xl p-5">
           <div className="mb-3 flex items-center justify-between">
             <div className="text-sm font-semibold">充值记录</div>
-            <Link href={`/admin/transactions?user_id=${u.id}&type=recharge`} className="text-xs text-teal-300">
+            <Link href={`/admin/transactions?user_id=${u.id}&type=recharge`} className="text-xs text-teal-700">
               查看全部
             </Link>
           </div>
           <div className="space-y-2 text-xs">
             {data.recent_recharges.map((t) => (
-              <div key={t.id} className="flex justify-between border-b border-white/5 pb-2">
+              <div key={t.id} className="flex justify-between border-b border-line pb-2">
                 <span>
                   {new Date(t.created_at).toLocaleString("zh-CN")} · {t.method ?? "—"}
                 </span>
@@ -328,24 +328,24 @@ export default function AdminUserDetailPage() {
                 </span>
               </div>
             ))}
-            {data.recent_recharges.length === 0 && <p className="text-gray-500">暂无充值</p>}
+            {data.recent_recharges.length === 0 && <p className="text-ink-subtle">暂无充值</p>}
           </div>
         </div>
         <div className="glass rounded-3xl p-5">
           <div className="text-sm font-semibold mb-3">最近流水</div>
           <div className="space-y-2 text-xs">
             {data.recent_transactions.map((t) => (
-              <div key={t.id} className="flex justify-between border-b border-white/5 pb-2">
+              <div key={t.id} className="flex justify-between border-b border-line pb-2">
                 <span>
                   {t.type} · {t.method ?? "—"}
                 </span>
-                <span className="font-mono text-gray-400">
+                <span className="font-mono text-ink-muted">
                   {t.amount > 0 ? "+" : ""}
                   {t.amount}
                 </span>
               </div>
             ))}
-            {data.recent_transactions.length === 0 && <p className="text-gray-500">暂无流水</p>}
+            {data.recent_transactions.length === 0 && <p className="text-ink-subtle">暂无流水</p>}
           </div>
         </div>
       </div>
@@ -356,14 +356,14 @@ export default function AdminUserDetailPage() {
         <div className="text-sm font-semibold mb-3">加密订单</div>
         <div className="space-y-2 text-xs">
           {data.recent_crypto_payments.map((p) => (
-            <div key={p.id} className="flex justify-between border-b border-white/5 pb-2">
+            <div key={p.id} className="flex justify-between border-b border-line pb-2">
               <span>
                 {p.order_id.slice(0, 20)}… · {p.status} · {p.credited ? "已入账" : "未入账"}
               </span>
               <span className="font-mono">${(p.amount_usd_cents / 100).toFixed(2)}</span>
             </div>
           ))}
-          {data.recent_crypto_payments.length === 0 && <p className="text-gray-500">暂无加密订单</p>}
+          {data.recent_crypto_payments.length === 0 && <p className="text-ink-subtle">暂无加密订单</p>}
         </div>
       </div>
     </div>
@@ -431,9 +431,9 @@ function AdminUserMediaSection({ userId }: { userId: number }) {
       <div className="mb-4 flex flex-wrap items-center justify-between gap-4">
         <div>
           <h2 className="font-semibold">用户媒体</h2>
-          <p className="mt-1 text-xs text-gray-500">包含生成结果、成人标签、清理状态和上传素材。</p>
+          <p className="mt-1 text-xs text-ink-subtle">包含生成结果、成人标签、清理状态和上传素材。</p>
         </div>
-        <div className="flex rounded-xl bg-black/30 p-1">
+        <div className="flex rounded-xl bg-black/[0.04] p-1">
           {MEDIA_TABS.map((tab) => (
             <button
               key={tab.kind}
@@ -444,7 +444,7 @@ function AdminUserMediaSection({ userId }: { userId: number }) {
                 setData(null);
               }}
               className={`rounded-lg px-3 py-1.5 text-xs ${
-                kind === tab.kind ? "bg-white text-black" : "text-gray-400"
+                kind === tab.kind ? "bg-orange-700 text-white" : "text-ink-muted"
               }`}
             >
               {tab.label}
@@ -453,8 +453,8 @@ function AdminUserMediaSection({ userId }: { userId: number }) {
         </div>
       </div>
 
-      {error && <p className="mb-4 text-sm text-red-400">{error}</p>}
-      {!data && !error && <p className="py-8 text-center text-sm text-gray-500">加载媒体中…</p>}
+      {error && <p className="mb-4 text-sm text-red-700">{error}</p>}
+      {!data && !error && <p className="py-8 text-center text-sm text-ink-subtle">加载媒体中…</p>}
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         {data?.media.map((item) => {
           const mediaUrl = item.urls[0];
@@ -462,8 +462,8 @@ function AdminUserMediaSection({ userId }: { userId: number }) {
             item.content_type?.startsWith("video/") ||
             (mediaUrl ? /\.(mp4|webm|mov)(?:$|[?#])/i.test(mediaUrl) : false);
           return (
-            <article key={`${kind}-${item.id}`} className={`overflow-hidden rounded-2xl border border-white/10 bg-black/20 ${item.deleted_at ? "opacity-60" : ""}`}>
-              <div className="relative aspect-video bg-[#111]">
+            <article key={`${kind}-${item.id}`} className={`overflow-hidden rounded-2xl border border-line bg-black/[0.04] ${item.deleted_at ? "opacity-60" : ""}`}>
+              <div className="relative aspect-video bg-surface">
                 {mediaUrl && !item.deleted_at ? (
                   isVideo ? (
                     <video src={mediaUrl} controls preload="metadata" className="h-full w-full object-contain" />
@@ -472,7 +472,7 @@ function AdminUserMediaSection({ userId }: { userId: number }) {
                     <img src={mediaUrl} alt={`媒体 ${item.id}`} loading="lazy" className="h-full w-full object-cover" />
                   )
                 ) : (
-                  <div className="flex h-full items-center justify-center text-xs text-gray-600">
+                  <div className="flex h-full items-center justify-center text-xs text-ink-subtle">
                     {item.deleted_at ? "媒体已清理或删除" : "暂无媒体结果"}
                   </div>
                 )}
@@ -482,9 +482,9 @@ function AdminUserMediaSection({ userId }: { userId: number }) {
                 </div>
               </div>
               <div className="p-3 text-xs">
-                <div className="font-mono text-gray-400">#{item.id} · {item.label} · {item.status}</div>
-                {item.prompt && <p className="mt-2 line-clamp-2 text-gray-300">{item.prompt}</p>}
-                <div className="mt-2 text-[10px] text-gray-600">
+                <div className="font-mono text-ink-muted">#{item.id} · {item.label} · {item.status}</div>
+                {item.prompt && <p className="mt-2 line-clamp-2 text-ink-muted">{item.prompt}</p>}
+                <div className="mt-2 text-[10px] text-ink-subtle">
                   {new Date(item.created_at).toLocaleString("zh-CN")}
                   {item.expires_at
                     ? ` · 清理于 ${new Date(item.expires_at).toLocaleString("zh-CN")}`
@@ -495,23 +495,23 @@ function AdminUserMediaSection({ userId }: { userId: number }) {
           );
         })}
       </div>
-      {data?.media.length === 0 && <p className="py-10 text-center text-sm text-gray-500">该分类暂无媒体</p>}
+      {data?.media.length === 0 && <p className="py-10 text-center text-sm text-ink-subtle">该分类暂无媒体</p>}
       {data && totalPages > 1 && (
         <div className="mt-5 flex items-center justify-center gap-3 text-xs">
           <button
             type="button"
             disabled={page <= 1}
             onClick={() => setPage((value) => value - 1)}
-            className="rounded-xl border border-white/10 px-4 py-2 disabled:opacity-40"
+            className="rounded-xl border border-line px-4 py-2 disabled:opacity-40"
           >
             上一页
           </button>
-          <span className="text-gray-500">{page} / {totalPages} · 共 {data.total}</span>
+          <span className="text-ink-subtle">{page} / {totalPages} · 共 {data.total}</span>
           <button
             type="button"
             disabled={page >= totalPages}
             onClick={() => setPage((value) => value + 1)}
-            className="rounded-xl border border-white/10 px-4 py-2 disabled:opacity-40"
+            className="rounded-xl border border-line px-4 py-2 disabled:opacity-40"
           >
             下一页
           </button>

@@ -516,7 +516,7 @@ export default function PlaythingPage() {
     return (
       <div className="max-w-xl mx-auto py-24 text-center px-6">
         <h1 className="text-3xl font-bold tracking-tighter mb-3">{t("title")}</h1>
-        <p className="text-gray-400 text-sm">
+        <p className="text-ink-muted text-sm">
           {t("noAccess")}
         </p>
       </div>
@@ -528,7 +528,7 @@ export default function PlaythingPage() {
       <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-3xl sm:text-4xl font-bold tracking-tighter mb-1">{t("title")}</h1>
-          <p className="text-gray-400 text-sm">
+          <p className="text-ink-muted text-sm">
             {t("subtitle")}
             {note ? ` · ${note}` : ""}
           </p>
@@ -540,7 +540,7 @@ export default function PlaythingPage() {
 
         <aside className="lg:w-[340px] shrink-0 flex flex-col gap-4 glass rounded-3xl p-4 sm:p-5">
           {categoryProducts.length === 0 ? (
-            <p className="text-sm text-gray-500 py-8 text-center">{t("emptyCategory")}</p>
+            <p className="text-sm text-ink-subtle py-8 text-center">{t("emptyCategory")}</p>
           ) : (
             <>
               <ModelPicker

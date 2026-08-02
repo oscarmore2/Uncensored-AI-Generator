@@ -122,25 +122,25 @@ export function PricingClient({
 
   return (
     <div>
-      <div className="mx-auto mb-8 grid max-w-md grid-cols-2 rounded-2xl border border-white/10 bg-black/30 p-1">
+      <div className="mx-auto mb-8 grid max-w-md grid-cols-2 rounded-2xl border border-line bg-black/[0.04] p-1">
         <button
           type="button"
           onClick={() => setTab("credits")}
-          className={`rounded-xl px-5 py-3 text-sm font-semibold ${tab === "credits" ? "bg-teal-500 text-white" : "text-gray-400"}`}
+          className={`rounded-xl px-5 py-3 text-sm font-semibold ${tab === "credits" ? "bg-teal-700 text-white" : "text-ink-muted"}`}
         >
           {t("creditsTab")}
         </button>
         <button
           type="button"
           onClick={() => setTab("vip")}
-          className={`rounded-xl px-5 py-3 text-sm font-semibold ${tab === "vip" ? "bg-amber-400 text-black" : "text-gray-400"}`}
+          className={`rounded-xl px-5 py-3 text-sm font-semibold ${tab === "vip" ? "bg-amber-400 text-black" : "text-ink-muted"}`}
         >
           {t("vipTab")}
         </button>
       </div>
 
       {message && (
-        <div className="mx-auto mb-6 max-w-2xl rounded-2xl border border-amber-400/20 bg-amber-400/10 px-4 py-3 text-center text-sm text-amber-200">
+        <div className="mx-auto mb-6 max-w-2xl rounded-2xl border border-amber-400/20 bg-amber-400/10 px-4 py-3 text-center text-sm text-amber-800">
           {message}
         </div>
       )}
@@ -159,11 +159,11 @@ export function PricingClient({
                   className={`relative rounded-3xl border text-left transition ${LAYOUT_ITEM[pkgLayout]} ${LAYOUT_PADDING[pkgLayout]} ${
                     active
                       ? "border-teal-400 bg-teal-500/10 ring-1 ring-teal-400"
-                      : "border-white/10 bg-white/[0.035] hover:border-white/25"
+                      : "border-line bg-black/[0.03] hover:border-line-strong"
                   }`}
                 >
                   {item.badge && (
-                    <span className="absolute right-4 top-4 rounded-full bg-teal-500 px-3 py-1 text-[10px] font-bold text-white">
+                    <span className="absolute right-4 top-4 rounded-full bg-teal-700 px-3 py-1 text-[10px] font-bold text-white">
                       {item.badge}
                     </span>
                   )}
@@ -172,20 +172,20 @@ export function PricingClient({
                     // 卡片被拉宽后，点数与价格分列左右，避免大片留白
                     <div className="flex items-end justify-between gap-4">
                       <div>
-                        <div className="text-sm text-gray-400">{item.label}</div>
+                        <div className="text-sm text-ink-muted">{item.label}</div>
                         <div className="mt-3 text-4xl font-black">
                           {item.credits}
-                          <span className="ml-2 text-sm font-normal text-gray-500">{t("credits")}</span>
+                          <span className="ml-2 text-sm font-normal text-ink-subtle">{t("credits")}</span>
                         </div>
                       </div>
                       <div className="shrink-0 text-3xl font-bold">{price}</div>
                     </div>
                   ) : (
                     <>
-                      <div className="text-sm text-gray-400">{item.label}</div>
+                      <div className="text-sm text-ink-muted">{item.label}</div>
                       <div className={`mt-4 font-black ${pkgLayout === "quad" ? "text-5xl" : "text-4xl"}`}>
                         {item.credits}
-                        <span className="ml-2 text-sm font-normal text-gray-500">{t("credits")}</span>
+                        <span className="ml-2 text-sm font-normal text-ink-subtle">{t("credits")}</span>
                       </div>
                       <div className={`mt-5 font-bold ${pkgLayout === "quad" ? "text-3xl" : "text-2xl"}`}>
                         {price}
@@ -201,7 +201,7 @@ export function PricingClient({
               type="button"
               disabled={!selectedPackage || busy !== null}
               onClick={() => void buyCredits("card")}
-              className="rounded-2xl bg-white py-3.5 font-bold text-black hover:bg-gray-100 disabled:opacity-40"
+              className="rounded-2xl bg-orange-700 py-3.5 font-bold text-white hover:bg-orange-700 disabled:opacity-40"
             >
               {busy === "card" ? t("processing") : signedIn ? t("card") : t("registerToBuy")}
             </button>
@@ -209,7 +209,7 @@ export function PricingClient({
               type="button"
               disabled={!selectedPackage || busy !== null}
               onClick={() => void buyCredits("crypto")}
-              className="rounded-2xl border border-emerald-400/30 bg-emerald-400/10 py-3.5 font-bold text-emerald-300 hover:bg-emerald-400/15 disabled:opacity-40"
+              className="rounded-2xl border border-emerald-400/30 bg-emerald-400/10 py-3.5 font-bold text-emerald-700 hover:bg-emerald-400/15 disabled:opacity-40"
             >
               {busy === "crypto" ? t("processing") : t("crypto")}
             </button>
@@ -222,20 +222,20 @@ export function PricingClient({
               key={plan.id}
               className={`flex flex-col rounded-3xl border border-amber-400/20 bg-gradient-to-b from-amber-400/10 to-white/[0.025] ${LAYOUT_ITEM[vipLayout]} ${LAYOUT_PADDING[vipLayout]}`}
             >
-              <i className="fas fa-crown text-2xl text-amber-300" />
+              <i className="fas fa-crown text-2xl text-amber-800" />
               <h2 className="mt-4 text-2xl font-bold">{plan.label}</h2>
-              <p className="mt-1 text-sm text-gray-400">{plan.tier.name}</p>
+              <p className="mt-1 text-sm text-ink-muted">{plan.tier.name}</p>
               <div className="mt-6 text-4xl font-black">
                 ${(plan.price_cents / 100).toFixed(2)}
-                <span className="text-sm font-normal text-gray-500"> / {t("days", { days: plan.duration_days })}</span>
+                <span className="text-sm font-normal text-ink-subtle"> / {t("days", { days: plan.duration_days })}</span>
               </div>
-              <ul className="my-6 flex-1 space-y-3 text-sm text-gray-300">
-                <li><i className="fas fa-check mr-2 text-amber-300" />{t("adultMode")}</li>
+              <ul className="my-6 flex-1 space-y-3 text-sm text-ink-muted">
+                <li><i className="fas fa-check mr-2 text-amber-800" />{t("adultMode")}</li>
                 {plan.tier.discount_percent > 0 && (
-                  <li><i className="fas fa-check mr-2 text-amber-300" />{t("discount", { percent: plan.tier.discount_percent })}</li>
+                  <li><i className="fas fa-check mr-2 text-amber-800" />{t("discount", { percent: plan.tier.discount_percent })}</li>
                 )}
                 {plan.bonus_credits > 0 && (
-                  <li><i className="fas fa-check mr-2 text-amber-300" />{t("bonus", { credits: plan.bonus_credits })}</li>
+                  <li><i className="fas fa-check mr-2 text-amber-800" />{t("bonus", { credits: plan.bonus_credits })}</li>
                 )}
               </ul>
               <button
@@ -252,7 +252,7 @@ export function PricingClient({
       )}
 
       {(tab === "credits" ? packages : vipPlans).length === 0 && (
-        <div className="rounded-3xl border border-white/10 p-12 text-center text-gray-500">{t("empty")}</div>
+        <div className="rounded-3xl border border-line p-12 text-center text-ink-subtle">{t("empty")}</div>
       )}
     </div>
   );

@@ -133,7 +133,7 @@ export default function AdminWaveSpeedModelsPage() {
       <div className="flex items-end justify-between mb-6 gap-4 flex-wrap">
         <div>
           <h1 className="text-3xl font-bold tracking-tighter mb-1">玩物模型库</h1>
-          <p className="text-gray-400 text-sm">
+          <p className="text-ink-muted text-sm">
             同步 WaveSpeed 全库 · 缩略图与调用成本 · 上架 / 推荐 / 本站点数
             {data?.last_synced_at
               ? ` · 上次同步 ${new Date(data.last_synced_at).toLocaleString("zh-CN")}`
@@ -144,7 +144,7 @@ export default function AdminWaveSpeedModelsPage() {
         <div className="flex gap-2">
           <Link
             href="/admin/wavespeed"
-            className="px-4 py-2.5 text-sm border border-white/10 rounded-2xl hover:bg-white/5"
+            className="px-4 py-2.5 text-sm border border-line rounded-2xl hover:bg-black/[0.04]"
           >
             API Key
           </Link>
@@ -156,7 +156,7 @@ export default function AdminWaveSpeedModelsPage() {
                 "同步完成"
               )
             }
-            className="px-5 py-2.5 text-sm font-semibold bg-orange-600 hover:bg-orange-500 rounded-2xl disabled:opacity-50"
+            className="px-5 py-2.5 text-sm font-semibold bg-orange-700 hover:bg-orange-600 rounded-2xl disabled:opacity-50"
           >
             <i className="fas fa-rotate mr-2" />
             同步全库
@@ -164,7 +164,7 @@ export default function AdminWaveSpeedModelsPage() {
         </div>
       </div>
 
-      {msg && <p className="mb-4 text-sm text-amber-300">{msg}</p>}
+      {msg && <p className="mb-4 text-sm text-amber-800">{msg}</p>}
 
       <div className="flex flex-wrap gap-3 mb-6">
         <input
@@ -174,7 +174,7 @@ export default function AdminWaveSpeedModelsPage() {
             setQ(e.target.value);
           }}
           placeholder="搜索 model_id / 名称"
-          className="bg-[#111] border border-white/10 rounded-xl px-3 py-2 text-sm w-56"
+          className="bg-surface border border-line rounded-xl px-3 py-2 text-sm w-56"
         />
         <select
           value={type}
@@ -182,7 +182,7 @@ export default function AdminWaveSpeedModelsPage() {
             setPage(1);
             setType(e.target.value);
           }}
-          className="bg-[#111] border border-white/10 rounded-xl px-3 py-2 text-sm"
+          className="bg-surface border border-line rounded-xl px-3 py-2 text-sm"
         >
           <option value="">全部类型</option>
           {(data?.types ?? []).map((t) => (
@@ -197,7 +197,7 @@ export default function AdminWaveSpeedModelsPage() {
             setPage(1);
             setTag(e.target.value);
           }}
-          className="bg-[#111] border border-white/10 rounded-xl px-3 py-2 text-sm"
+          className="bg-surface border border-line rounded-xl px-3 py-2 text-sm"
         >
           <option value="">全部标签</option>
           {(data?.tags ?? []).map((t) => (
@@ -212,13 +212,13 @@ export default function AdminWaveSpeedModelsPage() {
             setPage(1);
             setShelved(e.target.value);
           }}
-          className="bg-[#111] border border-white/10 rounded-xl px-3 py-2 text-sm"
+          className="bg-surface border border-line rounded-xl px-3 py-2 text-sm"
         >
           <option value="">上架状态</option>
           <option value="1">已有 Product</option>
           <option value="0">未上架</option>
         </select>
-        <label className="flex items-center gap-2 text-sm text-gray-300">
+        <label className="flex items-center gap-2 text-sm text-ink-muted">
           <input
             type="checkbox"
             checked={adult}
@@ -247,7 +247,7 @@ export default function AdminWaveSpeedModelsPage() {
                     loading="lazy"
                   />
                 ) : (
-                  <div className="w-full h-full flex items-center justify-center text-gray-600 text-3xl font-black">
+                  <div className="w-full h-full flex items-center justify-center text-ink-subtle text-3xl font-black">
                     {m.name.slice(0, 1).toUpperCase()}
                   </div>
                 )}
@@ -260,25 +260,25 @@ export default function AdminWaveSpeedModelsPage() {
               <div className="p-3 flex-1 flex flex-col gap-2">
                 <div>
                   <div className="font-medium text-sm line-clamp-1">{p?.label || m.name}</div>
-                  <div className="text-[10px] text-gray-500 font-mono line-clamp-1">{m.model_id}</div>
-                  <div className="text-xs text-gray-400 mt-1">
+                  <div className="text-[10px] text-ink-subtle font-mono line-clamp-1">{m.model_id}</div>
+                  <div className="text-xs text-ink-muted mt-1">
                     {m.type || "—"} ·{" "}
-                    <span className="text-emerald-300 font-mono">
+                    <span className="text-emerald-700 font-mono">
                       ${m.base_price_usd.toFixed(4)}
                     </span>
                     {m.last_unit_price_usd != null && (
-                      <span className="text-gray-500 ml-1">
+                      <span className="text-ink-subtle ml-1">
                         (估 ${m.last_unit_price_usd.toFixed(4)})
                       </span>
                     )}
                   </div>
                   <div className="text-xs mt-1">
                     {active ? (
-                      <span className="text-orange-300 font-mono">{p!.credit_cost} 点 · 已上架</span>
+                      <span className="text-orange-700 font-mono">{p!.credit_cost} 点 · 已上架</span>
                     ) : p ? (
-                      <span className="text-gray-500">已下架 · {p.credit_cost} 点</span>
+                      <span className="text-ink-subtle">已下架 · {p.credit_cost} 点</span>
                     ) : (
-                      <span className="text-gray-500">未上架</span>
+                      <span className="text-ink-subtle">未上架</span>
                     )}
                   </div>
                   <div className="flex flex-wrap gap-1 mt-2 items-center">
@@ -291,7 +291,7 @@ export default function AdminWaveSpeedModelsPage() {
                           setPage(1);
                           setTag(t);
                         }}
-                        className="px-1.5 py-0.5 text-[10px] rounded bg-sky-500/15 text-sky-300 border border-sky-500/25 hover:bg-sky-500/25"
+                        className="px-1.5 py-0.5 text-[10px] rounded bg-sky-500/15 text-sky-700 border border-sky-500/25 hover:bg-sky-500/25"
                       >
                         {t}
                       </button>
@@ -302,7 +302,7 @@ export default function AdminWaveSpeedModelsPage() {
                         setTagEditFor(m);
                         setTagDraft(m.tags.join(", "));
                       }}
-                      className="px-1.5 py-0.5 text-[10px] rounded border border-white/15 text-gray-400 hover:text-gray-200"
+                      className="px-1.5 py-0.5 text-[10px] rounded border border-line text-ink-muted hover:text-ink"
                     >
                       {m.tags.length ? "编辑标签" : "+ 标签"}
                     </button>
@@ -311,7 +311,7 @@ export default function AdminWaveSpeedModelsPage() {
                 <div className="flex flex-wrap gap-1.5 mt-auto">
                   <button
                     disabled={busy}
-                    className="px-2 py-1 text-[11px] border border-white/10 rounded-lg disabled:opacity-50"
+                    className="px-2 py-1 text-[11px] border border-line rounded-lg disabled:opacity-50"
                     onClick={() =>
                       action(
                         () =>
@@ -331,7 +331,7 @@ export default function AdminWaveSpeedModelsPage() {
                     <>
                       <button
                         disabled={busy}
-                        className="px-2 py-1 text-[11px] border border-white/10 rounded-lg"
+                        className="px-2 py-1 text-[11px] border border-line rounded-lg"
                         onClick={() =>
                           action(
                             () =>
@@ -347,7 +347,7 @@ export default function AdminWaveSpeedModelsPage() {
                       </button>
                       <button
                         disabled={busy}
-                        className="px-2 py-1 text-[11px] border border-white/10 rounded-lg"
+                        className="px-2 py-1 text-[11px] border border-line rounded-lg"
                         onClick={() => {
                           const cost = window.prompt("本站点数", String(p.credit_cost));
                           if (cost === null) return;
@@ -367,7 +367,7 @@ export default function AdminWaveSpeedModelsPage() {
                       </button>
                       <button
                         disabled={busy}
-                        className="px-2 py-1 text-[11px] border border-white/10 rounded-lg"
+                        className="px-2 py-1 text-[11px] border border-line rounded-lg"
                         onClick={() => {
                           const order = window.prompt("排序（越小越靠前）", String(p.sort_order));
                           if (order === null) return;
@@ -387,7 +387,7 @@ export default function AdminWaveSpeedModelsPage() {
                       </button>
                       <button
                         disabled={busy}
-                        className="px-2 py-1 text-[11px] border border-white/10 rounded-lg"
+                        className="px-2 py-1 text-[11px] border border-line rounded-lg"
                         onClick={() => {
                           const current = p.param_policy
                             ? JSON.stringify(p.param_policy, null, 2)
@@ -425,7 +425,7 @@ export default function AdminWaveSpeedModelsPage() {
                   )}
                   <button
                     disabled={busy}
-                    className="px-2 py-1 text-[11px] border border-white/10 rounded-lg"
+                    className="px-2 py-1 text-[11px] border border-line rounded-lg"
                     onClick={() =>
                       action(
                         () =>
@@ -447,24 +447,24 @@ export default function AdminWaveSpeedModelsPage() {
       </div>
 
       {data && data.models.length === 0 && (
-        <p className="text-gray-500 text-sm mt-8">暂无模型。请先配置 Key 并点击「同步全库」。</p>
+        <p className="text-ink-subtle text-sm mt-8">暂无模型。请先配置 Key 并点击「同步全库」。</p>
       )}
 
       {data && totalPages > 1 && (
         <div className="flex items-center justify-center gap-3 mt-8">
           <button
             disabled={page <= 1 || busy}
-            className="px-3 py-1.5 text-sm border border-white/10 rounded-xl disabled:opacity-40"
+            className="px-3 py-1.5 text-sm border border-line rounded-xl disabled:opacity-40"
             onClick={() => setPage((p) => Math.max(1, p - 1))}
           >
             上一页
           </button>
-          <span className="text-sm text-gray-400">
+          <span className="text-sm text-ink-muted">
             {page} / {totalPages}
           </span>
           <button
             disabled={page >= totalPages || busy}
-            className="px-3 py-1.5 text-sm border border-white/10 rounded-xl disabled:opacity-40"
+            className="px-3 py-1.5 text-sm border border-line rounded-xl disabled:opacity-40"
             onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
           >
             下一页
@@ -474,7 +474,7 @@ export default function AdminWaveSpeedModelsPage() {
 
       {tagEditFor && (
         <div
-          className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4"
+          className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4 text-white"
           onClick={() => setTagEditFor(null)}
         >
           <div
@@ -482,10 +482,10 @@ export default function AdminWaveSpeedModelsPage() {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="mb-1 font-semibold">编辑类型标签</div>
-            <div className="text-[11px] text-gray-500 font-mono mb-3 break-all">
+            <div className="text-[11px] text-ink-subtle font-mono mb-3 break-all">
               {tagEditFor.model_id}
             </div>
-            <p className="text-xs text-gray-400 mb-2">
+            <p className="text-xs text-ink-muted mb-2">
               逗号分隔，最多 {MAX_TAGS} 个。标签只保存在本站，
               <b>不会被「同步全库」覆盖</b>；创作中心的档位绑定可按标签筛选。
             </p>
@@ -494,7 +494,7 @@ export default function AdminWaveSpeedModelsPage() {
               value={tagDraft}
               onChange={(e) => setTagDraft(e.target.value)}
               placeholder="例如：文生视频, 高档, Spicy"
-              className="w-full bg-[#111] border border-white/10 rounded-xl px-3 py-2 text-sm mb-3"
+              className="w-full bg-surface border border-line rounded-xl px-3 py-2 text-sm mb-3"
             />
             <div className="flex flex-wrap gap-1.5 mb-4">
               {SUGGESTED.map((t) => (
@@ -506,7 +506,7 @@ export default function AdminWaveSpeedModelsPage() {
                     if (current.some((x) => x.toLowerCase() === t.toLowerCase())) return;
                     setTagDraft([...current, t].join(", "));
                   }}
-                  className="px-2 py-0.5 text-[11px] rounded-full border border-white/15 text-gray-300 hover:border-sky-500/50 hover:text-sky-300"
+                  className="px-2 py-0.5 text-[11px] rounded-full border border-line text-ink-muted hover:border-sky-500/50 hover:text-sky-800"
                 >
                   + {t}
                 </button>
@@ -514,14 +514,14 @@ export default function AdminWaveSpeedModelsPage() {
             </div>
             <div className="flex justify-end gap-2">
               <button
-                className="px-3 py-1.5 text-xs border border-white/10 rounded-xl"
+                className="px-3 py-1.5 text-xs border border-line rounded-xl"
                 onClick={() => setTagEditFor(null)}
               >
                 取消
               </button>
               <button
                 disabled={busy}
-                className="px-4 py-1.5 text-xs font-semibold bg-orange-600 hover:bg-orange-500 rounded-xl disabled:opacity-50"
+                className="px-4 py-1.5 text-xs font-semibold bg-orange-700 hover:bg-orange-600 rounded-xl disabled:opacity-50"
                 onClick={() => {
                   const modelId = tagEditFor.model_id;
                   const tags = splitTags(tagDraft);

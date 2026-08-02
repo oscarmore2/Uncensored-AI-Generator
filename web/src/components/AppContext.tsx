@@ -52,10 +52,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       {toastState && (
         <div
           className={`fixed bottom-6 left-1/2 -translate-x-1/2 border text-sm px-6 py-3 rounded-3xl flex items-center gap-x-3 shadow-2xl z-[200] ${
-            toastState.isError ? "bg-[#3f1f1f] border-red-500" : "bg-[#111] border-[#333]"
+            toastState.isError ? "bg-[#3f1f1f] border-red-500" : "bg-surface border-[#333]"
           }`}
         >
-          <i className={`fas ${toastState.isError ? "fa-circle-exclamation text-red-400" : "fa-check-circle text-emerald-400"}`} />
+          <i className={`fas ${toastState.isError ? "fa-circle-exclamation text-red-700" : "fa-check-circle text-emerald-700"}`} />
           <span>{toastState.message}</span>
         </div>
       )}

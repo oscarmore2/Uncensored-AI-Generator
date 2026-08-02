@@ -98,7 +98,7 @@ function GenerationsInner() {
   return (
     <div>
       <h1 className="text-3xl font-bold tracking-tighter mb-1">作品审核</h1>
-      <p className="text-gray-400 text-sm mb-6">软删除 / 恢复 / 曝光到公共库；点击作品可预览图片、视频与 3D 模型</p>
+      <p className="text-ink-muted text-sm mb-6">软删除 / 恢复 / 曝光到公共库；点击作品可预览图片、视频与 3D 模型</p>
 
       <div className="flex flex-wrap items-center gap-3 mb-5">
         <select
@@ -107,14 +107,14 @@ function GenerationsInner() {
             setStatus(e.target.value);
             setPage(1);
           }}
-          className="bg-[#111] border border-white/10 rounded-xl px-3 py-2 text-sm"
+          className="bg-surface border border-line rounded-xl px-3 py-2 text-sm"
         >
           <option value="">全部状态</option>
           <option value="succeeded">succeeded</option>
           <option value="processing">processing</option>
           <option value="failed">failed</option>
         </select>
-        <label className="flex items-center gap-x-2 text-sm text-gray-300 cursor-pointer">
+        <label className="flex items-center gap-x-2 text-sm text-ink-muted cursor-pointer">
           <input
             type="checkbox"
             checked={includeDeleted}
@@ -137,7 +137,7 @@ function GenerationsInner() {
         )}
       </div>
 
-      {msg && <p className="mb-4 text-sm text-amber-300">{msg}</p>}
+      {msg && <p className="mb-4 text-sm text-amber-800">{msg}</p>}
 
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
         {data?.generations.map((g) => (
@@ -151,7 +151,7 @@ function GenerationsInner() {
               selected.has(g.id) ? "ring-2 ring-orange-500" : ""
             }`}
           >
-            <div className="relative aspect-video bg-[#111]">
+            <div className="relative aspect-video bg-surface">
               {g.result_urls?.length ? (
                 <button
                   type="button"
@@ -163,11 +163,11 @@ function GenerationsInner() {
                   <span className="absolute inset-0 bg-black/0 group-hover:bg-black/25 transition-colors" />
                 </button>
               ) : (
-                <div className="fake-image w-full h-full flex items-center justify-center text-xs text-gray-500">
+                <div className="fake-image w-full h-full flex items-center justify-center text-xs text-ink-subtle">
                   无结果图（{g.status}）
                 </div>
               )}
-              <label className="absolute top-3 left-3 z-10 w-6 h-6 flex items-center justify-center bg-black/70 rounded-lg cursor-pointer">
+              <label className="absolute top-3 left-3 z-10 w-6 h-6 flex items-center justify-center bg-black/70 rounded-lg cursor-pointer text-white">
                 <input type="checkbox" checked={selected.has(g.id)} onChange={() => toggle(g.id)} />
               </label>
               <div className="absolute top-3 right-3 z-10 flex gap-1 pointer-events-none">
@@ -182,15 +182,15 @@ function GenerationsInner() {
               </div>
             </div>
             <div className="p-4">
-              <div className="flex items-center justify-between text-xs text-gray-400 mb-2">
+              <div className="flex items-center justify-between text-xs text-ink-muted mb-2">
                 <span className="font-mono">
                   #{g.id} · {g.mode} · {g.status}
                 </span>
                 <span>{g.username}</span>
               </div>
-              <p className="text-xs text-gray-300 line-clamp-2 mb-3">{g.prompt}</p>
+              <p className="text-xs text-ink-muted line-clamp-2 mb-3">{g.prompt}</p>
               {g.visibility !== "featured" && (
-                <p className={`text-[11px] mb-3 ${featureExpired ? "text-red-300" : "text-amber-300"}`}>
+                <p className={`text-[11px] mb-3 ${featureExpired ? "text-red-700" : "text-amber-800"}`}>
                   <i className="fas fa-hourglass-half mr-1" />
                   {featureExpired
                     ? "已超过 7 天，无法精选"
@@ -202,7 +202,7 @@ function GenerationsInner() {
                   <button
                     onClick={() => restore(g.id)}
                     disabled={busy}
-                    className="flex-1 py-1.5 text-xs bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl disabled:opacity-50"
+                    className="flex-1 py-1.5 text-xs bg-black/[0.03] hover:bg-black/[0.06] border border-line rounded-xl disabled:opacity-50"
                   >
                     恢复
                   </button>
@@ -211,7 +211,7 @@ function GenerationsInner() {
                     <button
                       onClick={() => softDelete(g.id)}
                       disabled={busy}
-                      className="flex-1 py-1.5 text-xs bg-white/5 hover:bg-red-600/30 border border-white/10 rounded-xl disabled:opacity-50"
+                      className="flex-1 py-1.5 text-xs bg-black/[0.03] hover:bg-red-600/30 border border-line rounded-xl disabled:opacity-50"
                     >
                       软删除
                     </button>
@@ -236,7 +236,7 @@ function GenerationsInner() {
       </div>
 
       {data && data.generations.length === 0 && (
-        <div className="glass rounded-3xl p-16 text-center text-gray-500">没有符合条件的作品</div>
+        <div className="glass rounded-3xl p-16 text-center text-ink-subtle">没有符合条件的作品</div>
       )}
 
       {totalPages > 1 && (
@@ -244,17 +244,17 @@ function GenerationsInner() {
           <button
             disabled={page <= 1}
             onClick={() => setPage((p) => p - 1)}
-            className="px-5 py-2 border border-white/10 rounded-2xl hover:bg-white/5 disabled:opacity-40"
+            className="px-5 py-2 border border-line rounded-2xl hover:bg-black/[0.04] disabled:opacity-40"
           >
             上一页
           </button>
-          <span className="px-4 py-2 text-gray-400">
+          <span className="px-4 py-2 text-ink-muted">
             {page} / {totalPages}
           </span>
           <button
             disabled={page >= totalPages}
             onClick={() => setPage((p) => p + 1)}
-            className="px-5 py-2 border border-white/10 rounded-2xl hover:bg-white/5 disabled:opacity-40"
+            className="px-5 py-2 border border-line rounded-2xl hover:bg-black/[0.04] disabled:opacity-40"
           >
             下一页
           </button>
@@ -268,8 +268,8 @@ function GenerationsInner() {
           onClose={() => setPreview(null)}
           title={
             <>
-              <span className="font-mono text-gray-400">#{preview.id}</span>
-              <span className="text-gray-500">{preview.mode}</span>
+              <span className="font-mono text-ink-muted">#{preview.id}</span>
+              <span className="text-ink-subtle">{preview.mode}</span>
               {preview.is_adult && (
                 <span className="px-1.5 py-0.5 rounded bg-red-600 text-[10px] font-bold">18+</span>
               )}
@@ -283,14 +283,14 @@ function GenerationsInner() {
           }
         >
           <div className="space-y-3">
-            <div className="flex flex-wrap gap-x-5 gap-y-1 text-xs text-gray-400">
+            <div className="flex flex-wrap gap-x-5 gap-y-1 text-xs text-ink-muted">
               <span>用户：{preview.username ?? `ID ${preview.user_id}`}</span>
               <span>状态：{preview.status}</span>
               <span>生成于：{new Date(preview.created_at).toLocaleString()}</span>
             </div>
             <div>
-              <div className="text-[11px] text-gray-500 mb-1">提示词</div>
-              <p className="text-sm text-gray-200 whitespace-pre-wrap break-words max-h-40 overflow-y-auto">
+              <div className="text-[11px] text-ink-subtle mb-1">提示词</div>
+              <p className="text-sm text-ink whitespace-pre-wrap break-words max-h-40 overflow-y-auto">
                 {preview.prompt || "（空）"}
               </p>
             </div>
@@ -302,7 +302,7 @@ function GenerationsInner() {
                     setPreview(null);
                   }}
                   disabled={busy}
-                  className="flex-1 py-2 text-xs bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl disabled:opacity-50"
+                  className="flex-1 py-2 text-xs bg-black/[0.03] hover:bg-black/[0.06] border border-line rounded-xl disabled:opacity-50"
                 >
                   恢复
                 </button>
@@ -314,7 +314,7 @@ function GenerationsInner() {
                       setPreview(null);
                     }}
                     disabled={busy}
-                    className="flex-1 py-2 text-xs bg-white/5 hover:bg-red-600/30 border border-white/10 rounded-xl disabled:opacity-50"
+                    className="flex-1 py-2 text-xs bg-black/[0.03] hover:bg-red-600/30 border border-line rounded-xl disabled:opacity-50"
                   >
                     软删除
                   </button>

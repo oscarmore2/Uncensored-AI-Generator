@@ -38,19 +38,19 @@ export function InputMediaGoneDialog({
 
   return (
     <div
-      className="fixed inset-0 z-[130] flex items-center justify-center bg-black/80 p-4"
+      className="fixed inset-0 z-[130] flex items-center justify-center bg-black/80 p-4 text-white"
       onClick={(e) => {
         if (e.target === e.currentTarget) onCancel();
       }}
       role="dialog"
       aria-modal="true"
     >
-      <div className="modal-pop w-full max-w-lg overflow-hidden rounded-3xl border border-amber-500/25 bg-[#111]">
-        <div className="flex items-start gap-3 border-b border-white/10 p-5">
-          <i className="fas fa-triangle-exclamation mt-0.5 text-xl text-amber-400" />
+      <div className="modal-pop w-full max-w-lg overflow-hidden rounded-3xl border border-amber-500/25 bg-surface">
+        <div className="flex items-start gap-3 border-b border-line p-5">
+          <i className="fas fa-triangle-exclamation mt-0.5 text-xl text-amber-800" />
           <div>
             <h2 className="text-lg font-bold">{t("goneTitle")}</h2>
-            <p className="mt-1 text-sm text-gray-400">
+            <p className="mt-1 text-sm text-ink-muted">
               {unrecorded ? t("goneUnrecordedHint") : t("goneHint")}
             </p>
           </div>
@@ -61,24 +61,24 @@ export function InputMediaGoneDialog({
             {gone.map((item) => (
               <div
                 key={item.url}
-                className="rounded-2xl border border-white/10 bg-black/40 p-4 text-sm"
+                className="rounded-2xl border border-line bg-black/[0.04] p-4 text-sm"
               >
                 <div className="mb-2 flex items-center gap-2 font-medium">
-                  <i className="fas fa-file-image text-gray-500" />
+                  <i className="fas fa-file-image text-ink-subtle" />
                   <span className="truncate">{item.filename ?? t("unknownFilename")}</span>
                 </div>
-                <dl className="space-y-1 text-xs text-gray-400">
+                <dl className="space-y-1 text-xs text-ink-muted">
                   <div className="flex justify-between gap-3">
                     <dt>{t("uploadedAt")}</dt>
-                    <dd className="text-gray-300">{fmt(item.uploaded_at)}</dd>
+                    <dd className="text-ink-muted">{fmt(item.uploaded_at)}</dd>
                   </div>
                   <div className="flex justify-between gap-3">
                     <dt>{t("deletedAt")}</dt>
-                    <dd className="text-gray-300">{fmt(item.deleted_at)}</dd>
+                    <dd className="text-ink-muted">{fmt(item.deleted_at)}</dd>
                   </div>
                   <div className="flex justify-between gap-3">
                     <dt>{t("deleteReason")}</dt>
-                    <dd className="text-right text-gray-300">
+                    <dd className="text-right text-ink-muted">
                       {t.has(`reasons.${item.delete_reason}`)
                         ? t(`reasons.${item.delete_reason}` as "reasons.unknown")
                         : t("reasons.unknown")}
@@ -90,18 +90,18 @@ export function InputMediaGoneDialog({
           </div>
         )}
 
-        <div className="flex gap-3 border-t border-white/10 p-5">
+        <div className="flex gap-3 border-t border-line p-5">
           <button
             type="button"
             onClick={onCancel}
-            className="flex-1 rounded-2xl border border-white/10 bg-white/5 py-3 text-sm"
+            className="flex-1 rounded-2xl border border-line bg-black/[0.03] py-3 text-sm"
           >
             {t("cancel")}
           </button>
           <button
             type="button"
             onClick={onConfirm}
-            className="flex-1 rounded-2xl bg-white py-3 text-sm font-semibold text-black"
+            className="flex-1 rounded-2xl bg-orange-700 py-3 text-sm font-semibold text-white"
           >
             {t("confirmContinue")}
           </button>
@@ -128,30 +128,30 @@ export function RetryConfirmDialog({
 
   return (
     <div
-      className="fixed inset-0 z-[130] flex items-center justify-center bg-black/80 p-4"
+      className="fixed inset-0 z-[130] flex items-center justify-center bg-black/80 p-4 text-white"
       onClick={(e) => {
         if (e.target === e.currentTarget) onCancel();
       }}
       role="dialog"
       aria-modal="true"
     >
-      <div className="modal-pop w-full max-w-sm overflow-hidden rounded-3xl border border-white/10 bg-[#111]">
+      <div className="modal-pop w-full max-w-sm overflow-hidden rounded-3xl border border-line bg-surface">
         <div className="p-6 text-center">
-          <i className="fas fa-rotate-right text-2xl text-orange-400" />
+          <i className="fas fa-rotate-right text-2xl text-orange-700" />
           <h2 className="mt-3 text-lg font-bold">{t("retryTitle")}</h2>
-          <p className="mt-2 text-sm text-gray-400">{t("retryCost", { cost })}</p>
-          <p className="mt-1 text-xs text-gray-500">{t("retryBalance", { balance })}</p>
+          <p className="mt-2 text-sm text-ink-muted">{t("retryCost", { cost })}</p>
+          <p className="mt-1 text-xs text-ink-subtle">{t("retryBalance", { balance })}</p>
           {insufficient && (
-            <p className="mt-3 rounded-xl border border-amber-500/25 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
+            <p className="mt-3 rounded-xl border border-amber-500/25 bg-amber-500/10 px-3 py-2 text-xs text-amber-800">
               {t("retryInsufficient")}
             </p>
           )}
         </div>
-        <div className="flex gap-3 border-t border-white/10 p-5">
+        <div className="flex gap-3 border-t border-line p-5">
           <button
             type="button"
             onClick={onCancel}
-            className="flex-1 rounded-2xl border border-white/10 bg-white/5 py-3 text-sm"
+            className="flex-1 rounded-2xl border border-line bg-black/[0.03] py-3 text-sm"
           >
             {t("cancel")}
           </button>

@@ -32,11 +32,11 @@ const TYPE_LABELS: Record<string, string> = {
 };
 
 const TYPE_COLORS: Record<string, string> = {
-  signup_bonus: "bg-sky-500/15 text-sky-300",
-  recharge: "bg-emerald-500/15 text-emerald-300",
-  refund: "bg-amber-500/15 text-amber-300",
-  vip: "bg-purple-500/15 text-purple-300",
-  admin_adjust: "bg-orange-500/15 text-orange-300",
+  signup_bonus: "bg-sky-500/15 text-sky-700",
+  recharge: "bg-emerald-500/15 text-emerald-700",
+  refund: "bg-amber-500/15 text-amber-800",
+  vip: "bg-purple-500/15 text-purple-700",
+  admin_adjust: "bg-orange-500/15 text-orange-700",
 };
 
 export default function AdminTransactionsPage() {
@@ -89,7 +89,7 @@ export default function AdminTransactionsPage() {
   return (
     <div>
       <h1 className="text-3xl font-bold tracking-tighter mb-1">交易流水</h1>
-      <p className="text-gray-400 text-sm mb-6">充值 / 退款 / VIP / 管理调整</p>
+      <p className="text-ink-muted text-sm mb-6">充值 / 退款 / VIP / 管理调整</p>
 
       <div className="flex flex-wrap gap-3 mb-5">
         <select
@@ -98,7 +98,7 @@ export default function AdminTransactionsPage() {
             setType(e.target.value);
             setPage(1);
           }}
-          className="bg-[#111] border border-white/10 rounded-xl px-3 py-2 text-sm"
+          className="bg-surface border border-line rounded-xl px-3 py-2 text-sm"
         >
           <option value="">全部类型</option>
           {Object.entries(TYPE_LABELS).map(([k, v]) => (
@@ -113,7 +113,7 @@ export default function AdminTransactionsPage() {
             setMethod(e.target.value);
             setPage(1);
           }}
-          className="bg-[#111] border border-white/10 rounded-xl px-3 py-2 text-sm"
+          className="bg-surface border border-line rounded-xl px-3 py-2 text-sm"
         >
           <option value="">全部渠道</option>
           <option value="stripe">Stripe</option>
@@ -129,7 +129,7 @@ export default function AdminTransactionsPage() {
             setPage(1);
           }}
           placeholder="用户 ID"
-          className="bg-[#111] border border-white/10 rounded-xl px-3 py-2 text-sm w-28"
+          className="bg-surface border border-line rounded-xl px-3 py-2 text-sm w-28"
         />
         <input
           type="date"
@@ -138,7 +138,7 @@ export default function AdminTransactionsPage() {
             setFrom(e.target.value);
             setPage(1);
           }}
-          className="bg-[#111] border border-white/10 rounded-xl px-3 py-2 text-sm"
+          className="bg-surface border border-line rounded-xl px-3 py-2 text-sm"
         />
         <input
           type="date"
@@ -147,22 +147,22 @@ export default function AdminTransactionsPage() {
             setTo(e.target.value);
             setPage(1);
           }}
-          className="bg-[#111] border border-white/10 rounded-xl px-3 py-2 text-sm"
+          className="bg-surface border border-line rounded-xl px-3 py-2 text-sm"
         />
         <button
           onClick={exportCsv}
-          className="text-sm px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl"
+          className="text-sm px-4 py-2 bg-black/[0.03] hover:bg-black/[0.06] border border-line rounded-xl"
         >
           导出 CSV
         </button>
       </div>
 
-      {error && <p className="mb-4 text-sm text-red-400">{error}</p>}
+      {error && <p className="mb-4 text-sm text-red-700">{error}</p>}
 
       <div className="glass rounded-3xl overflow-x-auto">
         <table className="w-full text-sm min-w-[760px]">
           <thead>
-            <tr className="text-left text-xs text-gray-400 border-b border-white/10">
+            <tr className="text-left text-xs text-ink-muted border-b border-line">
               <th className="px-4 py-3">ID</th>
               <th className="px-4 py-3">用户</th>
               <th className="px-4 py-3">类型</th>
@@ -174,33 +174,33 @@ export default function AdminTransactionsPage() {
           </thead>
           <tbody>
             {data?.transactions.map((t) => (
-              <tr key={t.id} className="border-b border-white/5 hover:bg-white/[0.02]">
-                <td className="px-4 py-3 font-mono text-gray-400">#{t.id}</td>
+              <tr key={t.id} className="border-b border-line hover:bg-black/[0.03]">
+                <td className="px-4 py-3 font-mono text-ink-muted">#{t.id}</td>
                 <td className="px-4 py-3">
-                  <Link href={`/admin/users/${t.user_id}`} className="hover:text-orange-300">
+                  <Link href={`/admin/users/${t.user_id}`} className="hover:text-orange-800">
                     {t.username}
                   </Link>{" "}
-                  <span className="text-gray-500 text-xs">#{t.user_id}</span>
+                  <span className="text-ink-subtle text-xs">#{t.user_id}</span>
                 </td>
                 <td className="px-4 py-3">
-                  <span className={`text-xs px-2 py-0.5 rounded-full ${TYPE_COLORS[t.type] ?? "bg-white/10 text-gray-300"}`}>
+                  <span className={`text-xs px-2 py-0.5 rounded-full ${TYPE_COLORS[t.type] ?? "bg-black/[0.06] text-ink-muted"}`}>
                     {TYPE_LABELS[t.type] ?? t.type}
                   </span>
                 </td>
-                <td className={`px-4 py-3 font-mono ${t.amount < 0 ? "text-red-300" : "text-emerald-300"}`}>
+                <td className={`px-4 py-3 font-mono ${t.amount < 0 ? "text-red-700" : "text-emerald-700"}`}>
                   {t.amount > 0 ? "+" : ""}
                   {t.amount}
                 </td>
                 <td className="px-4 py-3 font-mono text-xs">
                   {t.price_cents !== null ? `$${(t.price_cents / 100).toFixed(2)}` : "—"}
                 </td>
-                <td className="px-4 py-3 text-xs text-gray-400">{t.method ?? "—"}</td>
-                <td className="px-4 py-3 text-xs text-gray-500">{new Date(t.created_at).toLocaleString("zh-CN")}</td>
+                <td className="px-4 py-3 text-xs text-ink-muted">{t.method ?? "—"}</td>
+                <td className="px-4 py-3 text-xs text-ink-subtle">{new Date(t.created_at).toLocaleString("zh-CN")}</td>
               </tr>
             ))}
             {data && data.transactions.length === 0 && (
               <tr>
-                <td colSpan={7} className="px-4 py-10 text-center text-gray-500">
+                <td colSpan={7} className="px-4 py-10 text-center text-ink-subtle">
                   暂无流水
                 </td>
               </tr>
@@ -214,17 +214,17 @@ export default function AdminTransactionsPage() {
           <button
             disabled={page <= 1}
             onClick={() => setPage((p) => p - 1)}
-            className="px-5 py-2 border border-white/10 rounded-2xl hover:bg-white/5 disabled:opacity-40"
+            className="px-5 py-2 border border-line rounded-2xl hover:bg-black/[0.04] disabled:opacity-40"
           >
             上一页
           </button>
-          <span className="px-4 py-2 text-gray-400">
+          <span className="px-4 py-2 text-ink-muted">
             {page} / {totalPages}
           </span>
           <button
             disabled={page >= totalPages}
             onClick={() => setPage((p) => p + 1)}
-            className="px-5 py-2 border border-white/10 rounded-2xl hover:bg-white/5 disabled:opacity-40"
+            className="px-5 py-2 border border-line rounded-2xl hover:bg-black/[0.04] disabled:opacity-40"
           >
             下一页
           </button>

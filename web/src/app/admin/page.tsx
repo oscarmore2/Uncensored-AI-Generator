@@ -72,7 +72,7 @@ function BarChart({
           />
         ))}
       </div>
-      <div className="flex justify-between text-[10px] text-gray-500 mt-2">
+      <div className="flex justify-between text-[10px] text-ink-subtle mt-2">
         <span>{data[0]?.date.slice(5)}</span>
         <span>{data[data.length - 1]?.date.slice(5)}</span>
       </div>
@@ -90,8 +90,8 @@ export default function AdminDashboardPage() {
       .catch((e) => setError(e instanceof ApiError ? e.message : "加载失败"));
   }, []);
 
-  if (error) return <p className="text-red-400">{error}</p>;
-  if (!stats) return <p className="text-gray-500">加载中...</p>;
+  if (error) return <p className="text-red-700">{error}</p>;
+  if (!stats) return <p className="text-ink-subtle">加载中...</p>;
 
   const t = stats.totals;
   const pipeline = stats.generations_by_status;
@@ -108,7 +108,7 @@ export default function AdminDashboardPage() {
       sub: (
         <>
           失败 {t.generations_failed}（{(t.failure_rate * 100).toFixed(1)}%）·{" "}
-          <Link href="/mod?status=failed" className="text-orange-400 hover:underline">
+          <Link href="/mod?status=failed" className="text-orange-700 hover:underline">
             查看
           </Link>
         </>
@@ -125,14 +125,14 @@ export default function AdminDashboardPage() {
   return (
     <div>
       <h1 className="text-3xl font-bold tracking-tighter mb-1">数据看板</h1>
-      <p className="text-gray-400 text-sm mb-8">全站运营数据 · 近 30 天趋势</p>
+      <p className="text-ink-muted text-sm mb-8">全站运营数据 · 近 30 天趋势</p>
 
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
         {cards.map((c) => (
           <div key={c.label} className="glass rounded-3xl p-5">
             <div className="text-2xl font-bold font-mono stat-number">{c.value}</div>
-            <div className="text-xs text-gray-400 mt-1">{c.label}</div>
-            <div className="text-[10px] text-gray-500 mt-1">{c.sub}</div>
+            <div className="text-xs text-ink-muted mt-1">{c.label}</div>
+            <div className="text-[10px] text-ink-subtle mt-1">{c.sub}</div>
           </div>
         ))}
       </div>
@@ -146,18 +146,18 @@ export default function AdminDashboardPage() {
               return (
                 <div key={key}>
                   <div className="flex justify-between text-xs mb-1">
-                    <span className="text-gray-300">{METHOD_LABELS[key] ?? key}</span>
-                    <span className="font-mono text-gray-400">
+                    <span className="text-ink-muted">{METHOD_LABELS[key] ?? key}</span>
+                    <span className="font-mono text-ink-muted">
                       ${(v.cents / 100).toFixed(2)} · {v.count} 笔 · {pct}%
                     </span>
                   </div>
-                  <div className="h-1.5 bg-white/10 rounded-full overflow-hidden">
+                  <div className="h-1.5 bg-black/[0.06] rounded-full overflow-hidden">
                     <div className="h-full bg-orange-500 rounded-full" style={{ width: `${pct}%` }} />
                   </div>
                 </div>
               );
             })}
-            {methodEntries.length === 0 && <p className="text-xs text-gray-500">暂无充值流水</p>}
+            {methodEntries.length === 0 && <p className="text-xs text-ink-subtle">暂无充值流水</p>}
           </div>
         </div>
 
@@ -165,23 +165,23 @@ export default function AdminDashboardPage() {
           <div className="flex items-center justify-between mb-3">
             <div className="text-sm font-semibold">生成管道</div>
             {inFlight > 0 && (
-              <span className="text-xs px-2 py-0.5 bg-amber-500/20 text-amber-300 rounded-full">进行中 {inFlight}</span>
+              <span className="text-xs px-2 py-0.5 bg-amber-500/20 text-amber-800 rounded-full">进行中 {inFlight}</span>
             )}
           </div>
           <div className="grid grid-cols-2 gap-2 text-sm">
             {(["pending", "queued", "processing", "succeeded", "partial", "failed"] as const).map((s) => (
-              <div key={s} className="flex justify-between px-2 py-1 bg-white/5 rounded-lg">
-                <span className="text-gray-400 text-xs">{s}</span>
+              <div key={s} className="flex justify-between px-2 py-1 bg-black/[0.03] rounded-lg">
+                <span className="text-ink-muted text-xs">{s}</span>
                 <span className="font-mono">{pipeline[s] ?? 0}</span>
               </div>
             ))}
           </div>
           <div className="mt-4 flex gap-3 text-xs">
-            <Link href="/mod" className="text-orange-400 hover:underline">
+            <Link href="/mod" className="text-orange-700 hover:underline">
               前往审核台
             </Link>
             {t.uncredited_crypto_count > 0 && (
-              <Link href="/admin/crypto?credited=0" className="text-amber-400 hover:underline">
+              <Link href="/admin/crypto?credited=0" className="text-amber-800 hover:underline">
                 未入账加密订单 {t.uncredited_crypto_count}
               </Link>
             )}
@@ -191,8 +191,8 @@ export default function AdminDashboardPage() {
         <div className="glass rounded-3xl p-5">
           <div className="text-sm font-semibold mb-3">审核队列摘要</div>
           <div className="text-3xl font-bold font-mono">{stats.mod_queue.pending_review}</div>
-          <p className="text-xs text-gray-400 mt-1">成功生成、未删除、尚未精选入公共库</p>
-          <Link href="/mod" className="inline-block mt-3 text-xs text-orange-400 hover:underline">
+          <p className="text-xs text-ink-muted mt-1">成功生成、未删除、尚未精选入公共库</p>
+          <Link href="/mod" className="inline-block mt-3 text-xs text-orange-700 hover:underline">
             打开审核台 →
           </Link>
         </div>
@@ -216,8 +216,8 @@ export default function AdminDashboardPage() {
               <div className="space-y-2">
                 {stats.revenue_by_stripe_account.map((row) => (
                   <div key={String(row.account_id)} className="flex justify-between text-xs">
-                    <span className="text-gray-300">{row.label}</span>
-                    <span className="font-mono text-gray-400">
+                    <span className="text-ink-muted">{row.label}</span>
+                    <span className="font-mono text-ink-muted">
                       ${(row.cents / 100).toFixed(2)} · {row.count} 笔
                     </span>
                   </div>
@@ -229,8 +229,8 @@ export default function AdminDashboardPage() {
             <div className="glass rounded-3xl p-5">
               <div className="text-sm font-semibold mb-3">NOWPayments 收入</div>
               <div className="flex justify-between text-xs">
-                <span className="text-gray-300">托管加密收银台</span>
-                <span className="font-mono text-gray-400">
+                <span className="text-ink-muted">托管加密收银台</span>
+                <span className="font-mono text-ink-muted">
                   ${(stats.revenue_by_nowpayments.cents / 100).toFixed(2)} ·{" "}
                   {stats.revenue_by_nowpayments.count} 笔
                 </span>
@@ -245,23 +245,23 @@ export default function AdminDashboardPage() {
           <div className="flex items-center justify-between mb-3">
             <div className="text-sm font-semibold">WaveSpeed 成本（本月）</div>
             {usagePct !== null && usagePct >= 80 && (
-              <span className="text-xs px-2 py-0.5 bg-red-500/20 text-red-300 rounded-full">预算告警</span>
+              <span className="text-xs px-2 py-0.5 bg-red-500/20 text-red-700 rounded-full">预算告警</span>
             )}
           </div>
           <div className="text-3xl font-bold font-mono">${cost.month_cost_usd.toFixed(2)}</div>
-          <div className="text-xs text-gray-400 mt-1">
+          <div className="text-xs text-ink-muted mt-1">
             上游实际计费；站内消耗 {cost.month_credits} 点
             {cost.gross_margin_percent !== null && (
-              <span className="ml-2 text-emerald-400">毛利 {cost.gross_margin_percent}%</span>
+              <span className="ml-2 text-emerald-700">毛利 {cost.gross_margin_percent}%</span>
             )}
           </div>
           {cost.monthly_budget_usd > 0 ? (
             <div className="mt-4">
-              <div className="flex justify-between text-xs text-gray-400 mb-1">
+              <div className="flex justify-between text-xs text-ink-muted mb-1">
                 <span>月度预算 ${cost.monthly_budget_usd.toFixed(2)}</span>
                 <span>{usagePct}%</span>
               </div>
-              <div className="h-2 bg-white/10 rounded-full overflow-hidden">
+              <div className="h-2 bg-black/[0.06] rounded-full overflow-hidden">
                 <div
                   className={`h-full rounded-full ${usagePct !== null && usagePct >= 80 ? "bg-red-500" : "bg-emerald-500"}`}
                   style={{ width: `${Math.min(100, usagePct ?? 0)}%` }}
@@ -269,24 +269,24 @@ export default function AdminDashboardPage() {
               </div>
             </div>
           ) : (
-            <p className="text-[10px] text-gray-500 mt-3">未设置 WAVESPEED_MONTHLY_BUDGET_USD，不做预算对照</p>
+            <p className="text-[10px] text-ink-subtle mt-3">未设置 WAVESPEED_MONTHLY_BUDGET_USD，不做预算对照</p>
           )}
         </div>
 
         <div className="glass rounded-3xl p-5">
           <div className="text-sm font-semibold mb-3">Telegram 通知</div>
           {stats.telegram_configured ? (
-            <p className="text-sm text-emerald-300">
+            <p className="text-sm text-emerald-700">
               <i className="fas fa-check-circle mr-2" />
               已配置：充值成功、新用户注册、生成失败退款、成本预算告警会推送到指定会话
             </p>
           ) : (
-            <div className="text-sm text-gray-400">
+            <div className="text-sm text-ink-muted">
               <p>
-                <i className="fas fa-circle-exclamation mr-2 text-amber-400" />
+                <i className="fas fa-circle-exclamation mr-2 text-amber-800" />
                 未配置。在 .env 中设置后即自动启用：
               </p>
-              <pre className="mt-2 bg-black/40 rounded-xl p-3 text-xs font-mono">
+              <pre className="mt-2 bg-black/[0.04] rounded-xl p-3 text-xs font-mono">
                 {`TELEGRAM_BOT_TOKEN="123456:ABC..."
 TELEGRAM_CHAT_ID="-100xxxx"`}
               </pre>
