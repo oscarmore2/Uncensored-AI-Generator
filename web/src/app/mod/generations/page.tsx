@@ -130,7 +130,7 @@ function GenerationsInner() {
           <button
             onClick={bulkDelete}
             disabled={busy}
-            className="ml-auto px-4 py-2 text-sm font-semibold bg-red-600/80 hover:bg-red-600 rounded-2xl disabled:opacity-50"
+            className="ml-auto px-4 py-2 text-sm font-semibold bg-red-600/80 hover:bg-red-600 rounded-2xl disabled:opacity-50 text-white"
           >
             <i className="fas fa-trash mr-1" /> 批量软删除（{selected.size}）
           </button>
@@ -172,12 +172,12 @@ function GenerationsInner() {
               </label>
               <div className="absolute top-3 right-3 z-10 flex gap-1 pointer-events-none">
                 <MediaKindBadge urls={g.result_urls} mode={g.mode} />
-                {g.deleted_at && <span className="text-[10px] px-2 py-0.5 bg-red-600/80 rounded-full">已删</span>}
+                {g.deleted_at && <span className="text-[10px] px-2 py-0.5 bg-red-600/80 rounded-full text-white">已删</span>}
                 {g.visibility === "featured" && (
-                  <span className="text-[10px] px-2 py-0.5 bg-emerald-600/80 rounded-full">已曝光</span>
+                  <span className="text-[10px] px-2 py-0.5 bg-emerald-600/80 rounded-full text-white">已曝光</span>
                 )}
                 {g.is_adult && (
-                  <span className="text-[10px] px-2 py-0.5 bg-red-600 rounded-full font-bold">18+</span>
+                  <span className="text-[10px] px-2 py-0.5 bg-red-600 rounded-full font-bold text-white">18+</span>
                 )}
               </div>
             </div>
@@ -211,7 +211,7 @@ function GenerationsInner() {
                     <button
                       onClick={() => softDelete(g.id)}
                       disabled={busy}
-                      className="flex-1 py-1.5 text-xs bg-black/[0.03] hover:bg-red-600/30 border border-line rounded-xl disabled:opacity-50"
+                      className="flex-1 py-1.5 text-xs bg-black/[0.03] hover:bg-red-600/30 border border-line rounded-xl disabled:opacity-50 text-white"
                     >
                       软删除
                     </button>
@@ -271,13 +271,13 @@ function GenerationsInner() {
               <span className="font-mono text-ink-muted">#{preview.id}</span>
               <span className="text-ink-subtle">{preview.mode}</span>
               {preview.is_adult && (
-                <span className="px-1.5 py-0.5 rounded bg-red-600 text-[10px] font-bold">18+</span>
+                <span className="px-1.5 py-0.5 rounded bg-red-600 text-[10px] font-bold text-white">18+</span>
               )}
               {preview.deleted_at && (
-                <span className="px-1.5 py-0.5 rounded bg-red-600/80 text-[10px]">已删</span>
+                <span className="px-1.5 py-0.5 rounded bg-red-600/80 text-[10px] text-white">已删</span>
               )}
               {preview.visibility === "featured" && (
-                <span className="px-1.5 py-0.5 rounded bg-emerald-600/80 text-[10px]">已曝光</span>
+                <span className="px-1.5 py-0.5 rounded bg-emerald-600/80 text-[10px] text-white">已曝光</span>
               )}
             </>
           }
@@ -314,7 +314,7 @@ function GenerationsInner() {
                       setPreview(null);
                     }}
                     disabled={busy}
-                    className="flex-1 py-2 text-xs bg-black/[0.03] hover:bg-red-600/30 border border-line rounded-xl disabled:opacity-50"
+                    className="flex-1 py-2 text-xs bg-black/[0.03] hover:bg-red-600/30 border border-line rounded-xl disabled:opacity-50 text-white"
                   >
                     软删除
                   </button>

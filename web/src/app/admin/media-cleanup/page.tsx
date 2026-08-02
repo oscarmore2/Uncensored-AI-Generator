@@ -200,7 +200,7 @@ export default function MediaCleanupPage() {
             <button disabled={busy} onClick={() => run(true)} className="px-4 py-2 rounded-xl border border-line text-sm disabled:opacity-50">
               试运行
             </button>
-            <button disabled={busy} onClick={() => run(false)} className="px-4 py-2 rounded-xl bg-red-600/80 text-sm disabled:opacity-50">
+            <button disabled={busy} onClick={() => run(false)} className="px-4 py-2 rounded-xl bg-red-600/80 text-sm disabled:opacity-50 text-white">
               立即清理
             </button>
           </div>

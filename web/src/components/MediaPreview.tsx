@@ -140,7 +140,7 @@ export function MediaThumb({
         )}
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
           <span className="w-11 h-11 rounded-full bg-black/55 backdrop-blur flex items-center justify-center text-white">
-            <i className="fas fa-play text-ink text-sm ml-0.5" />
+            <i className="fas fa-play text-white text-sm ml-0.5" />
           </span>
         </div>
       </>
@@ -156,7 +156,7 @@ export function MediaThumb({
           <img src={poster} alt={alt ?? "作品"} className={className} loading="lazy" />
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
             <span className="w-11 h-11 rounded-full bg-black/55 backdrop-blur flex items-center justify-center text-white">
-              <i className={`fas ${meta.icon} text-ink text-sm`} />
+              <i className={`fas ${meta.icon} text-white text-sm`} />
             </span>
           </div>
         </>
@@ -164,8 +164,8 @@ export function MediaThumb({
     }
     return (
       <div className="w-full h-full flex flex-col items-center justify-center gap-2 bg-gradient-to-br from-white/[0.06] to-transparent">
-        <i className={`fas ${meta.icon} text-3xl text-ink-subtle`} />
-        <span className="text-[11px] text-ink-subtle">{meta.label}</span>
+        <i className={`fas ${meta.icon} text-3xl text-gray-400`} />
+        <span className="text-[11px] text-gray-400">{meta.label}</span>
       </div>
     );
   }
@@ -209,7 +209,7 @@ function Model3DStage({ url }: { url: string }) {
         style={{ width: "100%", height: "min(65vh, 640px)", background: "#0c0c0c" }}
       />
       {error && (
-        <div className="absolute bottom-2 left-2 right-2 flex items-start gap-2 rounded-xl bg-amber-950/90 border border-amber-500/30 px-3 py-2 text-[11px] text-amber-800">
+        <div className="absolute bottom-2 left-2 right-2 flex items-start gap-2 rounded-xl bg-amber-950/90 border border-amber-500/30 px-3 py-2 text-[11px] text-amber-200">
           <i className="fas fa-triangle-exclamation mt-0.5 shrink-0" />
           <span>
             模型部分资源加载失败，可能导致贴图缺失或显示异常
@@ -318,7 +318,7 @@ export function MediaPreviewModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 text-white"
+      className="fixed inset-0 z-50 scrim-media backdrop-blur-sm flex items-center justify-center p-4"
       onClick={onClose}
     >
       <div

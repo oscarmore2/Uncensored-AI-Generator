@@ -171,7 +171,7 @@ export default function AdminOpenAiPage() {
         <button
           type="submit"
           disabled={busy}
-          className="md:col-span-2 px-4 py-2.5 text-sm font-semibold bg-sky-600 hover:bg-sky-500 rounded-2xl disabled:opacity-50"
+          className="md:col-span-2 px-4 py-2.5 text-sm font-semibold bg-sky-600 hover:bg-sky-500 rounded-2xl disabled:opacity-50 text-white"
         >
           添加账户
         </button>

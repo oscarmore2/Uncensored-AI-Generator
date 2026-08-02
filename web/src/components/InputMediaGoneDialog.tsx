@@ -38,7 +38,7 @@ export function InputMediaGoneDialog({
 
   return (
     <div
-      className="fixed inset-0 z-[130] flex items-center justify-center bg-black/80 p-4 text-white"
+      className="fixed inset-0 z-[130] flex items-center justify-center scrim p-4"
       onClick={(e) => {
         if (e.target === e.currentTarget) onCancel();
       }}
@@ -128,7 +128,7 @@ export function RetryConfirmDialog({
 
   return (
     <div
-      className="fixed inset-0 z-[130] flex items-center justify-center bg-black/80 p-4 text-white"
+      className="fixed inset-0 z-[130] flex items-center justify-center scrim p-4"
       onClick={(e) => {
         if (e.target === e.currentTarget) onCancel();
       }}
@@ -159,7 +159,7 @@ export function RetryConfirmDialog({
             type="button"
             onClick={onConfirm}
             disabled={insufficient}
-            className="flex-1 rounded-2xl bg-orange-600 py-3 text-sm font-semibold hover:bg-orange-500 disabled:opacity-40"
+            className="flex-1 rounded-2xl bg-orange-600 py-3 text-sm font-semibold hover:bg-orange-500 disabled:opacity-40 text-white"
           >
             {t("retryConfirm")}
           </button>

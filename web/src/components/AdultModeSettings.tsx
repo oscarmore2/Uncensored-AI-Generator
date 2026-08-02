@@ -99,7 +99,7 @@ export function AdultModeSettings() {
 
       {gateOpen && (
         <div
-          className="fixed inset-0 z-[210] flex items-center justify-center bg-black/90 p-4 text-white"
+          className="fixed inset-0 z-[210] flex items-center justify-center scrim p-4"
           role="dialog"
           aria-modal="true"
           aria-labelledby="adult-gate-title"

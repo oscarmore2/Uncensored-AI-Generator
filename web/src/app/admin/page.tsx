@@ -66,7 +66,7 @@ function BarChart({
         {data.map((d) => (
           <div
             key={d.date}
-            className="flex-1 bg-orange-600/70 hover:bg-orange-500 rounded-t transition-colors min-h-[2px]"
+            className="flex-1 bg-orange-600/70 hover:bg-orange-500 rounded-t transition-colors min-h-[2px] text-white"
             style={{ height: `${(d.value / max) * 100}%` }}
             title={`${d.date}: ${format ? format(d.value) : d.value}`}
           />

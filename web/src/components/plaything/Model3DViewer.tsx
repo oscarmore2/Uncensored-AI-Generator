@@ -54,7 +54,7 @@ export function Model3DViewer({
               style={{ width: "100%", height: "min(60vh, 520px)", background: "#0c0c0c" }}
             />
             {loadError && (
-              <div className="absolute bottom-2 left-2 right-2 flex items-start gap-2 rounded-xl bg-amber-950/90 border border-amber-500/30 px-3 py-2 text-[11px] text-amber-800">
+              <div className="absolute bottom-2 left-2 right-2 flex items-start gap-2 rounded-xl bg-amber-950/90 border border-amber-500/30 px-3 py-2 text-[11px] text-amber-200">
                 <i className="fas fa-triangle-exclamation mt-0.5 shrink-0" />
                 <span>
                   {t("threeDLoadWarning")}

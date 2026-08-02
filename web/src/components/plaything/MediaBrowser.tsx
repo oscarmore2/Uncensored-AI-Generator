@@ -71,7 +71,7 @@ export function MediaBrowser({
           <button
             type="button"
             onClick={() => onReuse(activeId, true)}
-            className="flex-1 rounded-xl bg-orange-600 py-2.5 text-xs font-semibold hover:bg-orange-500"
+            className="flex-1 rounded-xl bg-orange-600 py-2.5 text-xs font-semibold hover:bg-orange-500 text-white"
           >
             <i className="fas fa-rotate-right mr-1.5" />
             {t("retry")}

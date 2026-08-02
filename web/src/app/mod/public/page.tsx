@@ -135,7 +135,7 @@ export default function ModPublicPage() {
         </div>
         <button
           onClick={() => setFormOpen((v) => !v)}
-          className="px-5 py-2.5 text-sm font-semibold bg-orange-700 hover:bg-orange-600 rounded-2xl"
+          className="px-5 py-2.5 text-sm font-semibold bg-orange-700 hover:bg-orange-600 rounded-2xl text-white"
         >
           <i className="fas fa-file-import mr-2" />
           采集导入
@@ -217,7 +217,7 @@ export default function ModPublicPage() {
             <button
               type="submit"
               disabled={busy}
-              className="px-6 py-2.5 text-sm font-semibold bg-orange-700 hover:bg-orange-600 rounded-2xl disabled:opacity-50"
+              className="px-6 py-2.5 text-sm font-semibold bg-orange-700 hover:bg-orange-600 rounded-2xl disabled:opacity-50 text-white"
             >
               {busy ? "导入中..." : "确认导入"}
             </button>
@@ -240,7 +240,7 @@ export default function ModPublicPage() {
               <img src={w.thumb_url ?? w.media_url} alt={`#${w.id}`} className="w-full h-full object-cover" loading="lazy" />
               <div className="absolute top-3 right-3 flex gap-1">
                 <span className="text-[10px] px-2 py-0.5 bg-black/70 rounded-full text-white">{w.source}</span>
-                {w.is_adult && <span className="text-[10px] px-2 py-0.5 bg-red-600 rounded-full font-bold">18+</span>}
+                {w.is_adult && <span className="text-[10px] px-2 py-0.5 bg-red-600 rounded-full font-bold text-white">18+</span>}
                 {!w.is_published && <span className="text-[10px] px-2 py-0.5 bg-gray-600/90 rounded-full">未上架</span>}
               </div>
             </div>

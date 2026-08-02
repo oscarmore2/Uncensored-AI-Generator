@@ -127,7 +127,7 @@ export function ExploreGallery({
 
       {selected && (
         <div
-          className="fixed inset-0 z-[220] flex items-center justify-center bg-black/90 p-3 sm:p-6 text-white"
+          className="fixed inset-0 z-[220] flex items-center justify-center scrim-media p-3 sm:p-6"
           role="dialog"
           aria-modal="true"
           aria-label={t("dialogAria")}
@@ -150,7 +150,7 @@ export function ExploreGallery({
                   <div className="flex gap-2">
                     <span className="media-badge">{MODE_KEYS.has(selected.mode) ? t(`modes.${selected.mode}` as "modes.txt2img") : selected.mode}</span>
                     {selected.is_adult && (
-                      <span className="rounded-full bg-red-600 px-2 py-0.5 text-[10px] font-bold">18+</span>
+                      <span className="rounded-full bg-red-600 px-2 py-0.5 text-[10px] font-bold text-white">18+</span>
                     )}
                   </div>
                   <h2 className="mt-3 text-xl font-bold">{selected.title ?? t("communityWork")}</h2>

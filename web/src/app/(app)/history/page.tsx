@@ -182,13 +182,13 @@ export default function HistoryPage() {
 
       {selected && (
         <div
-          className="fixed inset-0 bg-black/95 z-[110] flex items-center justify-center p-4 text-white"
+          className="fixed inset-0 scrim z-[110] flex items-center justify-center p-4"
           onClick={(e) => {
             if (e.target === e.currentTarget) setSelected(null);
           }}
         >
-          <div className="max-w-3xl w-full glass rounded-3xl overflow-hidden modal-pop">
-            <div className="p-5 flex justify-between border-b border-line">
+          <div className="max-w-3xl w-full max-h-[90vh] flex flex-col glass rounded-3xl overflow-hidden modal-pop">
+            <div className="shrink-0 p-5 flex justify-between border-b border-line">
               <div>
                 <span className="font-semibold">{selected.mode}</span>
                 {selected.is_adult && (
@@ -199,7 +199,7 @@ export default function HistoryPage() {
                 &times;
               </button>
             </div>
-            <div className="p-2 sm:p-4">
+            <div className="min-h-0 flex-1 overflow-y-auto p-2 sm:p-4">
               {selected.status === "succeeded" && selected.result_urls?.length ? (
                 <AdaptiveMedia mode={selected.mode} urls={selected.result_urls} />
               ) : (
@@ -218,7 +218,9 @@ export default function HistoryPage() {
                   deletedAt={selected.media_deleted_at}
                 />
               </div>
-              <div className="flex gap-3 mt-6 px-4 pb-4">
+            </div>
+            <div className="shrink-0 border-t border-line bg-surface p-4 space-y-3">
+              <div className="flex gap-3">
                 {selected.result_urls?.length ? (
                   <a
                     href={selected.result_urls[0]}
@@ -237,7 +239,7 @@ export default function HistoryPage() {
                   {t("close")}
                 </button>
               </div>
-              <div className="flex gap-3 px-4 pb-6">
+              <div className="flex gap-3">
                 <button
                   onClick={() => void openInMake(selected, false)}
                   disabled={checking}
@@ -248,7 +250,7 @@ export default function HistoryPage() {
                 <button
                   onClick={() => void openInMake(selected, true)}
                   disabled={checking}
-                  className="flex-1 py-3 bg-orange-700 hover:bg-orange-600 rounded-2xl font-semibold flex items-center justify-center gap-x-2 disabled:opacity-40"
+                  className="flex-1 py-3 bg-orange-700 hover:bg-orange-600 rounded-2xl font-semibold flex items-center justify-center gap-x-2 disabled:opacity-40 text-white"
                 >
                   <i className="fas fa-rotate-right" /> {t("retry")}
                 </button>

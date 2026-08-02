@@ -59,7 +59,7 @@ export function ImageAlbum({
                 #{g.id}
               </span>
               {g.is_adult && (
-                <span className="absolute right-1 top-1 rounded-full bg-red-600 px-2 py-0.5 text-[10px] font-bold">18+</span>
+                <span className="absolute right-1 top-1 rounded-full bg-red-600 px-2 py-0.5 text-[10px] font-bold text-white">18+</span>
               )}
               <span className="absolute bottom-1 right-1">
                 <MediaExpiryBadge expiresAt={g.media_expires_at} deletedAt={g.media_deleted_at} compact />
@@ -126,7 +126,7 @@ function Lightbox({
 
   return (
     <div
-      className="fixed inset-0 z-[80] bg-black/85 flex items-center justify-center p-4 text-white"
+      className="fixed inset-0 z-[80] scrim-media flex items-center justify-center p-4"
       onClick={onClose}
     >
       <div className="relative max-w-5xl w-full" onClick={(e) => e.stopPropagation()}>

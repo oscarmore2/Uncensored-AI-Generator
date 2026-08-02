@@ -102,7 +102,7 @@ export default function AdminHfAccountsPage() {
         </div>
         <button
           onClick={() => setFormOpen((v) => !v)}
-          className="px-5 py-2.5 text-sm font-semibold bg-orange-700 hover:bg-orange-600 rounded-2xl"
+          className="px-5 py-2.5 text-sm font-semibold bg-orange-700 hover:bg-orange-600 rounded-2xl text-white"
         >
           <i className="fas fa-plus mr-2" />
           添加 Token
@@ -203,7 +203,7 @@ export default function AdminHfAccountsPage() {
             <button
               type="submit"
               disabled={busy}
-              className="px-6 py-2.5 text-sm font-semibold bg-orange-700 hover:bg-orange-600 rounded-2xl disabled:opacity-50"
+              className="px-6 py-2.5 text-sm font-semibold bg-orange-700 hover:bg-orange-600 rounded-2xl disabled:opacity-50 text-white"
             >
               {busy ? "保存中..." : "确认添加"}
             </button>

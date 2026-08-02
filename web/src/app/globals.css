@@ -25,6 +25,14 @@
   --stage: #17130f;
 
   /**
+   * 弹窗遮罩。浅色主题下 95% 纯黑太重，像把整页关灯；
+   * 用带暖调的半透明棕黑，弹窗浮起来的同时还能看见背后的页面。
+   * 媒体灯箱例外，仍需要深遮罩把画面衬出来。
+   */
+  --scrim: rgba(41, 30, 20, 0.45);
+  --scrim-media: rgba(15, 11, 8, 0.88);
+
+  /**
    * 品牌主色：暖橘。
    * 原来的玫红 #e11d48 配纯黑底会读出夜场/成人站的气质，而站点本身是创作工具，
    * 换成暖橘后同样醒目，观感变成「明快、好玩」。深色底本身没问题——
@@ -157,6 +165,15 @@ body {
 .package-card.selected {
   border-color: var(--accent);
   transform: translateY(-2px);
+}
+
+.scrim {
+  background: var(--scrim);
+  backdrop-filter: blur(3px);
+}
+.scrim-media {
+  background: var(--scrim-media);
+  backdrop-filter: blur(4px);
 }
 
 .modal-pop {

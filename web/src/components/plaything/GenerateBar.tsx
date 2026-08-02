@@ -51,7 +51,7 @@ export function GenerateBar({
         type="button"
         disabled={busy || disabled || quoting || insufficient}
         onClick={onGenerate}
-        className="w-full py-3 rounded-2xl text-sm font-semibold bg-orange-700 hover:bg-orange-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+        className="w-full py-3 rounded-2xl text-sm font-semibold bg-orange-700 hover:bg-orange-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-white"
       >
         {label}
       </button>

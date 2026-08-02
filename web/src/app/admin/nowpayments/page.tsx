@@ -143,7 +143,7 @@ export default function AdminNowPaymentsPage() {
         <button
           type="button"
           onClick={openCreate}
-          className="rounded-2xl bg-orange-600 px-5 py-2.5 text-sm font-semibold hover:bg-orange-500"
+          className="rounded-2xl bg-orange-600 px-5 py-2.5 text-sm font-semibold hover:bg-orange-500 text-white"
         >
           <i className="fas fa-plus mr-2" />
           添加配置
@@ -241,7 +241,7 @@ export default function AdminNowPaymentsPage() {
             <button
               type="submit"
               disabled={busy}
-              className="rounded-2xl bg-orange-600 px-6 py-2.5 text-sm font-semibold disabled:opacity-50"
+              className="rounded-2xl bg-orange-600 px-6 py-2.5 text-sm font-semibold disabled:opacity-50 text-white"
             >
               {busy ? "保存中…" : "保存"}
             </button>

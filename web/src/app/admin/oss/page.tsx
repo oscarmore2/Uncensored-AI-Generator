@@ -117,7 +117,7 @@ export default function AdminOssPage() {
         </div>
         <button
           onClick={() => setFormOpen((v) => !v)}
-          className="px-5 py-2.5 text-sm font-semibold bg-orange-700 hover:bg-orange-600 rounded-2xl"
+          className="px-5 py-2.5 text-sm font-semibold bg-orange-700 hover:bg-orange-600 rounded-2xl text-white"
         >
           <i className="fas fa-plus mr-2" />
           添加账户
@@ -269,7 +269,7 @@ export default function AdminOssPage() {
           <button
             type="submit"
             disabled={busy}
-            className="px-5 py-2.5 bg-orange-700 hover:bg-orange-600 rounded-2xl text-sm font-semibold disabled:opacity-50"
+            className="px-5 py-2.5 bg-orange-700 hover:bg-orange-600 rounded-2xl text-sm font-semibold disabled:opacity-50 text-white"
           >
             保存
           </button>

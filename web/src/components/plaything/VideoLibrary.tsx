@@ -36,7 +36,7 @@ export function VideoLibrary({
               className="max-h-[min(60vh,560px)] w-full object-contain"
             />
             {selected?.is_adult && (
-              <span className="absolute right-3 top-3 rounded-full bg-red-600 px-2 py-0.5 text-[10px] font-bold">18+</span>
+              <span className="absolute right-3 top-3 rounded-full bg-red-600 px-2 py-0.5 text-[10px] font-bold text-white">18+</span>
             )}
             {selected && (
               <span className="absolute left-3 top-3">
@@ -71,7 +71,7 @@ export function VideoLibrary({
                   #{g.id}
                 </span>
                 {g.is_adult && (
-                  <span className="absolute right-1 top-1 rounded-full bg-red-600 px-2 py-0.5 text-[9px] font-bold">18+</span>
+                  <span className="absolute right-1 top-1 rounded-full bg-red-600 px-2 py-0.5 text-[9px] font-bold text-white">18+</span>
                 )}
               </div>
               <div className="px-2 py-1.5 text-[11px] text-ink-muted truncate">

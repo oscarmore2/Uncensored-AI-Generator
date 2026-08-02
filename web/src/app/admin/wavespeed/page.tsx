@@ -96,7 +96,7 @@ export default function AdminWaveSpeedAccountsPage() {
           </Link>
           <button
             onClick={() => setFormOpen((v) => !v)}
-            className="px-5 py-2.5 text-sm font-semibold bg-orange-700 hover:bg-orange-600 rounded-2xl"
+            className="px-5 py-2.5 text-sm font-semibold bg-orange-700 hover:bg-orange-600 rounded-2xl text-white"
           >
             <i className="fas fa-plus mr-2" />
             添加 Key
@@ -175,7 +175,7 @@ export default function AdminWaveSpeedAccountsPage() {
           <button
             type="submit"
             disabled={busy}
-            className="mt-4 px-5 py-2.5 text-sm font-semibold bg-orange-600 rounded-2xl disabled:opacity-50"
+            className="mt-4 px-5 py-2.5 text-sm font-semibold bg-orange-600 rounded-2xl disabled:opacity-50 text-white"
           >
             保存
           </button>

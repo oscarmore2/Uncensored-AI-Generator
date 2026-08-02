@@ -477,8 +477,8 @@ function AdminUserMediaSection({ userId }: { userId: number }) {
                   </div>
                 )}
                 <div className="absolute left-2 top-2 flex gap-1">
-                  {item.is_adult && <span className="rounded-full bg-red-600/90 px-2 py-0.5 text-[10px]">18+</span>}
-                  {item.is_featured && <span className="rounded-full bg-emerald-600/90 px-2 py-0.5 text-[10px]">精选</span>}
+                  {item.is_adult && <span className="rounded-full bg-red-600/90 px-2 py-0.5 text-[10px] text-white">18+</span>}
+                  {item.is_featured && <span className="rounded-full bg-emerald-600/90 px-2 py-0.5 text-[10px] text-white">精选</span>}
                 </div>
               </div>
               <div className="p-3 text-xs">

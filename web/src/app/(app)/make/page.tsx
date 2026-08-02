@@ -584,8 +584,8 @@ function MakePageInner() {
         className={`relative text-left px-4 py-3 rounded-2xl border transition-colors ${
           active
             ? product.spicy
-              ? "bg-fuchsia-600/20 border-fuchsia-500"
-              : "bg-orange-600/20 border-orange-500"
+              ? "bg-fuchsia-600/20 border-fuchsia-500 text-white"
+              : "bg-orange-600/20 border-orange-500 text-white"
             : "bg-black/[0.03] border-line hover:border-line-strong"
         } ${locked ? "opacity-60" : ""}`}
       >

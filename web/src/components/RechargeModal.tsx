@@ -136,7 +136,7 @@ export function RechargeModal() {
 
   return (
     <div
-      className="fixed inset-0 bg-black/90 z-[90] flex items-center justify-center p-4 text-white"
+      className="fixed inset-0 scrim z-[90] flex items-center justify-center p-4"
       onClick={(e) => {
         if (e.target === e.currentTarget) setRechargeOpen(false);
       }}
@@ -166,7 +166,7 @@ export function RechargeModal() {
                 }`}
               >
                 {p.badge && (
-                  <div className="absolute -top-2 -right-2 bg-orange-600 text-[10px] px-3 py-0.5 rounded-full font-bold">
+                  <div className="absolute -top-2 -right-2 bg-orange-600 text-[10px] px-3 py-0.5 rounded-full font-bold text-white">
                     {p.badge}
                   </div>
                 )}

@@ -132,7 +132,7 @@ export function Header() {
       </div>
 
       {mobileOpen && (
-        <div className="fixed inset-0 bg-black/90 z-[120] md:hidden flex flex-col p-6 text-white">
+        <div className="fixed inset-0 scrim z-[120] md:hidden flex flex-col p-6">
           <div className="flex justify-between mb-8">
             <BrandLogo href="/make" compact />
             <button className="text-4xl" onClick={() => setMobileOpen(false)}>

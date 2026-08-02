@@ -88,9 +88,9 @@ export default function ModUserGenerationsPage({ params }: { params: Promise<{ i
                 </div>
               )}
               <div className="absolute top-3 right-3 flex gap-1">
-                {g.deleted_at && <span className="text-[10px] px-2 py-0.5 bg-red-600/80 rounded-full">已删</span>}
+                {g.deleted_at && <span className="text-[10px] px-2 py-0.5 bg-red-600/80 rounded-full text-white">已删</span>}
                 {g.visibility === "featured" && (
-                  <span className="text-[10px] px-2 py-0.5 bg-emerald-600/80 rounded-full">已曝光</span>
+                  <span className="text-[10px] px-2 py-0.5 bg-emerald-600/80 rounded-full text-white">已曝光</span>
                 )}
               </div>
             </div>
@@ -115,7 +115,7 @@ export default function ModUserGenerationsPage({ params }: { params: Promise<{ i
                         action(() => api(`/api/mod/generations/${g.id}/soft-delete`, { method: "POST" }), `#${g.id} 已软删除`)
                       }
                       disabled={busy}
-                      className="flex-1 py-1.5 text-xs bg-black/[0.03] hover:bg-red-600/30 border border-line rounded-xl disabled:opacity-50"
+                      className="flex-1 py-1.5 text-xs bg-black/[0.03] hover:bg-red-600/30 border border-line rounded-xl disabled:opacity-50 text-white"
                     >
                       软删除
                     </button>
