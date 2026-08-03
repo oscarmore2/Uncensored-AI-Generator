@@ -1,5 +1,6 @@
 import "server-only";
 import { MEDIA_DELETE_REASONS } from "./media-delete-reason";
+import { markMediaAssetDeletedCompat } from "./media-asset-compat";
 import { db } from "./db";
 import { deleteManagedMediaUrl, deleteObjectKey } from "./oss";
 import { backfillMissingMediaExpirations, ensureMediaCleanupPolicies } from "./media-retention";
@@ -100,14 +101,12 @@ export async function runMediaCleanup(opts?: {
       try {
         if (asset.objectKey) await deleteObjectKey(asset.objectKey);
         else await deleteManagedMediaUrl(asset.url);
-        await db.mediaAsset.update({
-          where: { id: asset.id },
-          data: {
-            deletedAt: now,
-            deleteReason: MEDIA_DELETE_REASONS.RETENTION_EXPIRED,
-            deleteAttempts: { increment: 1 },
-            lastError: null,
-          },
+        // 缺列时退化成只写删除时间，别让整个清理任务卡在一条记录上
+        await markMediaAssetDeletedCompat(asset.id, {
+          deletedAt: now,
+          deleteReason: MEDIA_DELETE_REASONS.RETENTION_EXPIRED,
+          deleteAttempts: { increment: 1 },
+          lastError: null,
         });
         if (asset.sourceId) {
           const generation = await db.waveSpeedGeneration.findUnique({

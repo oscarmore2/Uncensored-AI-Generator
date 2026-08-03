@@ -19,6 +19,7 @@ import {
   readImageDimsFromDataUrl,
 } from "./undress-geometry";
 import { sanitizeFilename } from "./media-delete-reason";
+import { createMediaAssetCompat } from "./media-asset-compat";
 import { uploadMediaExpiry } from "./media-retention";
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -58,20 +59,18 @@ async function materializeReferenceImage(
   );
 
   try {
-    await db.mediaAsset.create({
-      data: {
-        userId,
-        kind: "upload",
-        channel: "main",
-        url: uploaded.url,
-        objectKey: uploaded.objectKey,
-        contentType,
-        bytes: buffer.length,
-        filename: sanitizeFilename(filename),
-        sourceId: genId,
-        retentionAssigned: true,
-        expiresAt: await uploadMediaExpiry(),
-      },
+    await createMediaAssetCompat({
+      userId,
+      kind: "upload",
+      channel: "main",
+      url: uploaded.url,
+      objectKey: uploaded.objectKey,
+      contentType,
+      bytes: buffer.length,
+      filename: sanitizeFilename(filename),
+      sourceId: genId,
+      retentionAssigned: true,
+      expiresAt: await uploadMediaExpiry(),
     });
   } catch (err) {
     // 登记失败不该让已经付过费的生成任务挂掉，退化成旧行为（图还能用，只是没进清理台账）

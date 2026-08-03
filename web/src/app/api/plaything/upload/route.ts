@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { sanitizeFilename } from "@/lib/media-delete-reason";
+import { createMediaAssetCompat } from "@/lib/media-asset-compat";
 import { randomUUID } from "crypto";
 import { db } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
@@ -85,19 +86,17 @@ export async function POST(req: Request) {
     let expiresAt;
     try {
       expiresAt = await uploadMediaExpiry();
-      asset = await db.mediaAsset.create({
-        data: {
-          userId: user.id,
-          kind: "upload",
-          channel: "plaything",
-          url: uploaded.url,
-          objectKey: uploaded.objectKey,
-          contentType: validated.contentType,
-          bytes: validated.bytes,
-          filename: sanitizeFilename(file.name),
-          retentionAssigned: true,
-          expiresAt,
-        },
+      asset = await createMediaAssetCompat({
+        userId: user.id,
+        kind: "upload",
+        channel: "plaything",
+        url: uploaded.url,
+        objectKey: uploaded.objectKey,
+        contentType: validated.contentType,
+        bytes: validated.bytes,
+        filename: sanitizeFilename(file.name),
+        retentionAssigned: true,
+        expiresAt,
       });
     } catch (error) {
       await deleteObjectKey(uploaded.objectKey, uploaded.config).catch(() => undefined);
