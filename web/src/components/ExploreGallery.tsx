@@ -104,7 +104,7 @@ export function ExploreGallery({
                 )}
               </div>
               {locked && (
-                <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/25 p-4 text-center">
+                <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/45 p-4 text-center">
                   <button
                     type="button"
                     onClick={(event) => {
@@ -116,11 +116,13 @@ export function ExploreGallery({
                   >
                     <i className="fas fa-eye" />
                   </button>
-                  <p className="mt-3 text-xs font-medium text-ink">{t("showAdult")}</p>
+                  <p className="text-on-media mt-3 text-xs font-medium">{t("showAdult")}</p>
                 </div>
               )}
-              <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 to-transparent p-4">
-                <p className="line-clamp-2 text-xs text-ink-muted">{work.title ?? work.prompt}</p>
+              <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/95 via-black/55 to-transparent pt-10 pb-4 px-4">
+                <p className="text-on-media line-clamp-2 text-xs font-medium">
+                  {work.title ?? work.prompt}
+                </p>
               </div>
             </article>
           );

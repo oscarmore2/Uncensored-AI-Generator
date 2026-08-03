@@ -61,7 +61,8 @@ export function TurnstileWidget({ siteKey, onToken, resetKey }: Props) {
     widgetIdRef.current = window.turnstile.render(containerRef.current, {
       sitekey: siteKey,
       action: "turnstile-spin-v2",
-      theme: "dark",
+      // 站点已是浅色外壳，深色挑战框压在奶油底上像块补丁
+      theme: "light",
       size: "flexible",
       callback: (token) => onTokenRef.current(token),
       "error-callback": () => onTokenRef.current(null),
