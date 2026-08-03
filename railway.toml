@@ -6,7 +6,8 @@ dockerfilePath = "Dockerfile"
 watchPatterns = ["web/**"]
 
 [deploy]
-# 迁移的唯一入口：release 阶段跑一次，容器启动不再重复跑 db push
+# release 阶段跑一次；npm start 里也会再跑一次做兜底。
+# 实测 releaseCommand 在本服务上未必生效，只靠它会导致迁移被静默跳过。
 releaseCommand = "npm run db:deploy"
 restartPolicyType = "ON_FAILURE"
 restartPolicyMaxRetries = 10
