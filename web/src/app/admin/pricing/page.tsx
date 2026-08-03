@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { api, ApiError } from "@/lib/client";
+import { useBodyScrollLock } from "@/lib/use-body-scroll-lock";
 
 type Tab = "products" | "mappings" | "packages" | "tiers" | "plans";
 
@@ -122,6 +123,7 @@ export default function AdminPricingPage() {
   const [unbound, setUnbound] = useState(0);
   const [catalogSynced, setCatalogSynced] = useState(0);
   const [bridgeFor, setBridgeFor] = useState<Product | null>(null);
+  useBodyScrollLock(Boolean(bridgeFor));
   const [bridgeModels, setBridgeModels] = useState<BridgeModel[]>([]);
   const [bridgeTags, setBridgeTags] = useState<string[]>([]);
   const [bridgeQuery, setBridgeQuery] = useState("");
@@ -516,7 +518,7 @@ export default function AdminPricingPage() {
                     ))}
                   </div>
                 )}
-                <div className="overflow-y-auto space-y-1.5 flex-1">
+                <div className="overflow-y-auto overscroll-contain space-y-1.5 flex-1">
                   {bridgeModels.length === 0 && (
                     <p className="text-sm text-ink-subtle py-6 text-center">
                       没有匹配的模型。请先到「玩物专区 → 模型库」同步目录，并给模型贴上类型标签。

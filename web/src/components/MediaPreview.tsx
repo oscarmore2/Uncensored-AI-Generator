@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { detectMediaKindFromUrls, type PlaythingMediaKind } from "@/lib/plaything-categories";
 import { useModelViewerDiagnostics } from "@/lib/model-viewer-diagnostics";
+import { useBodyScrollLock } from "@/lib/use-body-scroll-lock";
 
 /**
  * 审核端通用媒体预览：卡片缩略图 + 弹窗播放。
@@ -296,6 +297,7 @@ export function MediaPreviewModal({
   /** 弹窗底部的元信息 / 操作区 */
   children?: React.ReactNode;
 }) {
+  useBodyScrollLock(true);
   const list = useMemo(() => urls.filter(Boolean), [urls]);
   // 默认定位到作品本体（视频/3D），而不是排在前面的封面图
   const [index, setIndex] = useState(() => {
@@ -349,7 +351,7 @@ export function MediaPreviewModal({
           </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto">
+        <div className="flex-1 overflow-y-auto overscroll-contain">
           <div className="flex items-center justify-center bg-stage min-h-[240px] p-3 sm:p-5">
             {current ? (
               <MediaStage url={current} kind={kind} />

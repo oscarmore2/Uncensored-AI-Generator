@@ -9,6 +9,7 @@ import { clearAllDrafts } from "@/lib/draft-store";
 import { BrandLogo } from "./BrandLogo";
 import { LanguageSwitcher } from "./LanguageSwitcher";
 import { useTranslations } from "next-intl";
+import { useBodyScrollLock } from "@/lib/use-body-scroll-lock";
 
 export function Header() {
   const pathname = usePathname();
@@ -17,6 +18,7 @@ export function Header() {
   const router = useRouter();
   const { user, toast } = useApp();
   const [mobileOpen, setMobileOpen] = useState(false);
+  useBodyScrollLock(mobileOpen);
   const [plaything, setPlaything] = useState(false);
 
   useEffect(() => {

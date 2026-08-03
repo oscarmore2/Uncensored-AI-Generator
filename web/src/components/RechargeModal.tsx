@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { api, type CatalogPackage, type CatalogVipPlan } from "@/lib/client";
 import { useApp } from "./AppContext";
+import { useBodyScrollLock } from "@/lib/use-body-scroll-lock";
 
 export function RechargeModal() {
   const { rechargeOpen, setRechargeOpen, refreshUser, toast } = useApp();
@@ -12,6 +13,7 @@ export function RechargeModal() {
   const [busy, setBusy] = useState(false);
   const [cryptoWaiting, setCryptoWaiting] = useState(false);
 
+  useBodyScrollLock(rechargeOpen);
   useEffect(() => {
     if (!rechargeOpen) return;
     api<{
@@ -141,7 +143,7 @@ export function RechargeModal() {
         if (e.target === e.currentTarget) setRechargeOpen(false);
       }}
     >
-      <div className="max-w-lg w-full glass rounded-3xl p-7 modal-pop max-h-[90vh] overflow-y-auto">
+      <div className="max-w-lg w-full glass rounded-3xl p-7 modal-pop max-h-[90vh] overflow-y-auto overscroll-contain">
         <div className="flex justify-between items-center mb-6">
           <h3 className="text-2xl font-bold">充值点数</h3>
           <button onClick={() => setRechargeOpen(false)} className="text-2xl text-ink-muted hover:text-ink">

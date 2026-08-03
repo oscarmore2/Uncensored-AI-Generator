@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { api, ApiError } from "@/lib/client";
+import { useBodyScrollLock } from "@/lib/use-body-scroll-lock";
 
 interface ProductInfo {
   id: number;
@@ -79,6 +80,7 @@ export default function AdminWaveSpeedModelsPage() {
   const [type, setType] = useState("");
   const [tag, setTag] = useState("");
   const [tagEditFor, setTagEditFor] = useState<CatalogModel | null>(null);
+  useBodyScrollLock(Boolean(tagEditFor));
   const [tagDraft, setTagDraft] = useState("");
   const [shelved, setShelved] = useState("");
   const [adult, setAdult] = useState(false);
@@ -478,7 +480,7 @@ export default function AdminWaveSpeedModelsPage() {
           onClick={() => setTagEditFor(null)}
         >
           <div
-            className="glass rounded-3xl p-5 w-full max-w-lg"
+            className="glass max-h-[90vh] w-full max-w-lg overflow-y-auto overscroll-contain rounded-3xl p-5"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="mb-1 font-semibold">编辑类型标签</div>

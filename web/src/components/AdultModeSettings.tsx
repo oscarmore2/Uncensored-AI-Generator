@@ -5,11 +5,13 @@ import { useState } from "react";
 import { api, type ApiUser } from "@/lib/client";
 import { useApp } from "./AppContext";
 import { useTranslations } from "next-intl";
+import { useBodyScrollLock } from "@/lib/use-body-scroll-lock";
 
 export function AdultModeSettings() {
   const t = useTranslations("AdultMode");
   const { user, refreshUser, toast } = useApp();
   const [gateOpen, setGateOpen] = useState(false);
+  useBodyScrollLock(gateOpen);
   const [birthDate, setBirthDate] = useState("");
   const [confirmed, setConfirmed] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -104,7 +106,7 @@ export function AdultModeSettings() {
           aria-modal="true"
           aria-labelledby="adult-gate-title"
         >
-          <div className="modal-pop w-full max-w-md rounded-3xl border border-red-500/25 bg-[#151116] p-7 shadow-2xl">
+          <div className="modal-pop max-h-[90vh] w-full max-w-md overflow-y-auto overscroll-contain rounded-3xl border border-red-500/25 bg-surface p-7 shadow-2xl">
             <div className="mb-5 flex items-start justify-between">
               <div>
                 <div className="mb-3 inline-flex rounded-2xl bg-red-500/15 px-3 py-1 text-xs font-bold text-red-700">

@@ -52,7 +52,7 @@ export function VideoLibrary({
           </p>
         )}
       </div>
-      <div className="lg:w-48 shrink-0 space-y-2 max-h-[60vh] overflow-y-auto">
+      <div className="lg:w-48 shrink-0 space-y-2 max-h-[60vh] overflow-y-auto overscroll-contain">
         {succeeded.map((g) => {
           const url = g.result_urls![0];
           const active = g.id === (selected?.id ?? null);

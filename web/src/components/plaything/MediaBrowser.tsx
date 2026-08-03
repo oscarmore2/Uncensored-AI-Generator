@@ -44,7 +44,7 @@ export function MediaBrowser({
         <i className="fas fa-triangle-exclamation mr-1.5 text-amber-800" />
         {t("retentionNotice")}
       </div>
-      <div className="flex-1 min-h-0 overflow-y-auto">
+      <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain">
         {mediaKind === "video" && (
           <VideoLibrary items={items} selectedId={selectedId} onSelect={onSelect} />
         )}

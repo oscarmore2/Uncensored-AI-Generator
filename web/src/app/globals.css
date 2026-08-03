@@ -29,6 +29,18 @@
    * 用带暖调的半透明棕黑，弹窗浮起来的同时还能看见背后的页面。
    * 媒体灯箱例外，仍需要深遮罩把画面衬出来。
    */
+  /**
+   * 管理端/审核端侧栏保持深色（工具台气质，也和内容区拉开层次），
+   * 因此需要一组独立的「深底 + 米白字」变量：直接复用主题里的 ink 系列
+   * 会变成深字压深底。
+   */
+  --sidebar: #17130f;
+  --sidebar-fg: #f5efe4;
+  --sidebar-fg-muted: #cfc6b6;
+  --sidebar-fg-subtle: #9c9384;
+  --sidebar-line: rgba(245, 239, 228, 0.1);
+  --sidebar-hover: rgba(245, 239, 228, 0.08);
+
   --scrim: rgba(41, 30, 20, 0.45);
   --scrim-media: rgba(15, 11, 8, 0.88);
 
@@ -67,6 +79,11 @@
   --color-ink-muted: var(--fg-muted);
   --color-ink-subtle: var(--fg-subtle);
   --color-stage: var(--stage);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-fg: var(--sidebar-fg);
+  --color-sidebar-fg-muted: var(--sidebar-fg-muted);
+  --color-sidebar-fg-subtle: var(--sidebar-fg-subtle);
+  --color-sidebar-line: var(--sidebar-line);
 }
 
 body {

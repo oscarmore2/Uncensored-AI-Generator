@@ -290,7 +290,7 @@ function GenerationsInner() {
             </div>
             <div>
               <div className="text-[11px] text-ink-subtle mb-1">提示词</div>
-              <p className="text-sm text-ink whitespace-pre-wrap break-words max-h-40 overflow-y-auto">
+              <p className="text-sm text-ink whitespace-pre-wrap break-words max-h-40 overflow-y-auto overscroll-contain">
                 {preview.prompt || "（空）"}
               </p>
             </div>

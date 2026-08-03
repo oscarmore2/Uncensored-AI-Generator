@@ -87,7 +87,7 @@ export function Model3DViewer({
           </div>
         )}
       </div>
-      <div className="lg:w-44 shrink-0 space-y-2 max-h-[60vh] overflow-y-auto">
+      <div className="lg:w-44 shrink-0 space-y-2 max-h-[60vh] overflow-y-auto overscroll-contain">
         {selected && (
           <div className="pb-1">
             <MediaExpiryBadge

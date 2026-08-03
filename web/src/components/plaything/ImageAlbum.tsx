@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import type { PlaythingGen } from "./types";
 import { MediaExpiryBadge } from "@/components/MediaExpiryBadge";
 import { useTranslations } from "next-intl";
+import { useBodyScrollLock } from "@/lib/use-body-scroll-lock";
 
 export function ImageAlbum({
   items,
@@ -114,6 +115,7 @@ function Lightbox({
   onClose: () => void;
 }) {
   const t = useTranslations("Plaything");
+  useBodyScrollLock(true);
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if (e.key === "Escape") onClose();

@@ -22,12 +22,12 @@ export default async function ModLayout({ children }: { children: React.ReactNod
 
   return (
     <div className="min-h-screen flex">
-      <aside className="w-56 shrink-0 border-r border-line bg-[#0d0d0d] flex flex-col">
-        <Link href="/" className="flex items-center gap-x-2 px-5 h-16 border-b border-line">
+      <aside className="w-56 shrink-0 border-r border-sidebar-line bg-sidebar text-sidebar-fg flex flex-col">
+        <Link href="/" className="flex items-center gap-x-2 px-5 h-16 border-b border-sidebar-line">
           <BrandMark className="h-8 w-8 rounded-xl" />
           <div>
             <div className="font-bold leading-none">玩玩可物</div>
-            <div className="text-[10px] text-amber-800 font-mono">MOD CONSOLE</div>
+            <div className="text-[10px] text-amber-300 font-mono">MOD CONSOLE</div>
           </div>
         </Link>
 
@@ -36,7 +36,7 @@ export default async function ModLayout({ children }: { children: React.ReactNod
             <Link
               key={item.href}
               href={item.href}
-              className="flex items-center gap-x-3 px-4 py-2.5 text-sm text-ink-muted hover:text-ink hover:bg-black/[0.04] rounded-2xl"
+              className="flex items-center gap-x-3 px-4 py-2.5 text-sm text-sidebar-fg-muted hover:text-sidebar-fg hover:bg-sidebar-line rounded-2xl transition-colors"
             >
               <i className={`fas ${item.icon} w-4 text-center`} />
               <span>{item.label}</span>
@@ -44,17 +44,17 @@ export default async function ModLayout({ children }: { children: React.ReactNod
           ))}
         </nav>
 
-        <div className="p-4 border-t border-line text-xs text-ink-subtle space-y-2">
+        <div className="p-4 border-t border-sidebar-line text-xs text-sidebar-fg-subtle space-y-2">
           <div>
-            <div className="text-ink-muted font-medium">{mod.username}</div>
-            <div className="text-amber-800">{mod.role}</div>
+            <div className="text-sidebar-fg font-medium">{mod.username}</div>
+            <div className="text-amber-300">{mod.role}</div>
           </div>
           {mod.role === "admin" && (
-            <Link href="/admin" className="block text-orange-700 hover:text-orange-800">
+            <Link href="/admin" className="block text-orange-300 hover:text-orange-200">
               <i className="fas fa-chart-line mr-1" /> 管理端
             </Link>
           )}
-          <Link href="/make" className="block text-ink-muted hover:text-ink">
+          <Link href="/make" className="block text-sidebar-fg-muted hover:text-sidebar-fg">
             <i className="fas fa-arrow-left mr-1" /> 返回创作端
           </Link>
         </div>

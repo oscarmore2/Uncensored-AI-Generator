@@ -552,7 +552,7 @@ export default function PlaythingPage() {
               />
               {selected && (
                 <>
-                  <div className="flex-1 overflow-y-auto max-h-[50vh] lg:max-h-none pr-1">
+                  <div className="flex-1 overflow-y-auto overscroll-contain max-h-[50vh] lg:max-h-none pr-1">
                     <DynamicParamForm
                       product={selected}
                       value={form}

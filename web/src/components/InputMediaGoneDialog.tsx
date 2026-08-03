@@ -1,6 +1,7 @@
 "use client";
 
 import { useLocale, useTranslations } from "next-intl";
+import { useBodyScrollLock } from "@/lib/use-body-scroll-lock";
 
 export type ReuseMediaItem = {
   url: string;
@@ -31,6 +32,7 @@ export function InputMediaGoneDialog({
 }) {
   const t = useTranslations("Reuse");
   const locale = useLocale();
+  useBodyScrollLock(true);
   const gone = items.filter((i) => !i.available);
 
   const fmt = (iso: string | null) =>
@@ -45,8 +47,8 @@ export function InputMediaGoneDialog({
       role="dialog"
       aria-modal="true"
     >
-      <div className="modal-pop w-full max-w-lg overflow-hidden rounded-3xl border border-amber-500/25 bg-surface">
-        <div className="flex items-start gap-3 border-b border-line p-5">
+      <div className="modal-pop flex max-h-[90vh] w-full max-w-lg flex-col overflow-hidden rounded-3xl border border-amber-500/25 bg-surface">
+        <div className="shrink-0 flex items-start gap-3 border-b border-line p-5">
           <i className="fas fa-triangle-exclamation mt-0.5 text-xl text-amber-800" />
           <div>
             <h2 className="text-lg font-bold">{t("goneTitle")}</h2>
@@ -57,7 +59,7 @@ export function InputMediaGoneDialog({
         </div>
 
         {gone.length > 0 && (
-          <div className="max-h-[45vh] space-y-3 overflow-y-auto p-5">
+          <div className="min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain p-5">
             {gone.map((item) => (
               <div
                 key={item.url}
@@ -90,7 +92,7 @@ export function InputMediaGoneDialog({
           </div>
         )}
 
-        <div className="flex gap-3 border-t border-line p-5">
+        <div className="shrink-0 flex gap-3 border-t border-line p-5">
           <button
             type="button"
             onClick={onCancel}
@@ -124,6 +126,7 @@ export function RetryConfirmDialog({
   onCancel: () => void;
 }) {
   const t = useTranslations("Reuse");
+  useBodyScrollLock(true);
   const insufficient = cost > balance;
 
   return (
@@ -147,7 +150,7 @@ export function RetryConfirmDialog({
             </p>
           )}
         </div>
-        <div className="flex gap-3 border-t border-line p-5">
+        <div className="shrink-0 flex gap-3 border-t border-line p-5">
           <button
             type="button"
             onClick={onCancel}

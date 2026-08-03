@@ -12,6 +12,7 @@ import {
 } from "@/components/InputMediaGoneDialog";
 import { MediaExpiryBadge } from "@/components/MediaExpiryBadge";
 import { useLocale, useTranslations } from "next-intl";
+import { useBodyScrollLock } from "@/lib/use-body-scroll-lock";
 
 export default function HistoryPage() {
   const t = useTranslations("History");
@@ -29,6 +30,7 @@ export default function HistoryPage() {
     go: (skipMedia: boolean) => void;
   } | null>(null);
   const [checking, setChecking] = useState(false);
+  useBodyScrollLock(Boolean(selected) || Boolean(gone));
 
   /**
    * 套用 / 重新生成：先问一遍当初的参考图还在不在。
@@ -200,7 +202,7 @@ export default function HistoryPage() {
                 &times;
               </button>
             </div>
-            <div className="min-h-0 flex-1 overflow-y-auto p-2 sm:p-4">
+            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-2 sm:p-4">
               {selected.status === "succeeded" && selected.result_urls?.length ? (
                 <AdaptiveMedia mode={selected.mode} urls={selected.result_urls} />
               ) : (

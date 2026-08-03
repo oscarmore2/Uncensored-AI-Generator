@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { AdaptiveMedia, WorkMedia } from "./WorkMedia";
 import { useTranslations } from "next-intl";
+import { useBodyScrollLock } from "@/lib/use-body-scroll-lock";
 
 export type ExploreWork = {
   id: number;
@@ -52,6 +53,7 @@ export function ExploreGallery({
   const router = useRouter();
   const [revealed, setRevealed] = useState<Set<number>>(new Set());
   const [selected, setSelected] = useState<ExploreWork | null>(null);
+  useBodyScrollLock(Boolean(selected));
 
   function reveal(id: number) {
     setRevealed((current) => new Set(current).add(id));
@@ -135,8 +137,13 @@ export function ExploreGallery({
             if (event.target === event.currentTarget) setSelected(null);
           }}
         >
-          <div className="modal-pop grid max-h-[94vh] w-full max-w-6xl overflow-hidden rounded-3xl border border-line bg-surface lg:grid-cols-[minmax(0,1.45fr)_minmax(330px,.75fr)]">
-            <div className="min-h-0 overflow-auto bg-black/[0.04]">
+          {/*
+            两栏各自滚动的关键是 grid-rows-[minmax(0,1fr)]：行若是默认的 auto，
+            会撑到内容高度并溢出 max-h，子元素拿到完整行高，overflow-y-auto overscroll-contain 永远不触发。
+            窄屏放弃分栏，整个弹窗当一个滚动容器。
+          */}
+          <div className="modal-pop flex max-h-[94vh] w-full max-w-6xl flex-col overflow-y-auto overscroll-contain rounded-3xl border border-line bg-surface lg:grid lg:grid-cols-[minmax(0,1.45fr)_minmax(330px,.75fr)] lg:grid-rows-[minmax(0,1fr)] lg:overflow-hidden">
+            <div className="min-h-0 bg-black/[0.04] lg:overflow-auto">
               <AdaptiveMedia
                 mode={selected.mode}
                 src={selected.media_url}
@@ -144,7 +151,7 @@ export function ExploreGallery({
                 className="min-h-[45vh]"
               />
             </div>
-            <aside className="min-h-0 overflow-y-auto border-l border-line p-6">
+            <aside className="min-h-0 border-t border-line p-6 lg:border-t-0 lg:border-l lg:overflow-y-auto lg:overscroll-contain">
               <div className="flex items-start justify-between gap-4">
                 <div>
                   <div className="flex gap-2">
