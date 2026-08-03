@@ -306,7 +306,9 @@ function MakePageInner() {
         // run=1 表示「重新生成」：参数就位后弹确认框，由用户确认再扣点发单
         if (searchParams.get("run") === "1") setRetryPrompt(true);
       })
-      .catch(() => toast(t("reuseLoadFailed"), true));
+      .catch((e) =>
+        toast(e instanceof ApiError && e.message ? e.message : t("reuseLoadFailed"), true)
+      );
   }, [searchParams, t, toast, user?.adult_mode_enabled]);
 
   useEffect(() => {

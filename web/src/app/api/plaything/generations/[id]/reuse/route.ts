@@ -29,6 +29,19 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
   });
   if (!gen) return NextResponse.json({ error: "作品不存在" }, { status: 404 });
 
+  try {
+    return NextResponse.json(await build(user.id, gen));
+  } catch (err) {
+    console.error("[plaything reuse] 读取原任务失败：", err);
+    return NextResponse.json(
+      { error: err instanceof Error ? err.message : "读取原任务参数失败" },
+      { status: 500 }
+    );
+  }
+}
+
+/* eslint-disable @typescript-eslint/no-explicit-any */
+async function build(userId: number, gen: any) {
   let params: Record<string, unknown> = {};
   try {
     params = JSON.parse(gen.params) as Record<string, unknown>;
@@ -38,7 +51,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
 
   const inputUrls = extractInputUrls(params);
   const media = await resolveInputMediaStatus({
-    userId: user.id,
+    userId,
     channel: "plaything",
     sourceId: gen.id,
     paramUrls: inputUrls,
@@ -71,7 +84,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
     gen.product?.modelId ?? ""
   );
 
-  return NextResponse.json({
+  return {
     id: gen.id,
     product_id: gen.productId,
     product_label: gen.product?.label ?? null,
@@ -83,5 +96,5 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
     media_fields: mediaFields,
     media,
     input_unrecorded: Object.keys(mediaFields).length === 0 && media.items.length === 0,
-  });
+  };
 }

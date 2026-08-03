@@ -26,6 +26,8 @@ export type ReuseMediaStatus = {
   items: ReuseMediaItem[];
   /** 仍可用的 URL，直接回填表单 */
   usable_urls: string[];
+  /** 台账本身查不了（如数据库未迁移），此时媒体状态无从判断 */
+  ledger_unavailable?: boolean;
 };
 
 /**
@@ -43,10 +45,22 @@ export async function resolveInputMediaStatus(opts: {
 
   // 按来源取台账：清理任务会把已删的 URL 从 params 里抹掉，
   // 所以「params 里没有、台账里有且已删」正是需要提示的那一类
-  const assets = await db.mediaAsset.findMany({
-    where: { userId, kind: "upload", channel, sourceId },
-    orderBy: { createdAt: "asc" },
-  });
+  let assets: Awaited<ReturnType<typeof db.mediaAsset.findMany>>;
+  try {
+    assets = await db.mediaAsset.findMany({
+      where: { userId, kind: "upload", channel, sourceId },
+      orderBy: { createdAt: "asc" },
+    });
+  } catch (err) {
+    /**
+     * 台账查不动（典型情形：数据库还没迁移，缺 filename/deleteReason 列）时，
+     * 不该让整个「套用」挂掉——恢复参数这件事本来就不依赖台账。
+     * 但也不能假装媒体可用：URL 指向的对象可能已经被清理掉了。
+     * 所以退化成「没有媒体信息」，让用户自己重新上传，方向上是安全的。
+     */
+    console.error("[reuse] 媒体台账不可用，退化为不填媒体：", err);
+    return { all_available: false, items: [], usable_urls: [], ledger_unavailable: true };
+  }
 
   const byUrl = new Map(assets.map((a) => [a.url, a]));
   const items: ReuseMediaItem[] = [];

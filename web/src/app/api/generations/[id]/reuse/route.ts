@@ -34,6 +34,23 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
   });
   if (!gen) return NextResponse.json({ error: "作品不存在" }, { status: 404 });
 
+  try {
+    return NextResponse.json(await buildReusePayload(user.id, gen));
+  } catch (err) {
+    // 不要吞掉原因：前端只显示「读取失败」时，排查得从服务端日志翻起
+    console.error("[reuse] 读取原任务失败：", err);
+    return NextResponse.json(
+      { error: err instanceof Error ? err.message : "读取原任务参数失败" },
+      { status: 500 }
+    );
+  }
+}
+
+async function buildReusePayload(
+  userId: number,
+  gen: { id: number; mode: string; tier: string; spicy: boolean; prompt: string; negativePrompt: string | null; params: string }
+) {
+
   let params: Record<string, unknown> = {};
   try {
     params = JSON.parse(gen.params) as Record<string, unknown>;
@@ -42,7 +59,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
   }
 
   const media = await resolveInputMediaStatus({
-    userId: user.id,
+    userId,
     channel: "main",
     sourceId: gen.id,
     paramUrls: extractInputUrls(params),
@@ -59,7 +76,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
 
   const needsImage = modeNeedsImage(gen.mode);
 
-  return NextResponse.json({
+  return {
     id: gen.id,
     mode: gen.mode,
     tier: gen.tier,
@@ -77,5 +94,5 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
      * 与「传过但被清理了」是两回事，前端提示文案不同。
      */
     input_unrecorded: needsImage && media.items.length === 0,
-  });
+  };
 }

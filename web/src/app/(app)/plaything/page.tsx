@@ -159,7 +159,9 @@ export default function PlaythingPage() {
         setReuseEpoch((e) => e + 1);
         toast(t("reuseApplied"));
       })
-      .catch(() => toast(t("reuseFailed"), true));
+      .catch((e) =>
+        toast(e instanceof ApiError && e.message ? e.message : t("reuseFailed"), true)
+      );
   }, [searchParams, t, toast]);
 
   const categoryProducts = useMemo(() => {
@@ -412,8 +414,8 @@ export default function PlaythingPage() {
           return;
         }
         go(false);
-      } catch {
-        toast(t("reuseFailed"), true);
+      } catch (e) {
+        toast(e instanceof ApiError && e.message ? e.message : t("reuseFailed"), true);
       }
     },
     [router, t, toast]

@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { api, type ApiGeneration } from "@/lib/client";
+import { api, ApiError, type ApiGeneration } from "@/lib/client";
 import { useApp } from "@/components/AppContext";
 import { AdaptiveMedia } from "@/components/WorkMedia";
 import { MediaKindBadge, MediaThumb } from "@/components/MediaPreview";
@@ -62,8 +62,9 @@ export default function HistoryPage() {
           return;
         }
         go(false);
-      } catch {
-        toast(t("reuseFailed"), true);
+      } catch (e) {
+        // 服务端已经把原因带回来了（如数据库缺列），直接显示比一句「失败」有用
+        toast(e instanceof ApiError && e.message ? e.message : t("reuseFailed"), true);
       } finally {
         setChecking(false);
       }
