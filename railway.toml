@@ -6,8 +6,9 @@ dockerfilePath = "Dockerfile"
 watchPatterns = ["web/**"]
 
 [deploy]
-# release 阶段跑一次；npm start 里也会再跑一次做兜底。
-# 实测 releaseCommand 在本服务上未必生效，只靠它会导致迁移被静默跳过。
+# 注意：实测本服务上 Railway 并未执行这里的 releaseCommand（Deploy Logs 里没有它的输出）。
+# 因此 schema 变更后不要指望它自动迁移 —— 要么在 Railway 面板里配 Pre-deploy Command，
+# 要么部署前手动跑一次 `DATABASE_URL=... npx prisma db push`。
 releaseCommand = "npm run db:deploy"
 restartPolicyType = "ON_FAILURE"
 restartPolicyMaxRetries = 10
