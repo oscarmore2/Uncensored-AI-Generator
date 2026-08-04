@@ -61,6 +61,10 @@ const envSchema = z.object({
   OPENAI_MODERATION_MODEL: z.string().default("omni-moderation-latest"),
   WAVESPEED_API_KEY: z.string().default(""),
   WAVESPEED_BASE_URL: z.string().url().default("https://api.wavespeed.ai/api/v3"),
+  // Atlas Cloud：与 WaveSpeed 平级的生成渠道
+  // Key: https://www.atlascloud.ai/console/api-keys
+  ATLAS_API_KEY: z.string().default(""),
+  ATLAS_BASE_URL: z.string().url().default("https://api.atlascloud.ai/api/v1"),
   // Cloudflare Turnstile (site key public; secret server-only)
   TURNSTILE_SITE_KEY: z.string().default(""),
   TURNSTILE_SECRET: z.string().default(""),

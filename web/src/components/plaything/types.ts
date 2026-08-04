@@ -1,5 +1,6 @@
 import type { PlaythingCategoryId, PlaythingMediaKind } from "@/lib/plaything-categories";
 import type { PlaythingParamPolicy, ResolvedControl } from "@/lib/plaything-param-policy";
+import type { ProviderId } from "@/lib/providers/meta";
 
 export type ParamSchemaProp = {
   type?: string;
@@ -15,6 +16,7 @@ export type ParamSchemaProp = {
 
 export type PlaythingProduct = {
   id: number;
+  provider: ProviderId;
   model_id: string;
   label: string;
   credit_cost: number;

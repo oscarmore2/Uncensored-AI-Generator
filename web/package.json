@@ -8,9 +8,10 @@
     "start": "next start",
     "postinstall": "prisma generate",
     "db:push": "prisma db push",
-    "db:deploy": "node scripts/migrate-wavespeed-bridge.mjs && prisma db push",
+    "db:deploy": "node scripts/migrate-wavespeed-bridge.mjs && node scripts/migrate-provider-dimension.mjs && prisma db push",
     "cleanup:media": "node scripts/media-cleanup.mjs",
-    "db:preflight": "node scripts/preflight-migration.mjs"
+    "db:preflight": "node scripts/preflight-migration.mjs",
+    "db:migrate:providers": "node scripts/migrate-provider-dimension.mjs"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1091.0",

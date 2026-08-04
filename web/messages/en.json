@@ -463,7 +463,7 @@
   },
   "Plaything": {
     "title": "AI Models",
-    "subtitle": "WaveSpeed studio · Create by category",
+    "subtitle": "Multi-provider model studio · Create by category",
     "noAccess": "You do not currently have access. Contact an administrator or choose a VIP tier that includes AI Models.",
     "loadFailed": "Unable to load",
     "completed": "Generation complete",
@@ -475,6 +475,7 @@
     "categoryAria": "AI model categories",
     "model": "Model",
     "credits": "cr",
+    "allProviders": "All providers",
     "recommended": "Recommended",
     "quoting": "Estimating…",
     "generate": "Generate · {credits} credits",

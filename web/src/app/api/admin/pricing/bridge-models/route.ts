@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { requireRole } from "@/lib/auth";
 import { parseTags } from "@/lib/model-tags";
+import { PROVIDER_LIST, toProviderId } from "@/lib/providers/meta";
 
 /** 档位 → 模型库里合适的关键词，仅用于给候选排序，不做过滤 */
 const MODE_HINTS: Record<string, RegExp> = {
@@ -32,13 +33,17 @@ const TIER_TAG_HINTS: Record<string, string[]> = {
 /**
  * 管理端绑定模型时的候选列表。
  * 仅管理员可见 —— 生成端任何接口都不返回 model_id。
- * 排序会优先照顾「玩物专区 → 模型库」里手工贴的标签。
+ * 排序会优先照顾「模型库」里手工贴的标签。
+ *
+ * 一次只出一个渠道的候选：绑定必须同时定下 渠道 + model_id，
+ * 混着列会让人误以为随便挑一个都能跑。
  */
 export async function GET(req: Request) {
   const admin = await requireRole("admin");
   if (!admin) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const url = new URL(req.url);
+  const provider = toProviderId(url.searchParams.get("provider"));
   const q = (url.searchParams.get("q") ?? "").trim();
   const mode = (url.searchParams.get("mode") ?? "").trim();
   const tier = (url.searchParams.get("tier") ?? "").trim();
@@ -46,7 +51,7 @@ export async function GET(req: Request) {
   const spicy = url.searchParams.get("spicy") === "1";
   const limit = Math.min(200, Math.max(1, Number(url.searchParams.get("limit") ?? 60)));
 
-  const and = [];
+  const and: Array<Record<string, unknown>> = [{ provider }];
   if (q) {
     and.push({
       OR: [
@@ -59,8 +64,8 @@ export async function GET(req: Request) {
   // tags 存 JSON 数组字符串，带引号整词匹配，避免 "高档" 命中 "高档次"
   if (tag) and.push({ tags: { contains: `"${tag}"`, mode: "insensitive" as const } });
 
-  const models = await db.waveSpeedCatalogModel.findMany({
-    where: and.length ? { AND: and } : undefined,
+  const models = await db.providerCatalogModel.findMany({
+    where: { AND: and },
     select: {
       modelId: true,
       name: true,
@@ -103,8 +108,23 @@ export async function GET(req: Request) {
     a.localeCompare(b, "zh-Hans-CN")
   );
 
+  const syncedByProvider = await db.providerCatalogModel.groupBy({
+    by: ["provider"],
+    _count: { _all: true },
+  });
+  const countOf = new Map(syncedByProvider.map((c) => [toProviderId(c.provider), c._count._all]));
+
   return NextResponse.json({
+    provider,
+    providers: PROVIDER_LIST.map((p) => ({
+      id: p.id,
+      label: p.label,
+      short_label: p.shortLabel,
+      supports_dynamic_pricing: p.supportsDynamicPricing,
+      synced_count: countOf.get(p.id) ?? 0,
+    })),
     models: scored.map((m) => ({
+      provider,
       model_id: m.modelId,
       name: m.name,
       type: m.type,

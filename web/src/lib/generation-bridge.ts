@@ -4,11 +4,15 @@ import { MODE_META, isGenerationMode } from "./generation-modes";
 import { parseSizeValue, type ParamControl } from "./param-controls";
 
 /**
- * 站内参数 → WaveSpeed input 的桥接层。
+ * 站内参数 → 上游 input 的桥接层。
  *
  * 不同模型的字段名差异很大（image / image_url / images[] / input_image…），
  * 这里一律读同步下来的 api_schema 做匹配，而不是按模型名写死分支，
- * 这样管理端换绑模型时无需改代码。schema 缺失时退回保守白名单。
+ * 这样管理端换绑模型、甚至换渠道时都无需改代码。schema 缺失时退回保守白名单。
+ *
+ * 两家上游给 schema 的形状不同：WaveSpeed 内联 api_schemas[].request_schema，
+ * Atlas 是独立的 OpenAPI 3.0 文档（components.schemas.Input）。
+ * 差异只在 parseRequestSchema 里吃掉，下游一律拿归一后的 {properties, required}。
  */
 
 type PropSpec = {
@@ -28,29 +32,41 @@ export type RequestSchema = {
 export function parseRequestSchema(apiSchema: string | null | undefined): RequestSchema | null {
   if (!apiSchema) return null;
   try {
+    type Node = { properties?: Record<string, PropSpec>; required?: string[] };
     const root = JSON.parse(apiSchema) as {
-      api_schemas?: Array<{
-        request_schema?: { properties?: Record<string, PropSpec>; required?: string[] };
-      }>;
-      request_schema?: { properties?: Record<string, PropSpec>; required?: string[] };
+      api_schemas?: Array<{ request_schema?: Node }>;
+      request_schema?: Node;
+      components?: { schemas?: Record<string, Node | undefined> };
       properties?: Record<string, PropSpec>;
       required?: string[];
     };
     const rs =
       root.api_schemas?.[0]?.request_schema ??
       root.request_schema ??
+      // Atlas：OpenAPI 文档，请求体固定叫 Input
+      root.components?.schemas?.Input ??
       (root.properties ? { properties: root.properties, required: root.required } : null);
     if (!rs?.properties) return null;
     return {
-      properties: rs.properties,
-      required: Array.isArray(rs.required) ? rs.required.filter((r) => typeof r === "string") : [],
+      // model 是 Atlas 的路由字段而非生成参数，留着会被当成可调参数暴露给用户，
+      // 提交时也由适配器权威写入，这里直接摘掉
+      properties: Object.fromEntries(
+        Object.entries(rs.properties).filter(([k]) => k !== "model")
+      ),
+      required: Array.isArray(rs.required)
+        ? rs.required.filter((r) => typeof r === "string" && r !== "model")
+        : [],
     };
   } catch {
     return null;
   }
 }
 
-/** 参考图字段候选，按优先级排列 */
+/**
+ * 参考图字段候选，按优先级排列。
+ * 单图字段排在数组字段前面：站内一次只传一张参考图，
+ * 命中 image 比命中 images 更贴合模型对「主体图」的语义。
+ */
 const IMAGE_FIELD_ORDER = [
   "image",
   "image_url",
@@ -61,6 +77,7 @@ const IMAGE_FIELD_ORDER = [
   "start_image",
   "first_frame_image",
   "reference_image",
+  // Atlas 的 reference-to-video 系列用这个名字
   "reference_images",
   "source_image",
 ];
@@ -422,9 +439,19 @@ export function buildProviderInputs(args: BuildInputsArgs): BuiltInputs {
     }
     if (!schema) continue;
 
-    const coerced = coerceToSchema(inputs[key], schema.properties[key]);
+    const spec = schema.properties[key];
+    const coerced = coerceToSchema(inputs[key], spec);
     if (!coerced) {
-      // 转换不了就交给模型默认值，别把非法值发出去
+      // 值非法时别把它发出去。但如果这个字段是必填的，删掉等于必然触发上游 400
+      // （minimax/h3 的 resolution 只收 ["768P","2K"]，档位里配的 "720P" 转换不了，
+      // 删掉后请求就缺必填字段）。这种情况退回 schema 自带的默认值——
+      // 它按定义一定合法；连默认值都没有才放弃。
+      const fallback = schema.required.includes(key) ? spec?.default : undefined;
+      if (fallback !== undefined) {
+        snapped.push({ key, from: inputs[key], to: fallback });
+        inputs[key] = fallback;
+        continue;
+      }
       droppedKeys.push(key);
       delete inputs[key];
       continue;

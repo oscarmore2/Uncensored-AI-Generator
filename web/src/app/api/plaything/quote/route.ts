@@ -3,10 +3,7 @@ import { z } from "zod";
 import { db } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
 import { hasPlaythingAccess } from "@/lib/plaything-access";
-import {
-  inputsForPricing,
-  resolvePlaythingQuoteDynamic,
-} from "@/lib/wavespeed";
+import { inputsForPricing, resolvePlaythingQuoteDynamic } from "@/lib/plaything-runner";
 import { assertTierValue, type SchemaProp } from "@/lib/plaything-param-policy";
 import { rateLimit } from "@/lib/rate-limit";
 
@@ -45,7 +42,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: parsed.error.issues[0]?.message ?? "参数无效" }, { status: 400 });
   }
 
-  const product = await db.waveSpeedProduct.findFirst({
+  const product = await db.playthingProduct.findFirst({
     where: { id: parsed.data.product_id, isActive: true },
     include: { catalogModel: { select: { apiSchema: true } } },
   });
@@ -68,6 +65,8 @@ export async function POST(req: Request) {
       base_price_usd: quote.base_price_usd,
       credit_cost_base: quote.credit_cost_base,
       source: quote.source,
+      provider: quote.provider,
+      provider_label: quote.provider_label,
       discount_bps: 0,
     });
   } catch (err) {

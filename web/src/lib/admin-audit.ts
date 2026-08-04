@@ -15,8 +15,12 @@ export type AdminAuditAction =
   | "pricing_credit_package"
   | "pricing_vip_tier"
   | "pricing_vip_plan"
+  // 旧值：迁移到多渠道之前写下的历史记录仍在库里，审计页要能显示
   | "wavespeed_sync"
   | "wavespeed_product"
+  | "provider_sync"
+  | "provider_account"
+  | "plaything_product"
   | "system_signup_credits"
   | "nowpayments_account"
   | "openai_account";

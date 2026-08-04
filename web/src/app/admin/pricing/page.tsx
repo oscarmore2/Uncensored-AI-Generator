@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { api, ApiError } from "@/lib/client";
 import { useBodyScrollLock } from "@/lib/use-body-scroll-lock";
+import { ProviderTabs } from "@/components/admin/ProviderTabs";
+import { DEFAULT_PROVIDER, PROVIDER_META, toProviderId, type ProviderId } from "@/lib/providers/meta";
 
 type Tab = "products" | "mappings" | "packages" | "tiers" | "plans";
 
@@ -50,6 +52,7 @@ interface Product {
 }
 
 interface BridgeModel {
+  provider: ProviderId;
   model_id: string;
   name: string;
   type: string;
@@ -122,6 +125,9 @@ export default function AdminPricingPage() {
 
   const [unbound, setUnbound] = useState(0);
   const [catalogSynced, setCatalogSynced] = useState(0);
+  const [catalogByProvider, setCatalogByProvider] = useState<Record<string, number>>({});
+  // 绑定弹窗里当前在看哪个渠道的候选；默认停在该档位已绑定的渠道上
+  const [bridgeProvider, setBridgeProvider] = useState<ProviderId>(DEFAULT_PROVIDER);
   const [bridgeFor, setBridgeFor] = useState<Product | null>(null);
   useBodyScrollLock(Boolean(bridgeFor));
   const [bridgeModels, setBridgeModels] = useState<BridgeModel[]>([]);
@@ -158,9 +164,12 @@ export default function AdminPricingPage() {
   const load = useCallback(async () => {
     try {
       const [p, m, c, t, pl] = await Promise.all([
-        api<{ products: Product[]; unbound: number; catalog_synced: number }>(
-          "/api/admin/pricing/products"
-        ),
+        api<{
+          products: Product[];
+          unbound: number;
+          catalog_synced: number;
+          catalog_by_provider: Record<string, number>;
+        }>("/api/admin/pricing/products"),
         api<{ mappings: Mapping[] }>("/api/admin/pricing/param-mappings"),
         api<{ packages: CreditPkg[] }>("/api/admin/pricing/credit-packages"),
         api<{ tiers: VipTier[] }>("/api/admin/pricing/vip-tiers"),
@@ -169,6 +178,7 @@ export default function AdminPricingPage() {
       setProducts(p.products);
       setUnbound(p.unbound);
       setCatalogSynced(p.catalog_synced);
+      setCatalogByProvider(p.catalog_by_provider ?? {});
       setMappings(m.mappings);
       setPackages(c.packages);
       setTiers(t.tiers);
@@ -209,8 +219,9 @@ export default function AdminPricingPage() {
   }, [products]);
 
   const fetchBridge = useCallback(
-    async (product: Product, q: string, tag: string) => {
+    async (product: Product, q: string, tag: string, provider: ProviderId) => {
       const params = new URLSearchParams({
+        provider,
         mode: product.mode,
         tier: product.tier,
         spicy: product.spicy ? "1" : "0",
@@ -232,12 +243,26 @@ export default function AdminPricingPage() {
 
   const openBridge = useCallback(
     async (product: Product) => {
+      const provider = toProviderId(product.provider);
       setBridgeFor(product);
+      setBridgeProvider(provider);
       setBridgeQuery("");
       setBridgeTag("");
-      await fetchBridge(product, "", "");
+      await fetchBridge(product, "", "", provider);
     },
     [fetchBridge]
+  );
+
+  // 切渠道时清掉搜索与标签：两家的标签集合不一样，留着大概率筛出空列表
+  const switchBridgeProvider = useCallback(
+    (next: ProviderId) => {
+      if (!bridgeFor || next === bridgeProvider) return;
+      setBridgeProvider(next);
+      setBridgeQuery("");
+      setBridgeTag("");
+      void fetchBridge(bridgeFor, "", "", next);
+    },
+    [bridgeFor, bridgeProvider, fetchBridge]
   );
 
   return (
@@ -279,13 +304,17 @@ export default function AdminPricingPage() {
                   未绑定的档位对用户隐藏，不会出现点了必然失败的情况。
                 </div>
                 <div className="text-xs text-ink-subtle mt-1">
-                  已同步 WaveSpeed 模型 {catalogSynced} 个
+                  已同步模型 {catalogSynced} 个（
+                  {Object.values(PROVIDER_META)
+                    .map((p) => `${p.shortLabel} ${catalogByProvider[p.id] ?? 0}`)
+                    .join(" · ")}
+                  ）
                   {unbound > 0 && (
                     <span className="text-amber-800"> · {unbound} 个档位未绑定</span>
                   )}
                   <span className="text-ink-subtle">
                     {" "}
-                    · 在「玩物专区 → 模型库」给模型贴类型标签后，这里可按标签筛选
+                    · 在「模型库」给模型贴类型标签后，这里可按标签筛选
                   </span>
                 </div>
               </div>
@@ -375,9 +404,26 @@ export default function AdminPricingPage() {
                     </div>
 
                     <div className="text-[11px] font-mono text-ink-subtle mt-0.5 truncate">
-                      {p.is_bound ? `${p.provider}: ${p.provider_model_id}` : "—"}
+                      {p.is_bound ? (
+                        <>
+                          <span
+                            className={`mr-1.5 px-1.5 py-px rounded not-italic font-sans ${
+                              toProviderId(p.provider) === "atlas"
+                                ? "bg-violet-500/15 text-violet-700 border border-violet-500/25"
+                                : "bg-sky-500/15 text-sky-700 border border-sky-500/25"
+                            }`}
+                          >
+                            {PROVIDER_META[toProviderId(p.provider)].shortLabel}
+                          </span>
+                          {p.provider_model_id}
+                        </>
+                      ) : (
+                        "—"
+                      )}
                     </div>
-                    {(p.ignored_params?.length || p.ignored_default_inputs?.length) && (
+                    {/* 用 Boolean 包一层：两个数组都为空时 `0 || 0` 求值成 0，
+                        React 会把这个 0 原样渲染出来，档位下面凭空多一个「0」 */}
+                    {Boolean(p.ignored_params?.length || p.ignored_default_inputs?.length) && (
                       <div className="text-[11px] text-amber-800/90 mt-1">
                         <i className="fas fa-triangle-exclamation mr-1" />
                         该模型不支持，配置将被忽略：
@@ -470,6 +516,25 @@ export default function AdminPricingPage() {
                     售价 ${bridgeFor.retail_usd.toFixed(3)} / 次；选成本低于此值的模型才有毛利。
                     生成端不会看到任何模型信息。
                   </div>
+                  <div className="mt-3">
+                    <ProviderTabs
+                      size="sm"
+                      value={bridgeProvider}
+                      onChange={switchBridgeProvider}
+                      info={Object.keys(PROVIDER_META).map((id) => ({
+                        id: id as ProviderId,
+                        label: PROVIDER_META[id as ProviderId].label,
+                        count: catalogByProvider[id] ?? 0,
+                      }))}
+                    />
+                  </div>
+                  {!PROVIDER_META[bridgeProvider].supportsDynamicPricing && (
+                    <div className="text-[11px] text-amber-800 mt-2">
+                      <i className="fas fa-circle-info mr-1" />
+                      {PROVIDER_META[bridgeProvider].label} 没有实时估价接口，下方成本是目录基准价，
+                      生成完成后不会回填实际计费。
+                    </div>
+                  )}
                 </div>
                 <input
                   autoFocus
@@ -477,7 +542,7 @@ export default function AdminPricingPage() {
                   value={bridgeQuery}
                   onChange={(e) => {
                     setBridgeQuery(e.target.value);
-                    void fetchBridge(bridgeFor, e.target.value, bridgeTag);
+                    void fetchBridge(bridgeFor, e.target.value, bridgeTag, bridgeProvider);
                   }}
                   className="bg-surface border border-line rounded-xl px-3 py-2 text-sm mb-2"
                 />
@@ -488,7 +553,7 @@ export default function AdminPricingPage() {
                       type="button"
                       onClick={() => {
                         setBridgeTag("");
-                        void fetchBridge(bridgeFor, bridgeQuery, "");
+                        void fetchBridge(bridgeFor, bridgeQuery, "", bridgeProvider);
                       }}
                       className={`px-2 py-0.5 text-[11px] rounded-full border ${
                         bridgeTag === ""
@@ -505,7 +570,7 @@ export default function AdminPricingPage() {
                         onClick={() => {
                           const next = bridgeTag === t ? "" : t;
                           setBridgeTag(next);
-                          void fetchBridge(bridgeFor, bridgeQuery, next);
+                          void fetchBridge(bridgeFor, bridgeQuery, next, bridgeProvider);
                         }}
                         className={`px-2 py-0.5 text-[11px] rounded-full border ${
                           bridgeTag === t
@@ -521,7 +586,8 @@ export default function AdminPricingPage() {
                 <div className="overflow-y-auto overscroll-contain space-y-1.5 flex-1">
                   {bridgeModels.length === 0 && (
                     <p className="text-sm text-ink-subtle py-6 text-center">
-                      没有匹配的模型。请先到「玩物专区 → 模型库」同步目录，并给模型贴上类型标签。
+                      {PROVIDER_META[bridgeProvider].label} 下没有匹配的模型。
+                      请先到「模型库」切到该渠道同步目录，并给模型贴上类型标签。
                     </p>
                   )}
                   {bridgeModels.map((m) => {
@@ -541,12 +607,16 @@ export default function AdminPricingPage() {
                             () =>
                               api(`/api/admin/pricing/products/${id}`, {
                                 method: "PATCH",
-                                body: JSON.stringify({ provider_model_id: m.model_id }),
+                                body: JSON.stringify({
+                                  provider: m.provider,
+                                  provider_model_id: m.model_id,
+                                }),
                               }),
-                            `已绑定 ${m.model_id}`
+                            `已绑定 ${PROVIDER_META[m.provider].label} · ${m.model_id}`
                           );
                         }}
                         className={`w-full text-left px-3 py-2 rounded-xl border text-sm ${
+                          m.provider === toProviderId(bridgeFor.provider) &&
                           m.model_id === bridgeFor.provider_model_id
                             ? "bg-sky-600/20 border-sky-500 text-white"
                             : "bg-black/[0.03] border-line hover:border-line-strong"

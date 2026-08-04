@@ -14,7 +14,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
   const id = Number((await ctx.params).id);
   if (!Number.isInteger(id)) return NextResponse.json({ error: "Invalid id" }, { status: 400 });
 
-  const g = await db.waveSpeedGeneration.findFirst({
+  const g = await db.playthingGeneration.findFirst({
     where: { id, userId: user.id },
     include: { product: { select: playthingProductInclude } },
   });

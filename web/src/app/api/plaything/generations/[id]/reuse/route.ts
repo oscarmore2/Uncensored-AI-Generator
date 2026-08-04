@@ -23,7 +23,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
     return NextResponse.json({ error: "参数无效" }, { status: 400 });
   }
 
-  const gen = await db.waveSpeedGeneration.findFirst({
+  const gen = await db.playthingGeneration.findFirst({
     where: { id, userId: user.id },
     include: { product: { select: playthingProductInclude } },
   });

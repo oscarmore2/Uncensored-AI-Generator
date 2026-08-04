@@ -95,7 +95,7 @@ export async function backfillMissingMediaExpirations(): Promise<number> {
         user: { select: { isVip: true, vipExpiresAt: true } },
       },
     }),
-    db.waveSpeedGeneration.findMany({
+    db.playthingGeneration.findMany({
       where: { retentionAssigned: false, mediaDeletedAt: null },
       select: {
         id: true,
@@ -126,7 +126,7 @@ export async function backfillMissingMediaExpirations(): Promise<number> {
     }),
     ...waveGenerations.map((item) => {
       const vip = item.ownerVipAtCreation || isCurrentVip(item.user);
-      return db.waveSpeedGeneration.update({
+      return db.playthingGeneration.update({
         where: { id: item.id },
         data: {
           ownerVipAtCreation: vip,
@@ -167,7 +167,7 @@ export async function recalculateMediaExpirations(): Promise<number> {
       where: { mediaDeletedAt: null, visibility: { not: "featured" } },
       select: { id: true, createdAt: true, ownerVipAtCreation: true },
     }),
-    db.waveSpeedGeneration.findMany({
+    db.playthingGeneration.findMany({
       where: { mediaDeletedAt: null },
       select: { id: true, createdAt: true, ownerVipAtCreation: true },
     }),
@@ -191,7 +191,7 @@ export async function recalculateMediaExpirations(): Promise<number> {
       })
     ),
     ...waveGenerations.map((item) =>
-      db.waveSpeedGeneration.update({
+      db.playthingGeneration.update({
         where: { id: item.id },
         data: {
           retentionAssigned: true,

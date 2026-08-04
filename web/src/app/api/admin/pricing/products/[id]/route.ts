@@ -5,13 +5,16 @@ import { requireRole } from "@/lib/auth";
 import { logAdminAction } from "@/lib/admin-audit";
 import { productAdminOut } from "@/lib/pricing";
 import { deriveCreditCost } from "@/lib/generation-catalog";
+import { PROVIDER_IDS, PROVIDER_META, toProviderId } from "@/lib/providers/meta";
 
 const patchSchema = z
   .object({
     label: z.string().min(1).max(120).optional(),
     description: z.string().max(300).optional(),
-    /** 绑定的 WaveSpeed model_id；空串表示解绑（该档位对用户隐藏） */
+    /** 绑定的上游 model_id；空串表示解绑（该档位对用户隐藏） */
     provider_model_id: z.string().max(160).optional(),
+    /** 绑定的渠道；与 provider_model_id 成对提交，缺省沿用档位当前渠道 */
+    provider: z.enum(PROVIDER_IDS).optional(),
     credit_cost: z.number().int().positive().max(100000).optional(),
     ref_credits: z.number().int().min(0).max(100000).optional(),
     ref_label: z.string().max(160).optional(),
@@ -42,14 +45,19 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
   const existing = await db.generationProduct.findUnique({ where: { id } });
   if (!existing) return NextResponse.json({ error: "档位不存在" }, { status: 404 });
 
+  // 换绑模型时渠道必须一起定下来：同一个 model_id 在两家上游都可能存在，
+  // 只改 id 不改渠道会把请求发给错误的上游，而且要到用户点生成时才暴露
+  const nextProvider = toProviderId(d.provider ?? existing.provider);
   if (d.provider_model_id) {
-    const known = await db.waveSpeedCatalogModel.findUnique({
-      where: { modelId: d.provider_model_id },
+    const known = await db.providerCatalogModel.findUnique({
+      where: { provider_modelId: { provider: nextProvider, modelId: d.provider_model_id } },
       select: { modelId: true },
     });
     if (!known) {
       return NextResponse.json(
-        { error: "该 model_id 不在已同步的 WaveSpeed 目录中，请先同步模型库" },
+        {
+          error: `该 model_id 不在已同步的 ${PROVIDER_META[nextProvider].label} 目录中，请先同步该渠道的模型库`,
+        },
         { status: 400 }
       );
     }
@@ -71,8 +79,10 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
       ...(d.label !== undefined ? { label: d.label } : {}),
       ...(d.description !== undefined ? { description: d.description } : {}),
       ...(d.provider_model_id !== undefined
-        ? { providerModelId: d.provider_model_id.trim() }
-        : {}),
+        ? { providerModelId: d.provider_model_id.trim(), provider: nextProvider }
+        : d.provider !== undefined
+          ? { provider: nextProvider }
+          : {}),
       ...(d.credit_cost !== undefined
         ? { creditCost: d.credit_cost }
         : recomputed !== undefined

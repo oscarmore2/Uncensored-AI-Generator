@@ -120,7 +120,7 @@ function matchBlueprint(
  * 播种与目录同步都不会自动改动绑定关系。
  */
 export async function rebindGenerationProducts(): Promise<{ bound: number; unbound: number }> {
-  const catalog = await db.waveSpeedCatalogModel.findMany({
+  const catalog = await db.providerCatalogModel.findMany({
     select: { modelId: true, name: true, type: true },
   });
 

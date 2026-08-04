@@ -5,12 +5,13 @@ import { env } from "./env";
 import { sendTelegram } from "./telegram";
 import { mirrorRemoteUrls, ossConfigured, uploadBufferWithMeta } from "./oss";
 import {
-  estimatePricing,
-  getActiveWaveSpeedCredentials,
-  mapWaveSpeedStatus,
-  pollWaveSpeedResult,
-  submitWaveSpeedTask,
-} from "./wavespeed";
+  anyProviderConfigured,
+  estimateUnitPrice,
+  getAdapter,
+  mapProviderStatus,
+  PROVIDER_META,
+  toProviderId,
+} from "./providers";
 import { buildProviderInputs, inputsForPricing, parseRequestSchema } from "./generation-bridge";
 import { modeNeedsImage } from "./generation-modes";
 import { isAdultContent, reviewImages, safetyAudit } from "./content-safety";
@@ -25,7 +26,7 @@ import { uploadMediaExpiry } from "./media-retention";
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 export async function generationProviderConfigured(): Promise<boolean> {
-  return Boolean(await getActiveWaveSpeedCredentials());
+  return anyProviderConfigured();
 }
 
 /**
@@ -91,8 +92,7 @@ export async function processGeneration(genId: number): Promise<void> {
       data: { status: "processing", progress: 0 },
     });
 
-    const creds = await getActiveWaveSpeedCredentials();
-    if (env.DEMO_MODE || !creds) {
+    if (env.DEMO_MODE) {
       await sleep(2500);
       await db.generation.update({
         where: { id: genId },
@@ -117,6 +117,18 @@ export async function processGeneration(genId: number): Promise<void> {
     if (!product.providerModelId.trim()) {
       throw new Error(`档位「${product.label}」尚未绑定生成模型，请联系管理员`);
     }
+
+    // 渠道由档位决定；凭据必须在这之后才取得到
+    const provider = toProviderId(product.provider);
+    const adapter = getAdapter(provider);
+    const creds = await adapter.getCredentials();
+    // 没配 Key 就直接失败退款。以前这里会静默返回占位图，
+    // 单渠道时那只发生在开发机上；现在管理员可能把档位绑到没配 Key 的渠道，
+    // 再吐占位图就是收了钱给假图
+    if (!creds) {
+      throw new Error(`档位「${product.label}」所属渠道 ${PROVIDER_META[provider].label} 尚未配置 API Key`);
+    }
+    await db.generation.update({ where: { id: genId }, data: { provider } });
 
     let imageUrl: string | null = null;
     let sourceDims: { width: number; height: number } | null = null;
@@ -154,9 +166,9 @@ export async function processGeneration(genId: number): Promise<void> {
     }
 
     const [catalogModel, mappings] = await Promise.all([
-      db.waveSpeedCatalogModel.findUnique({
-        where: { modelId: product.providerModelId },
-        select: { apiSchema: true },
+      db.providerCatalogModel.findUnique({
+        where: { provider_modelId: { provider, modelId: product.providerModelId } },
+        select: { apiSchema: true, type: true },
       }),
       db.modeParamMapping.findMany({
         where: { mode: gen.mode, enabled: true },
@@ -198,25 +210,33 @@ export async function processGeneration(genId: number): Promise<void> {
       data: { wsAccountId: creds.accountId, status: "queued", progress: 5 },
     });
 
-    const task = await submitWaveSpeedTask(creds.apiKey, product.providerModelId, inputs);
+    const task = await adapter.submit(
+      creds.apiKey,
+      {
+        modelId: product.providerModelId,
+        apiSchema: catalogModel?.apiSchema ?? null,
+        type: catalogModel?.type ?? "",
+      },
+      inputs
+    );
     await db.generation.update({
       where: { id: genId },
       data: {
         providerJobId: task.id,
-        status: mapWaveSpeedStatus(task.status) === "pending" ? "queued" : "processing",
+        status: mapProviderStatus(task.status) === "pending" ? "queued" : "processing",
         progress: 10,
       },
     });
 
-    let mapped = mapWaveSpeedStatus(task.status);
+    let mapped = mapProviderStatus(task.status);
     let outputs: string[] = [];
     let thumbnails: string[] = [];
     let lastError: string | undefined;
 
     for (let i = 0; i < 90; i++) {
       await sleep(i < 10 ? 2500 : 4500);
-      const result = await pollWaveSpeedResult(creds.apiKey, task.id);
-      mapped = mapWaveSpeedStatus(result.status);
+      const result = await adapter.poll(creds.apiKey, task.id);
+      mapped = mapProviderStatus(result.status);
       outputs = result.outputs;
       thumbnails = result.thumbnails;
       lastError = result.error;
@@ -244,7 +264,9 @@ export async function processGeneration(genId: number): Promise<void> {
       const resultIsAdult = gen.isAdult || isAdultContent(outSafety);
 
       const finalUrls = await mirrorRemoteUrls(outputs, `generations/${genId}`);
-      const costUsd = await estimatePricing(
+      // 拿不到实时单价（Atlas 没有这个接口）时留空，成本看板会退回目录基准价
+      const costUsd = await estimateUnitPrice(
+        provider,
         product.providerModelId,
         inputsForPricing(inputs, catalogModel?.apiSchema ?? null)
       ).catch(() => null);

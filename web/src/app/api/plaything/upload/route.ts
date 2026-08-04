@@ -46,7 +46,7 @@ export async function POST(req: Request) {
 
   let policyRaw: string | null = null;
   if (Number.isInteger(productId) && productId > 0) {
-    const product = await db.waveSpeedProduct.findFirst({
+    const product = await db.playthingProduct.findFirst({
       where: { id: productId, isActive: true },
       select: { paramPolicy: true },
     });

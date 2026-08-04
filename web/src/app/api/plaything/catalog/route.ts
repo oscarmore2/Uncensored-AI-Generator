@@ -8,6 +8,7 @@ import {
   type PlaythingCategoryId,
 } from "@/lib/plaything-categories";
 import { parseParamPolicy, resolveParamControls, type SchemaProp } from "@/lib/plaything-param-policy";
+import { PROVIDER_LIST, toProviderId } from "@/lib/providers/meta";
 
 export async function GET() {
   const user = await getCurrentUser();
@@ -16,7 +17,7 @@ export async function GET() {
     return NextResponse.json({ error: "无玩物专区访问权限" }, { status: 403 });
   }
 
-  const products = await db.waveSpeedProduct.findMany({
+  const products = await db.playthingProduct.findMany({
     where: { isActive: true },
     include: {
       catalogModel: {
@@ -40,6 +41,7 @@ export async function GET() {
     const controls = resolveParamControls(properties, p.paramPolicy);
     return {
       id: p.id,
+      provider: toProviderId(p.provider),
       model_id: p.modelId,
       label: p.label,
       credit_cost: p.creditCost,
@@ -72,9 +74,21 @@ export async function GET() {
     })
   );
 
+  // 只报有货的渠道：某家一个模型都没上架时，筛选器里出现一个永远空的选项更让人困惑
+  const countByProvider = new Map<string, number>();
+  for (const p of mapped) {
+    countByProvider.set(p.provider, (countByProvider.get(p.provider) ?? 0) + 1);
+  }
+
   return NextResponse.json({
     note: "玩物专区点数不享受 VIP 折扣；报价随参数动态变化",
     categories,
+    providers: PROVIDER_LIST.filter((p) => (countByProvider.get(p.id) ?? 0) > 0).map((p) => ({
+      id: p.id,
+      label: p.label,
+      short_label: p.shortLabel,
+      count: countByProvider.get(p.id) ?? 0,
+    })),
     products: mapped,
   });
 }

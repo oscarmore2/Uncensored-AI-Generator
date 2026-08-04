@@ -17,6 +17,7 @@ import {
   setSignupInitialCredits,
 } from "@/lib/signup-settings";
 import { logAdminAction } from "@/lib/admin-audit";
+import { PROVIDER_LIST, toProviderId } from "@/lib/providers/meta";
 
 /** 只读配置快照（脱敏，不返回 secret 明文） */
 export async function GET() {
@@ -26,12 +27,11 @@ export async function GET() {
   await ensurePricingSeeded();
 
   const [
-    wsActive,
+    providerAccounts,
     stripeActive,
     ossActive,
     hfActive,
     openAiActive,
-    wsCount,
     stripeCount,
     ossCount,
     hfCount,
@@ -44,7 +44,7 @@ export async function GET() {
     nowPaymentsCredentials,
     nowPaymentsAccountCount,
   ] = await Promise.all([
-    db.waveSpeedAccount.findFirst({ where: { isActive: true }, select: { id: true, label: true } }),
+    db.providerAccount.findMany({ select: { id: true, provider: true, label: true, isActive: true } }),
     db.stripeAccount.findFirst({ where: { isActive: true }, select: { id: true, label: true } }),
     db.ossAccount.findFirst({
       where: { isActive: true },
@@ -52,7 +52,6 @@ export async function GET() {
     }),
     db.hfAccount.findFirst({ where: { isActive: true }, select: { id: true, label: true } }),
     db.openAiAccount.findFirst({ where: { isActive: true }, select: { id: true, label: true } }),
-    db.waveSpeedAccount.count(),
     db.stripeAccount.count(),
     db.ossAccount.count(),
     db.hfAccount.count(),
@@ -72,12 +71,23 @@ export async function GET() {
     signup_initial_credits: signupInitialCredits,
     vip_price_cents: env.VIP_PRICE,
     credit_packages: env.CREDIT_PACKAGES,
-    wavespeed: {
-      base_url: env.WAVESPEED_BASE_URL,
-      env_key_configured: Boolean(env.WAVESPEED_API_KEY),
-      db_accounts: wsCount,
-      active_account: wsActive ? { id: wsActive.id, label: wsActive.label } : null,
-    },
+    // 按渠道分组：单渠道时代这里只有一个 wavespeed 字段，
+    // 现在两家平级，只报一家会让另一家的失配悄无声息
+    providers: PROVIDER_LIST.map((p) => {
+      const rows = providerAccounts.filter((a) => toProviderId(a.provider) === p.id);
+      const active = rows.find((a) => a.isActive) ?? null;
+      const envKey = p.id === "wavespeed" ? env.WAVESPEED_API_KEY : env.ATLAS_API_KEY;
+      return {
+        id: p.id,
+        label: p.label,
+        base_url: p.id === "wavespeed" ? env.WAVESPEED_BASE_URL : env.ATLAS_BASE_URL,
+        supports_dynamic_pricing: p.supportsDynamicPricing,
+        env_key_configured: Boolean(envKey),
+        db_accounts: rows.length,
+        active_account: active ? { id: active.id, label: active.label } : null,
+        configured: Boolean(active) || Boolean(envKey),
+      };
+    }),
     stripe: {
       env_configured: await stripeConfigured(),
       db_accounts: stripeCount,

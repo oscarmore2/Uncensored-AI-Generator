@@ -463,7 +463,7 @@
   },
   "Plaything": {
     "title": "玩物专区",
-    "subtitle": "WaveSpeed 工作台 · 按品类创作",
+    "subtitle": "多渠道模型工作台 · 按品类创作",
     "noAccess": "暂无访问权限。请联系管理员开通，或开通带玩物权限的 VIP 等级。",
     "loadFailed": "加载失败",
     "completed": "生成完成",
@@ -475,6 +475,7 @@
     "categoryAria": "玩物品类",
     "model": "模型",
     "credits": "点",
+    "allProviders": "全部渠道",
     "recommended": "推荐",
     "quoting": "估价中…",
     "generate": "生成 · {credits} 点",

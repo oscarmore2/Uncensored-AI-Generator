@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { requireRole } from "@/lib/auth";
 import { decryptSecret } from "@/lib/secret-crypto";
-import { testWaveSpeedKey } from "@/lib/wavespeed";
+import { getAdapter, PROVIDER_META, toProviderId } from "@/lib/providers";
 
 export async function POST(_req: Request, ctx: { params: Promise<{ id: string }> }) {
   const admin = await requireRole("admin");
@@ -11,12 +11,13 @@ export async function POST(_req: Request, ctx: { params: Promise<{ id: string }>
   const accountId = Number((await ctx.params).id);
   if (!Number.isInteger(accountId)) return NextResponse.json({ error: "Invalid id" }, { status: 400 });
 
-  const existing = await db.waveSpeedAccount.findUnique({ where: { id: accountId } });
+  const existing = await db.providerAccount.findUnique({ where: { id: accountId } });
   if (!existing) return NextResponse.json({ error: "账户不存在" }, { status: 404 });
 
+  const provider = toProviderId(existing.provider);
   try {
-    await testWaveSpeedKey(decryptSecret(existing.apiKeyEnc));
-    return NextResponse.json({ ok: true });
+    await getAdapter(provider).testKey(decryptSecret(existing.apiKeyEnc));
+    return NextResponse.json({ ok: true, provider, provider_label: PROVIDER_META[provider].label });
   } catch (err) {
     return NextResponse.json(
       { error: err instanceof Error ? err.message : String(err) },

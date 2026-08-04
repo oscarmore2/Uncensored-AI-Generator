@@ -34,7 +34,7 @@ export async function GET() {
         visibility: { not: "featured" },
       },
     }),
-    db.waveSpeedGeneration.count({
+    db.playthingGeneration.count({
       where: { mediaExpiresAt: { not: null }, mediaDeletedAt: null },
     }),
   ]);

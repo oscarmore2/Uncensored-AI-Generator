@@ -77,7 +77,7 @@ export default function PlaythingPage() {
   const [history, setHistory] = useState<PlaythingGen[]>([]);
   const [browserSelectedId, setBrowserSelectedId] = useState<number | null>(null);
   const [quoteCost, setQuoteCost] = useState<number | null>(null);
-  const [quoteSource, setQuoteSource] = useState<"wavespeed" | "fallback" | null>(null);
+  const [quoteSource, setQuoteSource] = useState<"provider" | "fallback" | null>(null);
   const [quoting, setQuoting] = useState(false);
   const [promptOptimizerEnabled, setPromptOptimizerEnabled] = useState(false);
   const [optimizing, setOptimizing] = useState(false);
@@ -302,7 +302,7 @@ export default function PlaythingPage() {
       setQuoting(true);
       void api<{
         cost: number;
-        source: "wavespeed" | "fallback";
+        source: "provider" | "fallback";
       }>("/api/plaything/quote", {
         method: "POST",
         body: JSON.stringify({

@@ -50,7 +50,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
       _count: {
         select: {
           generations: true,
-          waveSpeedGenerations: true,
+          playthingGenerations: true,
           mediaAssets: true,
         },
       },
@@ -149,7 +149,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
       disabled_at: user.disabledAt,
       created_at: user.createdAt,
       generation_count: user._count.generations,
-      wavespeed_generation_count: user._count.waveSpeedGenerations,
+      wavespeed_generation_count: user._count.playthingGenerations,
       upload_count: user._count.mediaAssets,
       total_recharge_cents: rechargeAgg._sum.priceCents ?? 0,
       total_recharge_credits: rechargeAgg._sum.amount ?? 0,

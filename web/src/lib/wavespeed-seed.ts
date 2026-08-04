@@ -1,6 +1,12 @@
 import "server-only";
 import { db } from "./db";
 
+/**
+ * 首期默认预上架的一批 WaveSpeed 模型。
+ * 只针对 WaveSpeed：这些 model_id 是它家独有的，Atlas 的货架完全由管理端手工上架。
+ */
+const PROVIDER = "wavespeed";
+
 /** 首期默认预上架（同步后若不存在 Product 则创建） */
 const DEFAULT_SHELF: Array<{
   modelId: string;
@@ -41,17 +47,22 @@ const DEFAULT_SHELF: Array<{
  * 这也是一种配置被重置。货架内容之后完全以管理端为准。
  */
 export async function ensureDefaultPlaythingProducts(): Promise<number> {
-  if ((await db.waveSpeedProduct.count()) > 0) return 0;
+  if ((await db.playthingProduct.count()) > 0) return 0;
 
   let created = 0;
 
   for (const item of DEFAULT_SHELF) {
-    const catalog = await db.waveSpeedCatalogModel.findUnique({ where: { modelId: item.modelId } });
+    const catalog = await db.providerCatalogModel.findUnique({
+      where: { provider_modelId: { provider: PROVIDER, modelId: item.modelId } },
+    });
     if (!catalog) continue;
-    const existing = await db.waveSpeedProduct.findUnique({ where: { modelId: item.modelId } });
+    const existing = await db.playthingProduct.findUnique({
+      where: { provider_modelId: { provider: PROVIDER, modelId: item.modelId } },
+    });
     if (existing) continue;
-    await db.waveSpeedProduct.create({
+    await db.playthingProduct.create({
       data: {
+        provider: PROVIDER,
         modelId: item.modelId,
         catalogModelId: catalog.id,
         label: item.label,
@@ -65,8 +76,9 @@ export async function ensureDefaultPlaythingProducts(): Promise<number> {
   }
 
   // Seedance Spicy I2V：从 catalog 找 spicy + seedance / i2v
-  const spicyCandidates = await db.waveSpeedCatalogModel.findMany({
+  const spicyCandidates = await db.providerCatalogModel.findMany({
     where: {
+      provider: PROVIDER,
       OR: [
         { modelId: { contains: "seedance", mode: "insensitive" } },
         { name: { contains: "seedance", mode: "insensitive" } },
@@ -84,10 +96,13 @@ export async function ensureDefaultPlaythingProducts(): Promise<number> {
     null;
 
   if (spicy) {
-    const existing = await db.waveSpeedProduct.findUnique({ where: { modelId: spicy.modelId } });
+    const existing = await db.playthingProduct.findUnique({
+      where: { provider_modelId: { provider: PROVIDER, modelId: spicy.modelId } },
+    });
     if (!existing) {
-      await db.waveSpeedProduct.create({
+      await db.playthingProduct.create({
         data: {
+          provider: PROVIDER,
           modelId: spicy.modelId,
           catalogModelId: spicy.id,
           label: spicy.name.includes("Seedance") ? spicy.name : `Seedance Spicy · ${spicy.name}`,

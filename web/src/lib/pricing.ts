@@ -207,7 +207,7 @@ export async function listActiveCatalog(opts?: { vipActive?: boolean }) {
   // 只回传 uiKey 与可选值，不含模型信息，生成端依旧无从得知底层模型。
   const bound = products.filter((p) => p.providerModelId.trim() !== "");
   const schemas = bound.length
-    ? await db.waveSpeedCatalogModel.findMany({
+    ? await db.providerCatalogModel.findMany({
         where: { modelId: { in: Array.from(new Set(bound.map((p) => p.providerModelId))) } },
         select: { modelId: true, apiSchema: true },
       })

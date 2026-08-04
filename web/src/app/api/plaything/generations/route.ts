@@ -5,9 +5,9 @@ import { getCurrentUser } from "@/lib/auth";
 import { hasPlaythingAccess } from "@/lib/plaything-access";
 import {
   inputsForPricing,
-  processWaveSpeedGeneration,
+  processPlaythingGeneration,
   resolvePlaythingQuoteDynamic,
-} from "@/lib/wavespeed";
+} from "@/lib/plaything-runner";
 import { playthingGenerationOut, playthingProductInclude } from "@/lib/plaything-serialize";
 import { assertTierValue, type SchemaProp } from "@/lib/plaything-param-policy";
 import { rateLimit } from "@/lib/rate-limit";
@@ -65,7 +65,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: parsed.error.issues[0]?.message ?? "参数无效" }, { status: 400 });
   }
 
-  const product = await db.waveSpeedProduct.findFirst({
+  const product = await db.playthingProduct.findFirst({
     where: { id: parsed.data.product_id, isActive: true },
     include: {
       catalogModel: { select: { type: true, apiSchema: true, basePriceUsd: true } },
@@ -146,10 +146,12 @@ export async function POST(req: Request) {
     },
   });
 
-  const record = await db.waveSpeedGeneration.create({
+  const record = await db.playthingGeneration.create({
     data: {
       userId: user.id,
       productId: product.id,
+      // 冗余记一份渠道：产品事后换绑后，这条任务仍要知道去谁那儿取结果
+      provider: product.provider,
       prompt,
       params: JSON.stringify(params),
       cost,
@@ -176,7 +178,7 @@ export async function POST(req: Request) {
     });
   }
 
-  void processWaveSpeedGeneration(record.id);
+  void processPlaythingGeneration(record.id);
 
   return NextResponse.json(playthingGenerationOut(record), { status: 201 });
 }
@@ -188,7 +190,7 @@ export async function GET() {
     return NextResponse.json({ error: "无玩物专区访问权限" }, { status: 403 });
   }
 
-  const gens = await db.waveSpeedGeneration.findMany({
+  const gens = await db.playthingGeneration.findMany({
     where: { userId: user.id },
     include: { product: { select: playthingProductInclude } },
     orderBy: { createdAt: "desc" },

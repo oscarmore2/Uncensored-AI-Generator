@@ -35,7 +35,21 @@ function haystack(type: string, modelId: string): string {
 }
 
 /**
- * 根据 WaveSpeed type + model_id 归类。
+ * 「X-to-Y」里的 Y 才是产出物。
+ *
+ * 不看这个的话，audio-to-video 会因为名字里带 audio 被判成音频，
+ * 结果拿音频播放器去渲染一段视频。分隔符两种都要认：
+ * WaveSpeed 用连字符，Atlas 有一批标签用下划线。
+ */
+function outputMedia(h: string): "image" | "video" | "audio" | "3d" | "text" | null {
+  const m = h.match(/[-_]to[-_](image|video|audio|speech|3d|text)\b/);
+  if (!m) return null;
+  if (m[1] === "speech") return "audio";
+  return m[1] as "image" | "video" | "audio" | "3d" | "text";
+}
+
+/**
+ * 根据上游 type + model_id 归类。
  * 顺序：3D → Audio → Avatar → Video → Image → Tools（兜底）
  */
 export function resolvePlaythingCategory(
@@ -43,15 +57,23 @@ export function resolvePlaythingCategory(
   modelId: string
 ): { category: PlaythingCategoryId; media_kind: PlaythingMediaKind } {
   const h = haystack(type, modelId);
+  const out = outputMedia(h);
 
   if (
-    /image-to-3d|text-to-3d|3d|mesh|gaussian|nerf|\.glb|\.gltf|\.obj/.test(h) ||
-    /\b3d\b/.test(h)
+    out === "3d" ||
+    ((/image-to-3d|text-to-3d|3d|mesh|gaussian|nerf|\.glb|\.gltf|\.obj/.test(h) ||
+      /\b3d\b/.test(h)) &&
+      out === null)
   ) {
     return { category: "3d", media_kind: "3d" };
   }
 
-  if (/audio|tts|music|speech|sound|text-to-audio|audio-to-/.test(h)) {
+  // 产出物明确是视频/图片时不进音频分支，哪怕名字里带 audio / speech
+  if (
+    out !== "video" &&
+    out !== "image" &&
+    /audio|tts|music|speech|sound|text-to-audio|audio-to-/.test(h)
+  ) {
     return { category: "audio", media_kind: "audio" };
   }
 

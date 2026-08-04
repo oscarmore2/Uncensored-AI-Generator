@@ -19,7 +19,7 @@ export function GenerateBar({
   phase: Phase;
   progress: number;
   disabled?: boolean;
-  quoteSource?: "wavespeed" | "fallback" | null;
+  quoteSource?: "provider" | "fallback" | null;
   quoting?: boolean;
   onGenerate: () => void;
   onTopUp: () => void;
@@ -66,7 +66,7 @@ export function GenerateBar({
       <div className="flex items-center justify-between text-xs text-ink-subtle gap-2">
         <span>
           {t("balance")} <span className="font-mono text-ink-muted">{balance}</span> {t("credits")} · {t("noDiscount")}
-          {quoteSource === "wavespeed" && (
+          {quoteSource === "provider" && (
             <span className="text-emerald-500/80 ml-1">· {t("dynamicPrice")}</span>
           )}
           {quoteSource === "fallback" && (

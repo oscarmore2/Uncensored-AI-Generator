@@ -79,6 +79,26 @@ try {
     ok(`点数 ×10 改制不会触发（${redenomDone ? "已执行过" : "非旧库"}）`);
   }
 
+  // 多渠道改造：把 modelId 的全局唯一换成 (provider, modelId) 复合唯一。
+  // 旧库上 modelId 本来就是全局唯一，所以复合唯一必然建得起来；
+  // 这里仍然实测一遍，因为一旦有重复，迁移会在建索引时中断。
+  for (const t of ["WaveSpeedCatalogModel", "WaveSpeedProduct"]) {
+    if (!(await tableExists(t))) continue;
+    if (await columnExists(t, "provider")) {
+      ok(`${t} 已有 provider 列（多渠道改造已迁移过）`);
+      continue;
+    }
+    const dup = await db.$queryRawUnsafe(
+      `SELECT COUNT(*)::int AS n FROM (SELECT "modelId" FROM "${t}" GROUP BY 1 HAVING COUNT(*) > 1) d`
+    );
+    const n = Number(dup[0]?.n ?? 0);
+    if (n > 0) {
+      bad(`${t} 有 ${n} 个重复 modelId —— (provider, modelId) 复合唯一索引会建不起来`);
+    } else {
+      ok(`${t} 无重复 modelId，复合唯一索引可安全建立`);
+    }
+  }
+
   const legacyChan = (await tableExists("MediaCleanupPolicy"))
     ? await db.$queryRawUnsafe(
         `SELECT COUNT(*)::int AS n FROM "MediaCleanupPolicy" WHERE "channel" IN ('zen','wavespeed')`

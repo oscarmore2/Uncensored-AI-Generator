@@ -89,8 +89,8 @@ export async function GET(
 
   if (kind === "plaything") {
     const [total, records] = await Promise.all([
-      db.waveSpeedGeneration.count({ where: { userId } }),
-      db.waveSpeedGeneration.findMany({
+      db.playthingGeneration.count({ where: { userId } }),
+      db.playthingGeneration.findMany({
         where: { userId },
         orderBy: { createdAt: "desc" },
         skip,

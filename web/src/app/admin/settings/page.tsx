@@ -9,12 +9,16 @@ interface Settings {
   signup_initial_credits: number;
   vip_price_cents: number;
   credit_packages: Record<string, number>;
-  wavespeed: {
+  providers: Array<{
+    id: string;
+    label: string;
     base_url: string;
+    supports_dynamic_pricing: boolean;
     env_key_configured: boolean;
     db_accounts: number;
     active_account: { id: number; label: string } | null;
-  };
+    configured: boolean;
+  }>;
   stripe: {
     env_configured: boolean;
     db_accounts: number;
@@ -112,15 +116,16 @@ export default function AdminSettingsPage() {
         .join(" · "),
     },
     { label: "Telegram", value: settings.telegram_configured ? "已配置" : "未配置", warn: !settings.telegram_configured },
-    {
-      label: "WaveSpeed 激活账户",
-      value: settings.wavespeed.active_account
-        ? `${settings.wavespeed.active_account.label} (#${settings.wavespeed.active_account.id})`
-        : settings.wavespeed.env_key_configured
-          ? "env 兜底"
+    // 每个生成渠道一行：某一家没配 Key，绑到它的档位会直接失败，必须一眼看得到
+    ...settings.providers.map((p) => ({
+      label: `${p.label} 激活账户`,
+      value: p.active_account
+        ? `${p.active_account.label} (#${p.active_account.id}) · ${p.db_accounts} 个账户`
+        : p.env_key_configured
+          ? `env 兜底 · ${p.db_accounts} 个账户`
           : "未配置",
-    },
-    { label: "WaveSpeed 账户数", value: String(settings.wavespeed.db_accounts) },
+      warn: !p.configured,
+    })),
     {
       label: "Stripe 激活账户",
       value: settings.stripe.active_account

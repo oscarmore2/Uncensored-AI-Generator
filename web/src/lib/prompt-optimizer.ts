@@ -1,15 +1,14 @@
 import "server-only";
-import {
-  getActiveWaveSpeedCredentials,
-  submitWaveSpeedTask,
-  wavespeedFetch,
-  mapWaveSpeedStatus,
-} from "./wavespeed";
+import { submitWaveSpeedTask, wavespeedFetch } from "./wavespeed";
+import { getProviderCredentials, mapProviderStatus } from "./providers";
 
 /**
  * 玩物专区专属：WaveSpeed 官方的 wavespeed-ai/prompt-optimizer 模型。
  * 与站内其它 WaveSpeed 模型共用同一套账户/轮询机制，但输出是纯文本而非媒体 URL，
  * 所以不能复用 pollWaveSpeedResult（它只保留 http 开头的字符串，会把文本结果过滤掉）。
+ *
+ * 刻意固定在 WaveSpeed 渠道：这是它家独有的模型，Atlas 没有对应品，
+ * 所以这里不走渠道适配器，直接要 WaveSpeed 的凭据。
  *
  * 与创作中心的「魔法指令」（HF LLM 扩写）是两条独立链路，互不替代：
  * 这个走 WaveSpeed 账户，支持把参考图一起送进去优化，按你的要求只在玩物专区提供。
@@ -27,7 +26,7 @@ export type PromptOptimizeStyle =
   | "realistic";
 
 export async function promptOptimizerConfigured(): Promise<boolean> {
-  return Boolean(await getActiveWaveSpeedCredentials());
+  return Boolean(await getProviderCredentials("wavespeed"));
 }
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -56,7 +55,7 @@ export async function optimizePrompt(opts: {
   mode: PromptOptimizeMode;
   style?: PromptOptimizeStyle;
 }): Promise<string> {
-  const creds = await getActiveWaveSpeedCredentials();
+  const creds = await getProviderCredentials("wavespeed");
   if (!creds) throw new Error("WaveSpeed 未配置，暂时无法使用提示词优化");
 
   const inputs: Record<string, unknown> = {
@@ -68,7 +67,7 @@ export async function optimizePrompt(opts: {
 
   const task = await submitWaveSpeedTask(creds.apiKey, PROMPT_OPTIMIZER_MODEL_ID, inputs);
 
-  let status = mapWaveSpeedStatus(task.status);
+  let status = mapProviderStatus(task.status);
   let text: string | null = null;
 
   for (let i = 0; i < 20 && status !== "succeeded" && status !== "failed"; i++) {
@@ -81,7 +80,7 @@ export async function optimizePrompt(opts: {
       data?: { status?: string; outputs?: unknown; output?: unknown; error?: string };
     }>(creds.apiKey, `/predictions/${encodeURIComponent(task.id)}/result`);
 
-    status = mapWaveSpeedStatus(String(data?.status || data?.data?.status || "processing"));
+    status = mapProviderStatus(String(data?.status || data?.data?.status || "processing"));
     if (status === "failed") {
       const err = data?.error || data?.data?.error;
       throw new Error(err ? String(err).slice(0, 300) : "提示词优化失败");

@@ -40,7 +40,7 @@ model User {
   nowPayments             NowPayment[]
   featuredWorks           PublicWork[]
   vipTier                 VipTier?                 @relation(fields: [vipTierId], references: [id], onDelete: SetNull)
-  waveSpeedGenerations    WaveSpeedGeneration[]
+  playthingGenerations    PlaythingGeneration[]
   mediaAssets             MediaAsset[]
   oauthAccounts           OAuthAccount[]
   emailVerificationTokens EmailVerificationToken[]
@@ -139,8 +139,9 @@ model Generation {
   prompt             String
   negativePrompt     String?
   params             String
-  providerJobId      String?   @map("zenJobId") // 上游任务 ID（WaveSpeed prediction id）
-  wsAccountId        Int? // 创建该任务时使用的 WaveSpeedAccount
+  provider           String    @default("wavespeed") // 下单时命中的档位所属渠道
+  providerJobId      String?   @map("zenJobId") // 上游任务 ID（prediction id）
+  wsAccountId        Int? // 创建该任务时使用的 ProviderAccount
   status             String    @default("pending") // pending|queued|processing|succeeded|partial|failed
   progress           Int       @default(0) // 0-100，来自上游轮询
   providerError      String?   @map("zenError") // 上游返回的失败原因
@@ -158,8 +159,8 @@ model Generation {
   createdAt          DateTime  @default(now())
   updatedAt          DateTime  @default(now()) @updatedAt
 
-  user      User              @relation(fields: [userId], references: [id])
-  wsAccount WaveSpeedAccount? @relation(fields: [wsAccountId], references: [id], onDelete: SetNull)
+  user      User             @relation(fields: [userId], references: [id])
+  wsAccount ProviderAccount? @relation(fields: [wsAccountId], references: [id], onDelete: SetNull)
 
   @@index([userId, createdAt])
   @@index([deletedAt, status, createdAt])
@@ -324,8 +325,8 @@ model GenerationProduct {
   mode                String // txt2img | img2img | imgedit | txt2vid | img2vid
   tier                String // low | mid | high（视频只用 low / high）
   spicy               Boolean  @default(false) // Spicy 档：会员专属，走 uncensored 模型
-  provider            String   @default("wavespeed")
-  providerModelId     String   @default("") // WaveSpeed model_id；空串表示尚未绑定
+  provider            String   @default("wavespeed") // wavespeed | atlas
+  providerModelId     String   @default("") // 该渠道的 model_id；空串表示尚未绑定
   label               String // 面向用户的档位名，不得含模型信息
   description         String   @default("") // 档位说明（分辨率/时长/画质），同样不得含模型名
   creditCost          Int
@@ -474,26 +475,34 @@ model WebhookEventLog {
 }
 
 /**
- * WaveSpeed API Key：同一时间最多一个 isActive=true
+ * 上游生成渠道的 API Key：每个渠道同一时间最多一个 isActive=true。
+ * 物理表名保持 WaveSpeedAccount 不变（下同）：库里已有生产数据，
+ * 改表名要停机搬数据，而 @@map 是纯代码层改名，零 DDL。
  */
-model WaveSpeedAccount {
+model ProviderAccount {
   id        Int      @id @default(autoincrement())
+  provider  String   @default("wavespeed") // wavespeed | atlas
   label     String
   apiKeyEnc String
   isActive  Boolean  @default(false)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  generations     WaveSpeedGeneration[]
+  generations     PlaythingGeneration[]
   mainGenerations Generation[]
+
+  @@index([provider, isActive])
+  @@map("WaveSpeedAccount")
 }
 
 /**
- * WaveSpeed 全库模型缓存（同步自 GET /models）
+ * 上游全库模型缓存（各渠道的模型列表接口同步而来）。
+ * modelId 只在渠道内唯一：不同渠道可能上架同名模型（如 alibaba/wan-2.7/…）。
  */
-model WaveSpeedCatalogModel {
+model ProviderCatalogModel {
   id               Int      @id @default(autoincrement())
-  modelId          String   @unique
+  provider         String   @default("wavespeed")
+  modelId          String
   name             String
   type             String   @default("")
   description      String   @default("")
@@ -505,22 +514,27 @@ model WaveSpeedCatalogModel {
    */
   tags             String   @default("[]")
   apiSchema        String? // JSON
+  /// 上游 schema 文件地址（Atlas 是独立 JSON 文件）；未变化时同步可跳过重复抓取
+  schemaUrl        String?
   syncedAt         DateTime @default(now())
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 
-  product WaveSpeedProduct?
+  product PlaythingProduct?
 
-  @@index([type])
+  @@unique([provider, modelId])
+  @@index([provider, type])
   @@index([name])
+  @@map("WaveSpeedCatalogModel")
 }
 
 /**
  * 玩物专区上架 SKU（本站定价，不吃 VIP 折扣）
  */
-model WaveSpeedProduct {
+model PlaythingProduct {
   id                  Int      @id @default(autoincrement())
-  modelId             String   @unique
+  provider            String   @default("wavespeed")
+  modelId             String
   catalogModelId      Int?     @unique
   label               String
   creditCost          Int
@@ -532,19 +546,23 @@ model WaveSpeedProduct {
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
 
-  catalogModel WaveSpeedCatalogModel? @relation(fields: [catalogModelId], references: [id], onDelete: SetNull)
-  generations  WaveSpeedGeneration[]
+  catalogModel ProviderCatalogModel? @relation(fields: [catalogModelId], references: [id], onDelete: SetNull)
+  generations  PlaythingGeneration[]
 
-  @@index([isActive, isRecommended, sortOrder])
+  @@unique([provider, modelId])
+  @@index([provider, isActive, isRecommended, sortOrder])
+  @@map("WaveSpeedProduct")
 }
 
 /**
- * 玩物专区生成任务
+ * 玩物专区生成任务。
+ * provider 冗余存一份：产品事后换绑渠道时，历史任务仍要能指认当初走的是谁。
  */
-model WaveSpeedGeneration {
+model PlaythingGeneration {
   id                 Int       @id @default(autoincrement())
   userId             Int
   productId          Int
+  provider           String    @default("wavespeed")
   prompt             String    @default("")
   params             String    @default("{}")
   externalId         String?
@@ -563,12 +581,13 @@ model WaveSpeedGeneration {
   createdAt          DateTime  @default(now())
   updatedAt          DateTime  @updatedAt
 
-  user      User              @relation(fields: [userId], references: [id])
-  product   WaveSpeedProduct  @relation(fields: [productId], references: [id])
-  wsAccount WaveSpeedAccount? @relation(fields: [wsAccountId], references: [id], onDelete: SetNull)
+  user      User             @relation(fields: [userId], references: [id])
+  product   PlaythingProduct @relation(fields: [productId], references: [id])
+  wsAccount ProviderAccount? @relation(fields: [wsAccountId], references: [id], onDelete: SetNull)
 
   @@index([userId, createdAt])
   @@index([externalId])
   @@index([status, createdAt])
   @@index([mediaExpiresAt, mediaDeletedAt])
+  @@map("WaveSpeedGeneration")
 }

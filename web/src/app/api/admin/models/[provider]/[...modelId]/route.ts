@@ -3,8 +3,8 @@ import { z } from "zod";
 import { db } from "@/lib/db";
 import { requireRole } from "@/lib/auth";
 import { logAdminAction } from "@/lib/admin-audit";
-import { estimatePricing } from "@/lib/wavespeed";
 import { MAX_TAGS_PER_MODEL, MAX_TAG_LENGTH, normalizeTags, parseTags } from "@/lib/model-tags";
+import { estimateUnitPrice, PROVIDER_META, toProviderId } from "@/lib/providers";
 
 const patchSchema = z
   .object({
@@ -25,11 +25,16 @@ function decodeModelId(parts: string[]): string {
   return parts.map((p) => decodeURIComponent(p)).join("/");
 }
 
-export async function PATCH(req: Request, ctx: { params: Promise<{ modelId: string[] }> }) {
+export async function PATCH(
+  req: Request,
+  ctx: { params: Promise<{ provider: string; modelId: string[] }> }
+) {
   const admin = await requireRole("admin");
   if (!admin) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
-  const modelId = decodeModelId((await ctx.params).modelId || []);
+  const routeParams = await ctx.params;
+  const provider = toProviderId(routeParams.provider);
+  const modelId = decodeModelId(routeParams.modelId || []);
   if (!modelId) return NextResponse.json({ error: "Invalid model id" }, { status: 400 });
 
   const body = await req.json().catch(() => null);
@@ -39,14 +44,27 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ modelId: stri
   }
   const d = parsed.data;
 
-  const catalog = await db.waveSpeedCatalogModel.findUnique({
-    where: { modelId },
+  const catalog = await db.providerCatalogModel.findUnique({
+    where: { provider_modelId: { provider, modelId } },
     include: { product: true },
   });
-  if (!catalog) return NextResponse.json({ error: "模型不在本地库，请先同步" }, { status: 404 });
+  if (!catalog) {
+    return NextResponse.json(
+      { error: `模型不在本地 ${PROVIDER_META[provider].label} 库，请先同步` },
+      { status: 404 }
+    );
+  }
 
   if (d.refresh_pricing) {
-    const price = await estimatePricing(modelId, { prompt: "test" });
+    if (!PROVIDER_META[provider].supportsDynamicPricing) {
+      return NextResponse.json(
+        {
+          error: `${PROVIDER_META[provider].label} 没有实时估价接口，成本以目录基准价 $${catalog.basePriceUsd} 为准`,
+        },
+        { status: 400 }
+      );
+    }
+    const price = await estimateUnitPrice(provider, modelId, { prompt: "test" });
     return NextResponse.json({
       ok: true,
       last_unit_price_usd: price,
@@ -58,7 +76,7 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ modelId: stri
   let tags = parseTags(catalog.tags);
   if (d.tags !== undefined) {
     tags = normalizeTags(d.tags);
-    await db.waveSpeedCatalogModel.update({
+    await db.providerCatalogModel.update({
       where: { id: catalog.id },
       data: { tags: JSON.stringify(tags) },
     });
@@ -71,8 +89,9 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ modelId: stri
       const defaultCost =
         d.credit_cost ??
         Math.max(1, Math.ceil((catalog.basePriceUsd || 0.05) * 100));
-      product = await db.waveSpeedProduct.create({
+      product = await db.playthingProduct.create({
         data: {
+          provider,
           modelId,
           catalogModelId: catalog.id,
           label: d.label || catalog.name || modelId,
@@ -83,7 +102,7 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ modelId: stri
         },
       });
     } else if (d.shelf === true || d.is_active === true) {
-      product = await db.waveSpeedProduct.update({
+      product = await db.playthingProduct.update({
         where: { id: product.id },
         data: { isActive: true },
       });
@@ -91,7 +110,7 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ modelId: stri
   }
 
   if (d.shelf === false && product) {
-    product = await db.waveSpeedProduct.update({
+    product = await db.playthingProduct.update({
       where: { id: product.id },
       data: { isActive: false },
     });
@@ -122,7 +141,7 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ modelId: stri
       d.label !== undefined ||
       paramPolicyStr !== undefined)
   ) {
-    product = await db.waveSpeedProduct.update({
+    product = await db.playthingProduct.update({
       where: { id: product.id },
       data: {
         ...(d.is_active !== undefined ? { isActive: d.is_active } : {}),
@@ -145,7 +164,12 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ modelId: stri
     return NextResponse.json({ error: "请先上架该模型" }, { status: 400 });
   }
 
-  await logAdminAction(admin.id, "wavespeed_product", { type: "WaveSpeedProduct", id: modelId }, d);
+  await logAdminAction(
+    admin.id,
+    "plaything_product",
+    { type: "PlaythingProduct", id: `${provider}:${modelId}` },
+    d
+  );
 
   return NextResponse.json({
     ok: true,
@@ -153,21 +177,23 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ modelId: stri
     product: product
       ? {
           id: product.id,
+          provider: toProviderId(product.provider),
           model_id: product.modelId,
           label: product.label,
           credit_cost: product.creditCost,
           is_active: product.isActive,
           is_recommended: product.isRecommended,
           sort_order: product.sortOrder,
-          param_policy: product.paramPolicy ? safeJson(product.paramPolicy) : null,
+          param_policy: safeJson(product.paramPolicy),
         }
       : null,
   });
 }
 
-function safeJson(s: string): unknown {
+function safeJson(s: string | null): unknown {
+  if (!s) return null;
   try {
-    return JSON.parse(s);
+    return JSON.parse(s) as unknown;
   } catch {
     return null;
   }

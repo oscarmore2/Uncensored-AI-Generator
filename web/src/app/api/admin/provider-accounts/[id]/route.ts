@@ -2,32 +2,9 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { requireRole } from "@/lib/auth";
-import { encryptSecret, decryptSecret, maskSecret } from "@/lib/secret-crypto";
-import { testWaveSpeedKey } from "@/lib/wavespeed";
-
-function accountOut(a: {
-  id: number;
-  label: string;
-  apiKeyEnc: string;
-  isActive: boolean;
-  createdAt: Date;
-  updatedAt: Date;
-}) {
-  let keyMask = "****";
-  try {
-    keyMask = maskSecret(decryptSecret(a.apiKeyEnc));
-  } catch {
-    keyMask = "(解密失败)";
-  }
-  return {
-    id: a.id,
-    label: a.label,
-    api_key_mask: keyMask,
-    is_active: a.isActive,
-    created_at: a.createdAt,
-    updated_at: a.updatedAt,
-  };
-}
+import { encryptSecret } from "@/lib/secret-crypto";
+import { getAdapter, toProviderId } from "@/lib/providers";
+import { providerAccountOut } from "@/lib/provider-account-serialize";
 
 const patchSchema = z
   .object({
@@ -52,12 +29,13 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
   }
   const data = parsed.data;
 
-  const existing = await db.waveSpeedAccount.findUnique({ where: { id: accountId } });
+  const existing = await db.providerAccount.findUnique({ where: { id: accountId } });
   if (!existing) return NextResponse.json({ error: "账户不存在" }, { status: 404 });
+  const provider = toProviderId(existing.provider);
 
   if (data.api_key && data.verify !== false) {
     try {
-      await testWaveSpeedKey(data.api_key);
+      await getAdapter(provider).testKey(data.api_key);
     } catch (err) {
       return NextResponse.json(
         { error: `无法验证 Key: ${err instanceof Error ? err.message : err}` },
@@ -68,9 +46,13 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
 
   const account = await db.$transaction(async (tx) => {
     if (data.activate === true) {
-      await tx.waveSpeedAccount.updateMany({ where: { isActive: true }, data: { isActive: false } });
+      // 只停用同一渠道的其它账户：激活 Atlas 不该把 WaveSpeed 也关掉
+      await tx.providerAccount.updateMany({
+        where: { provider, isActive: true },
+        data: { isActive: false },
+      });
     }
-    return tx.waveSpeedAccount.update({
+    return tx.providerAccount.update({
       where: { id: accountId },
       data: {
         ...(data.label !== undefined ? { label: data.label } : {}),
@@ -81,7 +63,7 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
     });
   });
 
-  return NextResponse.json({ ok: true, account: accountOut(account) });
+  return NextResponse.json({ ok: true, account: providerAccountOut(account) });
 }
 
 export async function DELETE(_req: Request, ctx: { params: Promise<{ id: string }> }) {
@@ -91,9 +73,9 @@ export async function DELETE(_req: Request, ctx: { params: Promise<{ id: string 
   const accountId = Number((await ctx.params).id);
   if (!Number.isInteger(accountId)) return NextResponse.json({ error: "Invalid id" }, { status: 400 });
 
-  const existing = await db.waveSpeedAccount.findUnique({ where: { id: accountId } });
+  const existing = await db.providerAccount.findUnique({ where: { id: accountId } });
   if (!existing) return NextResponse.json({ error: "账户不存在" }, { status: 404 });
 
-  await db.waveSpeedAccount.delete({ where: { id: accountId } });
+  await db.providerAccount.delete({ where: { id: accountId } });
   return NextResponse.json({ ok: true });
 }

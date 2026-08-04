@@ -36,7 +36,7 @@ export type CleanupResult = {
   failed: number;
   uploads: number;
   mainGenerations: number;
-  waveSpeedGenerations: number;
+  playthingGenerations: number;
 };
 
 export async function runMediaCleanup(opts?: {
@@ -79,7 +79,7 @@ export async function runMediaCleanup(opts?: {
         orderBy: { mediaExpiresAt: "asc" },
         take: limit,
       }),
-      db.waveSpeedGeneration.findMany({
+      db.playthingGeneration.findMany({
         where: {
           mediaExpiresAt: { lte: now },
           mediaDeletedAt: null,
@@ -109,7 +109,7 @@ export async function runMediaCleanup(opts?: {
           lastError: null,
         });
         if (asset.sourceId) {
-          const generation = await db.waveSpeedGeneration.findUnique({
+          const generation = await db.playthingGeneration.findUnique({
             where: { id: asset.sourceId },
             select: { params: true },
           });
@@ -120,7 +120,7 @@ export async function runMediaCleanup(opts?: {
             } catch {
               params = {};
             }
-            await db.waveSpeedGeneration.update({
+            await db.playthingGeneration.update({
               where: { id: asset.sourceId },
               data: { params: JSON.stringify(scrubUrl(params, asset.url)) },
             });
@@ -175,7 +175,7 @@ export async function runMediaCleanup(opts?: {
         for (const url of parseUrls(generation.resultUrls)) {
           await deleteManagedMediaUrl(url);
         }
-        await db.waveSpeedGeneration.update({
+        await db.playthingGeneration.update({
           where: { id: generation.id },
           data: { resultUrls: null, mediaDeletedAt: now },
         });
@@ -196,7 +196,7 @@ export async function runMediaCleanup(opts?: {
       failed,
       uploads: uploadsDeleted,
       mainGenerations: mainDeleted,
-      waveSpeedGenerations: waveDeleted,
+      playthingGenerations: waveDeleted,
     };
     await db.mediaCleanupRun.update({
       where: { id: run.id },
