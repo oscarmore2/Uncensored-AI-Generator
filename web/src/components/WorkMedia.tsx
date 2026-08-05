@@ -31,7 +31,16 @@ function isVideoSrc(mode: string | undefined, src: string): boolean {
 }
 
 /** 3D 模型渲染 + 加载诊断（贴图失败时给出可见提示，而不是静默显示白模） */
-function ModelStage({ src, className }: { src: string; className?: string }) {
+function ModelStage({
+  src,
+  poster,
+  className,
+}: {
+  src: string;
+  /** 上游随模型附带的预览图：模型加载完成前显示，加载失败时留在原地当兜底 */
+  poster?: string | null;
+  className?: string;
+}) {
   const { ref, error } = useModelViewerDiagnostics(src);
   useEffect(() => {
     void import("@google/model-viewer");
@@ -60,6 +69,7 @@ function ModelStage({ src, className }: { src: string; className?: string }) {
       <model-viewer
         ref={ref as any}
         src={src}
+        poster={poster ?? undefined}
         alt="3D 模型预览"
         camera-controls
         auto-rotate
@@ -71,7 +81,9 @@ function ModelStage({ src, className }: { src: string; className?: string }) {
           <i className="fas fa-triangle-exclamation mt-0.5 shrink-0" />
           <span>
             模型部分资源加载失败，可能导致贴图缺失或显示异常
-            <span className="mt-0.5 block break-all font-mono text-amber-800/70">{error}</span>
+            {/* 这行原来是 amber-800/70 压在 amber-950 上，深琥珀叠深琥珀几乎看不见，
+                而它恰恰是唯一能说明「哪个资源、为什么失败」的线索 */}
+            <span className="mt-0.5 block break-all font-mono text-amber-200/75">{error}</span>
           </span>
         </div>
       )}
@@ -113,6 +125,11 @@ export function WorkMedia({
 
   if (kind === "3d") {
     if (asThumbnail) {
+      // 有上游预览图就直接当封面，比一个立方体图标有用得多
+      if (poster) {
+        // eslint-disable-next-line @next/next/no-img-element
+        return <img src={poster} alt={alt} loading="lazy" className={className} />;
+      }
       return (
         <div className={`flex flex-col items-center justify-center gap-2 bg-stage ${className ?? ""}`}>
           <i className="fas fa-cube text-3xl text-white/45" />
@@ -120,7 +137,7 @@ export function WorkMedia({
         </div>
       );
     }
-    return <ModelStage src={src} className={className} />;
+    return <ModelStage src={src} poster={poster} className={className} />;
   }
 
   if (kind === "audio") {
@@ -184,12 +201,26 @@ export function AdaptiveMedia({
   const mediaClass =
     "max-w-full max-h-[min(70vh,720px)] w-auto h-auto object-contain rounded-2xl bg-stage";
 
-  // 3D 要占满容器宽度（model-viewer 自己撑高度），object-contain 那套对它没意义
-  const primary = list.find((u) => workMediaKind(mode, u) === "3d");
-  if (primary && list.length === 1) {
+  /*
+   * 3D 要占满容器宽度（model-viewer 自己撑高度），object-contain 那套对它没意义。
+   *
+   * 模型文件只按扩展名认，不能用 workMediaKind：3D 模式下任何认不出后缀的 URL
+   * 都会被 mode 兜底成 "3d"，上游那张预览图也会被当成模型。
+   *
+   * 上游的 3D 输出是「模型 + 预览图」两条 URL（Atlas 的 schema 原话是
+   * primary mesh first, preview image appended last）。预览图是这个模型的封面，
+   * 不是第二件作品——原先要求 list.length === 1 才走模型渲染，两条 URL 会退化成
+   * 平铺网格：左边一个模型窗口，右边一张「该 3D 格式无法在浏览器预览」的下载卡。
+   */
+  const modelUrl = list.find((u) => MODEL_EXT.test(u));
+  if (modelUrl) {
+    const poster =
+      list.find(
+        (u) => u !== modelUrl && !MODEL_EXT.test(u) && workMediaKind(undefined, u) !== "video"
+      ) ?? null;
     return (
       <div className={`rounded-2xl bg-stage p-3 sm:p-5 ${className ?? ""}`}>
-        <WorkMedia mode={mode} src={primary} alt="生成结果" />
+        <WorkMedia mode={mode} src={modelUrl} poster={poster} alt="生成结果" />
       </div>
     );
   }

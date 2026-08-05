@@ -58,7 +58,8 @@ export function Model3DViewer({
                 <i className="fas fa-triangle-exclamation mt-0.5 shrink-0" />
                 <span>
                   {t("threeDLoadWarning")}
-                  <span className="block text-amber-800/70 font-mono mt-0.5 break-all">{loadError}</span>
+                  {/* 深琥珀压在深琥珀底上几乎看不见，而这行是唯一能指认失败资源的线索 */}
+                  <span className="block text-amber-200/75 font-mono mt-0.5 break-all">{loadError}</span>
                 </span>
               </div>
             )}
