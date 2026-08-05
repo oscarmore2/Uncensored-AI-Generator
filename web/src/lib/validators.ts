@@ -14,6 +14,15 @@ import {
   UNDRESS_UNDERWEAR_COLORS,
 } from "./undress-options";
 
+/**
+ * 单个字段最多几条媒体 URL。
+ * 目前两家上游声明过的最大值是 14（nano-banana-2/edit 的 images），
+ * 留一倍余量，免得上游哪天加到 16 就得跟着改代码。
+ */
+const MEDIA_URLS_PER_FIELD_LIMIT = 32;
+/** 一次生成全部字段加起来最多几条 */
+const MEDIA_URLS_TOTAL_LIMIT = 64;
+
 export const credentialsSchema = z.object({
   username: z
     .string()
@@ -63,18 +72,32 @@ export const generationSchema = z
     /**
      * 按上游字段名分组的输入媒体（已上传到对象存储的公开 URL）。
      * 例：{ video_url: ["https://…mp4"], audio: ["https://…mp3"] }
-     * 对口型要视频+音频、换脸要视频+人脸图、reference-to-video 要 1~4 张图，
-     * 单个 image_base64 表达不了，所以新链路一律走这里；
+     * 对口型要视频+音频、换脸要视频+人脸图、reference-to-video 有的收 9 张、
+     * 有的收 14 张，单个 image_base64 表达不了，所以新链路一律走这里；
      * image_base64 / image_url 仅为兼容旧草稿与「套用」保留。
+     *
+     * 这里的上限只是一道防滥用的粗闸——真正的每模型上限是 schema 自己的
+     * maxItems（扫过两家上游：3/9/10/14 都有，写死一个数必然拦错模型），
+     * 由 buildProviderInputs 按绑定模型裁剪。
      */
     media: z
       .record(
         z.string().max(64),
-        z.array(z.string().url().max(2000)).max(8)
+        z.array(z.string().url().max(2000)).max(MEDIA_URLS_PER_FIELD_LIMIT)
       )
       .optional(),
   })
   .superRefine((v, ctx) => {
+    // 字段数不设限的话，几百个字段 × 每个 32 条会让下游那次 findMany({ url: { in } })
+    // 拖成一条巨大的 IN 查询；总量卡死比逐字段卡死管用
+    const totalMedia = Object.values(v.media ?? {}).reduce((n, list) => n + list.length, 0);
+    if (totalMedia > MEDIA_URLS_TOTAL_LIMIT) {
+      ctx.addIssue({
+        code: "custom",
+        message: `输入媒体最多 ${MEDIA_URLS_TOTAL_LIMIT} 个`,
+        path: ["media"],
+      });
+    }
     const meta = MODE_META[v.mode];
     if (meta.needsPrompt && !v.prompt?.trim()) {
       ctx.addIssue({ code: "custom", message: "请输入提示词", path: ["prompt"] });

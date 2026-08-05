@@ -23,7 +23,7 @@ type PropSpec = {
   items?: { type?: string };
   maximum?: number;
   minimum?: number;
-  /** 数组字段的元素数量约束，如 reference_images 的 1~4 张 */
+  /** 数组字段的元素数量约束，如 seedance reference_images 的 1~9 张 */
   minItems?: number;
   maxItems?: number;
   description?: string;
@@ -105,10 +105,24 @@ const NON_MEDIA_FIELD =
   /^(num|n|count|batch|enable|output|input)_|_(count|size|num|format|quality|strength|scale|mode|type|weight|ratio|id|ids|index|name|names|prompt)$|^(num_images|image_size|image_format|output_format|enable_base64_output)$/i;
 
 /**
+ * 数组字段没声明 maxItems 时收几个。
+ *
+ * 扫过 Atlas 全量 452 个模型：85 个数组型媒体字段里 79 个自带 maxItems，
+ * 取值 1/2/3/4/5/6/7/8/9/10/14 都有（最多的是 10，其次 3），
+ * 真正等于 4 的只有 10 个——所以兜底值必须偏宽松，宁可让上游报一次超限，
+ * 也不能把一个能收 14 张的模型锁死在 4 张。
+ *
+ * 剩下 6 个没声明的，描述里有时会写「Up to 3 videos」，但**不能**去解析它：
+ * wan-2.7/reference-to-video 的 images 写的是「Up to 1 image per subject」，
+ * 按字面解析会得到 1，直接把这个模型废掉。描述原样显示给用户即可。
+ */
+const MEDIA_ARRAY_FALLBACK_MAX = 10;
+
+/**
  * 从 schema 推导这个模型需要哪些输入媒体。
  *
  * 不按模式硬编码：对口型要「视频 + 音频」、换脸要「视频 + 人脸图」、
- * reference-to-video 要「1~4 张图」，写死在模式上表达不了，
+ * reference-to-video 有的收 9 张有的收 14 张，写死在模式上表达不了，
  * 换绑一个模型就全错。字段名、类型、数量上限全部以模型自己的 schema 为准。
  */
 export function resolveMediaInputs(schema: RequestSchema | null): MediaInput[] {
@@ -135,7 +149,7 @@ export function resolveMediaInputs(schema: RequestSchema | null): MediaInput[] {
       kind,
       isArray,
       minItems: declaredMin ?? (required ? 1 : 0),
-      maxItems: declaredMax ?? (isArray ? 4 : 1),
+      maxItems: declaredMax ?? (isArray ? MEDIA_ARRAY_FALLBACK_MAX : 1),
       description: typeof spec.description === "string" ? spec.description.slice(0, 400) : "",
     });
   }
@@ -486,12 +500,17 @@ export function buildProviderInputs(args: BuildInputsArgs): BuiltInputs {
   // 按字段提交的媒体：字段名已经是模型 schema 里的真名，直接写回，
   // 只按 schema 决定该字段收数组还是单值
   const mediaFields = args.mediaFields ?? {};
+  const mediaLimits = new Map(resolveMediaInputs(schema).map((m) => [m.field, m.maxItems]));
   for (const [field, urls] of Object.entries(mediaFields)) {
     if (!urls.length) continue;
     const spec = schema?.properties[field];
     // schema 里没有这个字段说明档位换绑过模型，硬塞会被上游 400
     if (schema && !spec) continue;
-    inputs[field] = spec?.type === "array" ? urls : urls[0];
+    // 超出该模型上限的部分在这里截掉：扣点发生在提交之前，
+    // 让上游 400 再退款等于白跑一趟。前端换绑模型时也是同样的裁剪规则。
+    const limit = mediaLimits.get(field) ?? urls.length;
+    const kept = urls.slice(0, Math.max(1, limit));
+    inputs[field] = spec?.type === "array" ? kept : kept[0];
   }
 
   // 旧的单图链路：字段名靠 schema 猜

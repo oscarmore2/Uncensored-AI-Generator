@@ -8,7 +8,8 @@ import type { MediaInputSpec } from "@/lib/client";
  *
  * 有几个位、每个位收什么类型、最多几个，全部由绑定模型的 schema 决定：
  * 对口型是「视频 + 音频」、换脸是「视频 + 人脸图」、
- * reference-to-video 是「1~4 张图」——写死在模式上表达不了这些差异。
+ * reference-to-video 各家差得更远：vidu 收 4 张、seedance 收 9 张、
+ * nano-banana-2/edit 收 14 张——写死在模式上表达不了这些差异。
  *
  * 上传立即发生（拿到 URL 才算数），提交时只带 URL：
  * 视频动辄几十 MB，塞进 JSON body 既超限也会把二进制压进任务参数。
