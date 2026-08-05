@@ -5,19 +5,18 @@ import { api, ApiError } from "@/lib/client";
 import { useBodyScrollLock } from "@/lib/use-body-scroll-lock";
 import { ProviderTabs } from "@/components/admin/ProviderTabs";
 import { DEFAULT_PROVIDER, PROVIDER_META, toProviderId, type ProviderId } from "@/lib/providers/meta";
+import { GROUP_META, MODE_GROUPS, MODE_LIST, modesInGroup } from "@/lib/generation-modes";
 
 type Tab = "products" | "mappings" | "packages" | "tiers" | "plans";
 
-const MODES = ["txt2img", "img2img", "imgedit", "undress", "txt2vid", "img2vid"] as const;
-
-const MODE_LABEL: Record<string, string> = {
-  txt2img: "文字生图",
-  img2img: "图片生图",
-  imgedit: "图片编辑",
-  undress: "脱衣模式",
-  txt2vid: "文字生视频",
-  img2vid: "图片生视频",
-};
+/**
+ * 模式清单一律从 generation-modes 派生，不在这里另抄一份。
+ * 之前这里写死了 6 个模式，加完视频转视频与 3D 之后档位行照常入库，
+ * 但管理端渲染不出来——没有绑定入口，新模式在 /make 上永远是「档位配置中」。
+ */
+const MODE_LABEL: Record<string, string> = Object.fromEntries(
+  MODE_LIST.map((m) => [m.mode, m.fallbackLabel])
+);
 
 const TIER_LABEL: Record<string, string> = { low: "低档", mid: "中档", high: "高档" };
 
@@ -335,12 +334,20 @@ export default function AdminPricingPage() {
             </div>
           </div>
 
-          {MODES.map((mode) => (
-            <div key={mode} className="space-y-2">
-              <h2 className="text-sm font-semibold text-ink-muted">
-                {MODE_LABEL[mode]} <span className="text-ink-subtle font-mono">{mode}</span>
-              </h2>
-              {(productsByMode[mode] ?? []).map((p) => (
+          {/* 十三个模式平铺成一堵墙，按 /make 那边同一套分组切开更好找 */}
+          {MODE_GROUPS.map((group) => (
+            <div key={group} className="space-y-2">
+              <div className="flex items-center gap-2 pt-3 text-[11px] font-semibold uppercase tracking-wider text-ink-subtle">
+                <i className={`fas ${GROUP_META[group].icon}`} />
+                {GROUP_META[group].fallbackLabel}
+                <span className="h-px flex-1 bg-line" />
+              </div>
+              {modesInGroup(group).map(({ mode }) => (
+                <div key={mode} className="space-y-2">
+                  <h2 className="text-sm font-semibold text-ink-muted">
+                    {MODE_LABEL[mode]} <span className="text-ink-subtle font-mono">{mode}</span>
+                  </h2>
+                  {(productsByMode[mode] ?? []).map((p) => (
                 <div
                   key={p.id}
                   className={`glass rounded-2xl p-4 flex flex-wrap items-center gap-3 ${
@@ -496,6 +503,8 @@ export default function AdminPricingPage() {
                   >
                     {p.is_active ? "停用" : "启用"}
                   </button>
+                </div>
+                  ))}
                 </div>
               ))}
             </div>
@@ -713,9 +722,9 @@ export default function AdminPricingPage() {
               onChange={(e) => setMappingForm({ ...mappingForm, mode: e.target.value })}
               className="bg-surface border border-line rounded-xl px-3 py-2 text-sm"
             >
-              {MODES.map((m) => (
-                <option key={m} value={m}>
-                  {m}
+              {MODE_LIST.map((m) => (
+                <option key={m.mode} value={m.mode}>
+                  {m.fallbackLabel}（{m.mode}）
                 </option>
               ))}
             </select>

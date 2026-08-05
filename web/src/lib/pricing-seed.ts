@@ -50,6 +50,14 @@ async function seedPricingOnce(): Promise<void> {
  * 已存在的行一概不动——管理端改过的价格 / 倍率 / 标签 / 上下架 / 模型绑定全部保留。
  */
 async function ensureGenerationProducts(): Promise<void> {
+  // 视频转视频与 3D 那批蓝图的 refLabel 误带了「对标」前缀，
+  // 而管理端渲染时自己会加一遍，于是显示成「对标 对标 ZC 换脸」。
+  // refLabel 不是管理端可编辑字段，纠正它不影响「只补不改」对人工修改的保护。
+  await db.$executeRawUnsafe(
+    `UPDATE "GenerationProduct" SET "refLabel" = regexp_replace("refLabel", '^对标\\s*', '')
+     WHERE "refLabel" LIKE '对标%'`
+  );
+
   const existing = await db.generationProduct.findMany({
     select: { mode: true, tier: true, spicy: true },
   });

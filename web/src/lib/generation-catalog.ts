@@ -398,7 +398,7 @@ const VID2VID_SPECS: Vid2VidSpec[] = [
     label: "视频重绘",
     descriptions: ["按提示词重绘画面风格 · 快速档", "保真度与稳定性更高 · 成片档"],
     refCredits: [8, 12],
-    refLabel: "对标 ZC 视频编辑",
+    refLabel: "ZC 视频编辑",
     sortOrder: 10,
     unitSeconds: 5,
     candidates: [
@@ -411,7 +411,7 @@ const VID2VID_SPECS: Vid2VidSpec[] = [
     label: "视频超分",
     descriptions: ["提升清晰度 · 成本最低", "更强修复与细节重建"],
     refCredits: [1, 3],
-    refLabel: "对标 ZC 视频增强",
+    refLabel: "ZC 视频增强",
     sortOrder: 20,
     unitSeconds: 5,
     candidates: [
@@ -424,7 +424,7 @@ const VID2VID_SPECS: Vid2VidSpec[] = [
     label: "视频续写",
     descriptions: ["在原片后续接一段 · 快速档", "衔接更自然 · 成片档"],
     refCredits: [3, 6],
-    refLabel: "对标 ZC 视频续写",
+    refLabel: "ZC 视频续写",
     sortOrder: 30,
     unitSeconds: 5,
     candidates: [
@@ -437,7 +437,7 @@ const VID2VID_SPECS: Vid2VidSpec[] = [
     label: "视频对口型",
     descriptions: ["按音频对口型 · 快速档", "口型与表情更贴 · 成片档"],
     refCredits: [2, 20],
-    refLabel: "对标 ZC 对口型",
+    refLabel: "ZC 对口型",
     sortOrder: 40,
     unitSeconds: 5,
     candidates: [
@@ -450,7 +450,7 @@ const VID2VID_SPECS: Vid2VidSpec[] = [
     label: "视频换脸",
     descriptions: ["把指定人脸换进视频 · 快速档", "更稳定的贴合与光影"],
     refCredits: [10, 18],
-    refLabel: "对标 ZC 换脸",
+    refLabel: "ZC 换脸",
     sortOrder: 50,
     unitSeconds: 5,
     candidates: [
@@ -499,7 +499,7 @@ function threeDSkus(): SkuBlueprint[] {
       label: "文字生 3D · 标准",
       description: "一句话生成可旋转的 3D 模型 · 支持导出 GLB",
       refCredits: 4,
-      refLabel: "对标 ZC 3D 生成",
+      refLabel: "ZC 3D 生成",
       unitSeconds: 0,
       sortOrder: 10,
       isDefault: true,
@@ -518,7 +518,7 @@ function threeDSkus(): SkuBlueprint[] {
       label: "图片生 3D · 标准",
       description: "上传一张图，生成可旋转的 3D 模型 · 支持导出 GLB",
       refCredits: 5,
-      refLabel: "对标 ZC 3D 生成",
+      refLabel: "ZC 3D 生成",
       unitSeconds: 0,
       sortOrder: 10,
       isDefault: true,
