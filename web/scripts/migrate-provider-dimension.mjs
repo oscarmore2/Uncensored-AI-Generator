@@ -46,14 +46,36 @@ async function tableExists(name) {
   return Boolean(r[0]?.e);
 }
 
-async function assertNoDuplicates(table) {
+async function columnExists(table, column) {
   const r = await db.$queryRawUnsafe(
-    `SELECT COUNT(*)::int AS n FROM (SELECT "modelId" FROM "${table}" GROUP BY 1 HAVING COUNT(*) > 1) d`
+    `SELECT COUNT(*)::int AS n FROM information_schema.columns
+     WHERE table_name = '${table}' AND column_name = '${column}'`
+  );
+  return Number(r[0]?.n ?? 0) > 0;
+}
+
+/**
+ * 确认待建的复合唯一索引不会撞。
+ *
+ * 必须按索引真正的键 (provider, modelId) 查重，不能只看 modelId：
+ * 迁移跑过一轮、Atlas 全库同步之后，两家共有的模型（nano-banana、
+ * seedream、wan 这些）会让 modelId 大量重复——那是设计如此，
+ * 只查 modelId 会把一个已经迁移完成的库判成脏库，卡死后续所有部署。
+ * 首次迁移时 provider 列还不存在，那时全表隐含同一个渠道，退回查 modelId 等价。
+ */
+async function assertNoDuplicates(table) {
+  const hasProvider = await columnExists(table, "provider");
+  const key = hasProvider ? `"provider", "modelId"` : `"modelId"`;
+  const r = await db.$queryRawUnsafe(
+    `SELECT COUNT(*)::int AS n FROM (
+       SELECT ${key} FROM "${table}" GROUP BY ${key} HAVING COUNT(*) > 1
+     ) d`
   );
   const n = Number(r[0]?.n ?? 0);
   if (n > 0) {
     throw new Error(
-      `${table} 有 ${n} 个重复 modelId，复合唯一索引建不起来。请先人工处理重复行再重跑。`
+      `${table} 有 ${n} 组重复的 ${hasProvider ? "(provider, modelId)" : "modelId"}，` +
+        `复合唯一索引建不起来。请先人工处理重复行再重跑。`
     );
   }
 }
