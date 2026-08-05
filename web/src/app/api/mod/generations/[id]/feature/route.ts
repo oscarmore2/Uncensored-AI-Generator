@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { requireRole } from "@/lib/auth";
 import { publicWorkModOut } from "@/lib/serialize";
 import { mirrorRemoteUrls } from "@/lib/oss";
+import { splitModelResult } from "@/lib/plaything-categories";
 
 /** 曝光：把用户作品复制为 PublicWork 独立副本，并标记原作品 visibility=featured */
 export async function POST(_req: Request, ctx: { params: Promise<{ id: string }> }) {
@@ -34,8 +35,16 @@ export async function POST(_req: Request, ctx: { params: Promise<{ id: string }>
   const urls = JSON.parse(gen.resultUrls) as string[];
   if (!urls.length) return NextResponse.json({ error: "作品没有可用的结果 URL" }, { status: 400 });
 
-  const [mediaUrl] = await mirrorRemoteUrls(urls, `public/gen-${genId}`);
-  const storedUrl = mediaUrl ?? urls[0];
+  const mirrored = await mirrorRemoteUrls(urls, `public/gen-${genId}`);
+  const stored = mirrored.length ? mirrored : urls;
+  /*
+   * 3D 的结果是「模型 + 预览图」两条，原先主体和封面都取第一条，
+   * 于是公共库里模型当了封面——探索页只能显示一个立方体占位，
+   * 而那张预览图已经上传到 OSS 却再没人引用，等于留了个孤儿文件。
+   */
+  const { model, poster } = splitModelResult(stored);
+  const storedUrl = model ?? stored[0];
+  const thumbStored = poster ?? storedUrl;
 
   const [work] = await db.$transaction([
     db.publicWork.create({
@@ -45,7 +54,7 @@ export async function POST(_req: Request, ctx: { params: Promise<{ id: string }>
         negativePrompt: gen.negativePrompt,
         params: gen.params,
         mediaUrl: storedUrl,
-        thumbUrl: storedUrl,
+        thumbUrl: thumbStored,
         source: "user_feature",
         sourceGenerationId: gen.id,
         sourceJobId: gen.providerJobId,

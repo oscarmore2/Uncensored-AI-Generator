@@ -128,6 +128,39 @@ export function detectMediaKindFromUrl(
   return fallback;
 }
 
+/** 浏览器能直接渲染的模型格式；其余只能给下载入口 */
+const VIEWABLE_MODEL_FILE = /\.(glb|gltf)(\?|#|$)/i;
+const MODEL_FILE = /\.(glb|gltf|obj|fbx|usdz|ply|stl)(\?|#|$)/i;
+
+/**
+ * 把一组 3D 结果拆成「模型本体 + 封面图」。
+ *
+ * 上游的 3D 输出不止一条：Atlas 的 schema 写的是
+ * primary mesh first, preview image appended last。那张预览图是模型的封面，
+ * 不是第二件作品——两者都取第一条的话，卡片上只会剩一个立方体占位。
+ *
+ * 关键是封面不能再走 mode 兜底：预览图常常没有扩展名，
+ * 而 txt23d / img23d 的兜底是 "3d"，于是预览图自己也被认成模型，
+ * 找封面就永远返回空。这里显式排除模型文件，剩下的就是封面。
+ */
+export function splitModelResult(urls: string[] | null | undefined): {
+  model: string | null;
+  poster: string | null;
+} {
+  const list = (urls ?? []).filter((u) => typeof u === "string" && u);
+  const model =
+    list.find((u) => VIEWABLE_MODEL_FILE.test(u)) ?? list.find((u) => MODEL_FILE.test(u)) ?? null;
+  if (!model) return { model: null, poster: null };
+  const poster =
+    list.find(
+      (u) =>
+        u !== model &&
+        !MODEL_FILE.test(u) &&
+        !/\.(mp4|webm|mov|m4v|mp3|wav|ogg|m4a|flac|aac)(\?|#|$)/i.test(u)
+    ) ?? null;
+  return { model, poster };
+}
+
 export function detectMediaKindFromUrls(
   urls: string[] | null | undefined,
   fallback: PlaythingMediaKind

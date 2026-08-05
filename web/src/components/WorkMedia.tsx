@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { useModelViewerDiagnostics } from "@/lib/model-viewer-diagnostics";
+import { splitModelResult } from "@/lib/plaything-categories";
 
 type WorkMediaKind = "image" | "video" | "3d" | "audio";
 
@@ -212,15 +213,11 @@ export function AdaptiveMedia({
    * 不是第二件作品——原先要求 list.length === 1 才走模型渲染，两条 URL 会退化成
    * 平铺网格：左边一个模型窗口，右边一张「该 3D 格式无法在浏览器预览」的下载卡。
    */
-  const modelUrl = list.find((u) => MODEL_EXT.test(u));
+  const { model: modelUrl, poster: modelPoster } = splitModelResult(list);
   if (modelUrl) {
-    const poster =
-      list.find(
-        (u) => u !== modelUrl && !MODEL_EXT.test(u) && workMediaKind(undefined, u) !== "video"
-      ) ?? null;
     return (
       <div className={`rounded-2xl bg-stage p-3 sm:p-5 ${className ?? ""}`}>
-        <WorkMedia mode={mode} src={modelUrl} poster={poster} alt="生成结果" />
+        <WorkMedia mode={mode} src={modelUrl} poster={modelPoster} alt="生成结果" />
       </div>
     );
   }

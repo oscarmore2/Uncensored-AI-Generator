@@ -1,7 +1,11 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { detectMediaKindFromUrls, type PlaythingMediaKind } from "@/lib/plaything-categories";
+import {
+  detectMediaKindFromUrls,
+  splitModelResult,
+  type PlaythingMediaKind,
+} from "@/lib/plaything-categories";
 import { useModelViewerDiagnostics } from "@/lib/model-viewer-diagnostics";
 import { useBodyScrollLock } from "@/lib/use-body-scroll-lock";
 
@@ -55,6 +59,10 @@ export function primaryMediaKind(
 
 /** 结果里的静态图，可直接当视频/3D 的封面 */
 function posterUrlOf(urls: string[] | null | undefined, mode?: string): string | null {
+  // 3D 结果里的封面要单独认：预览图往往没有扩展名，按 mode 兜底会被当成模型，
+  // 于是这里永远找不到封面，卡片只能退回立方体图标
+  const { poster } = splitModelResult(urls);
+  if (poster) return poster;
   return urls?.find((u) => mediaKindOf([u], mode) === "image") ?? null;
 }
 
