@@ -243,7 +243,8 @@
     },
     "reuse": "套用参数",
     "retry": "重新生成",
-    "reuseFailed": "读取原任务参数失败"
+    "reuseFailed": "读取原任务参数失败",
+    "openFullPage": "整页查看"
   },
   "Make": {
     "title": "创作中心",

@@ -1,10 +1,34 @@
 import type { Metadata } from "next";
+import { Inter, Noto_Sans_SC } from "next/font/google";
 import { CookieConsent } from "@/components/CookieConsent";
 import { NextIntlClientProvider } from "next-intl";
 import { getLocale, getMessages, getTranslations } from "next-intl/server";
 import { env } from "@/lib/env";
 import { absoluteUrl, SITE_NAME, SITE_URL } from "@/lib/site";
 import "./globals.css";
+
+/*
+ * 字体自托管，不从 fonts.googleapis.com 拉。
+ *
+ * 原来 globals.css 里是一条 @import，但本站 CSP 的 style-src 没放行 googleapis，
+ * 于是这两个字体从上线起就没生效过，一直在用系统字体兜底。
+ * 而单纯把域名加进 CSP 并不解决问题：fonts.googleapis.com 在中国大陆打不开，
+ * 放行只会把「立即失败」换成「阻塞渲染直到超时」，对主力用户更糟。
+ * next/font 在构建期下载并从本站提供，CSP 不用改，大陆也能拿到。
+ */
+const inter = Inter({
+  subsets: ["latin"],
+  weight: ["300", "400", "500", "600", "700", "900"],
+  variable: "--font-inter",
+  display: "swap",
+});
+
+const notoSansSC = Noto_Sans_SC({
+  subsets: ["latin"],
+  weight: ["300", "400", "500", "700"],
+  variable: "--font-noto-sans-sc",
+  display: "swap",
+});
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("Metadata");
@@ -69,7 +93,7 @@ export async function generateMetadata(): Promise<Metadata> {
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const [locale, messages] = await Promise.all([getLocale(), getMessages()]);
   return (
-    <html lang={locale}>
+    <html lang={locale} className={`${inter.variable} ${notoSansSC.variable}`}>
       <head>
         <link
           rel="stylesheet"

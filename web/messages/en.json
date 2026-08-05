@@ -243,7 +243,8 @@
     },
     "reuse": "Reuse settings",
     "retry": "Retry task",
-    "reuseFailed": "Could not load the original settings"
+    "reuseFailed": "Could not load the original settings",
+    "openFullPage": "Open full page"
   },
   "Make": {
     "title": "Create",

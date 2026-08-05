@@ -166,17 +166,10 @@ export function MediaThumb({
   if (kind === "3d" || kind === "audio") {
     const meta = KIND_META[kind];
     if (poster) {
-      return (
-        <>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={poster} alt={alt ?? "作品"} className={className} loading="lazy" />
-          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-            <span className="w-11 h-11 rounded-full bg-black/55 backdrop-blur flex items-center justify-center text-white">
-              <i className={`fas ${meta.icon} text-white text-sm`} />
-            </span>
-          </div>
-        </>
-      );
+      // 有封面就只显示封面：类型已经由右下角的 MediaKindBadge 说明了，
+      // 再压一个居中大圆标只会挡住画面正中的主体（3D 预览图恰恰主体居中）
+      // eslint-disable-next-line @next/next/no-img-element
+      return <img src={poster} alt={alt ?? "作品"} className={className} loading="lazy" />;
     }
     return (
       <div className="w-full h-full flex flex-col items-center justify-center gap-2 bg-gradient-to-br from-white/[0.06] to-transparent">

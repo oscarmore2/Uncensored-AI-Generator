@@ -131,6 +131,9 @@ export function detectMediaKindFromUrl(
 /** 浏览器能直接渲染的模型格式；其余只能给下载入口 */
 const VIEWABLE_MODEL_FILE = /\.(glb|gltf)(\?|#|$)/i;
 const MODEL_FILE = /\.(glb|gltf|obj|fbx|usdz|ply|stl)(\?|#|$)/i;
+const IMAGE_FILE = /\.(png|jpe?g|gif|webp|bmp|avif)(\?|#|$)/i;
+/** 有没有扩展名——没有的多半是 CDN 直链，可以当图片赌一把；有扩展名却不是图片的就别赌 */
+const HAS_EXT = /\.[a-z0-9]{2,5}(\?|#|$)/i;
 
 /**
  * 把一组 3D 结果拆成「模型本体 + 封面图」。
@@ -141,7 +144,11 @@ const MODEL_FILE = /\.(glb|gltf|obj|fbx|usdz|ply|stl)(\?|#|$)/i;
  *
  * 关键是封面不能再走 mode 兜底：预览图常常没有扩展名，
  * 而 txt23d / img23d 的兜底是 "3d"，于是预览图自己也被认成模型，
- * 找封面就永远返回空。这里显式排除模型文件，剩下的就是封面。
+ * 找封面就永远返回空。
+ *
+ * 也不能简单取「第一个非模型文件」：实测 hunyuan3d 的输出是三条
+ * —— mesh.glb、源文件包 .zip、512×512 预览 .png，
+ * 按顺序取会抓到那个 zip，卡片上就是一张破图。明确是图片的优先。
  */
 export function splitModelResult(urls: string[] | null | undefined): {
   model: string | null;
@@ -151,14 +158,22 @@ export function splitModelResult(urls: string[] | null | undefined): {
   const model =
     list.find((u) => VIEWABLE_MODEL_FILE.test(u)) ?? list.find((u) => MODEL_FILE.test(u)) ?? null;
   if (!model) return { model: null, poster: null };
+
+  const rest = list.filter((u) => u !== model && !MODEL_FILE.test(u));
   const poster =
-    list.find(
-      (u) =>
-        u !== model &&
-        !MODEL_FILE.test(u) &&
-        !/\.(mp4|webm|mov|m4v|mp3|wav|ogg|m4a|flac|aac)(\?|#|$)/i.test(u)
-    ) ?? null;
+    rest.find((u) => IMAGE_FILE.test(u)) ?? // 明确的图片
+    rest.find((u) => !HAS_EXT.test(u)) ?? // 其次赌无扩展名的 CDN 直链
+    null; // .zip / .bin 这类有扩展名但不是图片的，一律不当封面
   return { model, poster };
+}
+
+/**
+ * 下载文件名用的后缀，以实际 URL 为准。
+ * 不能按 mode 猜：那样 3D 会被存成 .jpg，用户下下来打不开。
+ */
+export function downloadExtOf(url: string | null | undefined, fallback = "jpg"): string {
+  const m = (url ?? "").split(/[?#]/)[0].match(/\.([a-zA-Z0-9]{2,5})$/);
+  return m ? m[1].toLowerCase() : fallback;
 }
 
 export function detectMediaKindFromUrls(
