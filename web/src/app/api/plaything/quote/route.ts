@@ -5,25 +5,13 @@ import { getCurrentUser } from "@/lib/auth";
 import { hasPlaythingAccess } from "@/lib/plaything-access";
 import { inputsForPricing, resolvePlaythingQuoteDynamic } from "@/lib/plaything-runner";
 import { assertTierValue, type SchemaProp } from "@/lib/plaything-param-policy";
+import { parseModelProperties } from "@/lib/model-schema";
 import { rateLimit } from "@/lib/rate-limit";
 
 const schema = z.object({
   product_id: z.number().int().positive(),
   inputs: z.record(z.string(), z.unknown()).optional().default({}),
 });
-
-function parseProps(raw: string | null | undefined): Record<string, SchemaProp> {
-  if (!raw) return {};
-  try {
-    const root = JSON.parse(raw) as {
-      api_schemas?: Array<{ request_schema?: { properties?: Record<string, SchemaProp> } }>;
-      properties?: Record<string, SchemaProp>;
-    };
-    return root.api_schemas?.[0]?.request_schema?.properties || root.properties || {};
-  } catch {
-    return {};
-  }
-}
 
 export async function POST(req: Request) {
   const user = await getCurrentUser();
@@ -48,7 +36,7 @@ export async function POST(req: Request) {
   });
   if (!product) return NextResponse.json({ error: "模型未上架" }, { status: 404 });
 
-  const properties = parseProps(product.paramSchemaOverride || product.catalogModel?.apiSchema);
+  const properties = parseModelProperties<SchemaProp>(product.paramSchemaOverride || product.catalogModel?.apiSchema);
   for (const [k, v] of Object.entries(parsed.data.inputs)) {
     const err = assertTierValue(k, v, properties, product.paramPolicy);
     if (err) return NextResponse.json({ error: err }, { status: 400 });

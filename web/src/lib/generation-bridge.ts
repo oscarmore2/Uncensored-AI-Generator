@@ -2,6 +2,7 @@ import "server-only";
 import type { GenerationProduct, ModeParamMapping } from "@prisma/client";
 import { MODE_META, isGenerationMode } from "./generation-modes";
 import { parseSizeValue, type ParamControl } from "./param-controls";
+import { parseModelSchema } from "./model-schema";
 
 /**
  * 站内参数 → 上游 input 的桥接层。
@@ -30,36 +31,7 @@ export type RequestSchema = {
 };
 
 export function parseRequestSchema(apiSchema: string | null | undefined): RequestSchema | null {
-  if (!apiSchema) return null;
-  try {
-    type Node = { properties?: Record<string, PropSpec>; required?: string[] };
-    const root = JSON.parse(apiSchema) as {
-      api_schemas?: Array<{ request_schema?: Node }>;
-      request_schema?: Node;
-      components?: { schemas?: Record<string, Node | undefined> };
-      properties?: Record<string, PropSpec>;
-      required?: string[];
-    };
-    const rs =
-      root.api_schemas?.[0]?.request_schema ??
-      root.request_schema ??
-      // Atlas：OpenAPI 文档，请求体固定叫 Input
-      root.components?.schemas?.Input ??
-      (root.properties ? { properties: root.properties, required: root.required } : null);
-    if (!rs?.properties) return null;
-    return {
-      // model 是 Atlas 的路由字段而非生成参数，留着会被当成可调参数暴露给用户，
-      // 提交时也由适配器权威写入，这里直接摘掉
-      properties: Object.fromEntries(
-        Object.entries(rs.properties).filter(([k]) => k !== "model")
-      ),
-      required: Array.isArray(rs.required)
-        ? rs.required.filter((r) => typeof r === "string" && r !== "model")
-        : [],
-    };
-  } catch {
-    return null;
-  }
+  return parseModelSchema<PropSpec>(apiSchema);
 }
 
 /**

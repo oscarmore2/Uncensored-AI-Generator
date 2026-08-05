@@ -9,6 +9,7 @@ import {
 } from "@/lib/plaything-categories";
 import { parseParamPolicy, resolveParamControls, type SchemaProp } from "@/lib/plaything-param-policy";
 import { PROVIDER_LIST, toProviderId } from "@/lib/providers/meta";
+import { parseModelSchema } from "@/lib/model-schema";
 
 export async function GET() {
   const user = await getCurrentUser();
@@ -36,7 +37,7 @@ export async function GET() {
   const mapped = products.map((p) => {
     const type = p.catalogModel?.type ?? "";
     const { category, media_kind } = resolvePlaythingCategory(type, p.modelId);
-    const param_schema = parseSchema(p.paramSchemaOverride || p.catalogModel?.apiSchema);
+    const param_schema = parseModelSchema(p.paramSchemaOverride || p.catalogModel?.apiSchema);
     const properties = (param_schema?.properties ?? {}) as Record<string, SchemaProp>;
     const controls = resolveParamControls(properties, p.paramPolicy);
     return {
@@ -91,33 +92,4 @@ export async function GET() {
     })),
     products: mapped,
   });
-}
-
-function parseSchema(raw: string | null | undefined): {
-  properties: Record<string, unknown>;
-  required: string[];
-} | null {
-  if (!raw) return null;
-  try {
-    const root = JSON.parse(raw) as {
-      api_schemas?: Array<{
-        request_schema?: { properties?: Record<string, unknown>; required?: string[] };
-      }>;
-      properties?: Record<string, unknown>;
-      required?: string[];
-    };
-    const schema = root.api_schemas?.[0]?.request_schema;
-    if (schema?.properties) {
-      return {
-        properties: schema.properties,
-        required: schema.required ?? [],
-      };
-    }
-    if (root.properties) {
-      return { properties: root.properties, required: root.required ?? [] };
-    }
-  } catch {
-    /* ignore */
-  }
-  return null;
 }

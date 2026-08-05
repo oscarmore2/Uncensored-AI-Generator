@@ -10,6 +10,7 @@ import {
 } from "@/lib/plaything-runner";
 import { playthingGenerationOut, playthingProductInclude } from "@/lib/plaything-serialize";
 import { assertTierValue, type SchemaProp } from "@/lib/plaything-param-policy";
+import { parseModelProperties } from "@/lib/model-schema";
 import { rateLimit } from "@/lib/rate-limit";
 import { isAdultContent, isBlocked, reviewPrompt, safetyAudit } from "@/lib/content-safety";
 import { hasAdultAccess } from "@/lib/adult-access";
@@ -21,19 +22,6 @@ const createSchema = z.object({
   prompt: z.string().max(8000).optional().default(""),
   params: z.record(z.string(), z.unknown()).optional().default({}),
 });
-
-function parseProps(raw: string | null | undefined): Record<string, SchemaProp> {
-  if (!raw) return {};
-  try {
-    const root = JSON.parse(raw) as {
-      api_schemas?: Array<{ request_schema?: { properties?: Record<string, SchemaProp> } }>;
-      properties?: Record<string, SchemaProp>;
-    };
-    return root.api_schemas?.[0]?.request_schema?.properties || root.properties || {};
-  } catch {
-    return {};
-  }
-}
 
 function assertMediaUrls(params: Record<string, unknown>): string | null {
   for (const [k, v] of Object.entries(params)) {
@@ -98,7 +86,7 @@ export async function POST(req: Request) {
     }
   }
 
-  const properties = parseProps(product.paramSchemaOverride || product.catalogModel?.apiSchema);
+  const properties = parseModelProperties<SchemaProp>(product.paramSchemaOverride || product.catalogModel?.apiSchema);
   for (const [k, v] of Object.entries(params)) {
     const err = assertTierValue(k, v, properties, product.paramPolicy);
     if (err) return NextResponse.json({ error: err }, { status: 400 });

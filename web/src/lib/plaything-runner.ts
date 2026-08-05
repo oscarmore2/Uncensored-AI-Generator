@@ -4,6 +4,7 @@ import { env } from "./env";
 import { mirrorRemoteUrls } from "./oss";
 import { sendTelegram } from "./telegram";
 import { ensureDefaultPlaythingProducts } from "./wavespeed-seed";
+import { parseModelDefaults } from "./model-schema";
 import {
   estimateUnitPrice,
   getAdapter,
@@ -32,7 +33,7 @@ export function buildPlaythingInputs(
   params: Record<string, unknown>
 ): Record<string, unknown> {
   const schemaJson = product.paramSchemaOverride || product.catalogModel?.apiSchema;
-  const defaults = extractSchemaDefaults(schemaJson);
+  const defaults = parseModelDefaults(schemaJson);
   const inputs: Record<string, unknown> = { ...defaults, ...params };
   if (prompt.trim()) {
     inputs.prompt = prompt.trim();
@@ -41,31 +42,6 @@ export function buildPlaythingInputs(
   delete inputs._local;
   delete inputs.image_base64;
   return inputs;
-}
-
-function extractSchemaDefaults(schemaJson: string | null | undefined): Record<string, unknown> {
-  if (!schemaJson) return {};
-  try {
-    const root = JSON.parse(schemaJson) as {
-      api_schemas?: Array<{ request_schema?: { properties?: Record<string, { default?: unknown }> } }>;
-      components?: { schemas?: { Input?: { properties?: Record<string, { default?: unknown }> } } };
-      properties?: Record<string, { default?: unknown }>;
-    };
-    const props =
-      root.api_schemas?.[0]?.request_schema?.properties ||
-      root.components?.schemas?.Input?.properties ||
-      root.properties ||
-      {};
-    const out: Record<string, unknown> = {};
-    for (const [k, v] of Object.entries(props)) {
-      if (v && typeof v === "object" && "default" in v && v.default !== undefined) {
-        out[k] = v.default;
-      }
-    }
-    return out;
-  } catch {
-    return {};
-  }
 }
 
 /** 本站报价：仅用 creditCost，永不应用 VIP 折扣 */
