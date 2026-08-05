@@ -60,14 +60,31 @@ export const generationSchema = z
      * 服务端会校验该 URL 确属本人且未被清理，不能拿来指向任意外部地址。
      */
     image_url: z.string().url().max(2000).nullable().optional(),
+    /**
+     * 按上游字段名分组的输入媒体（已上传到对象存储的公开 URL）。
+     * 例：{ video_url: ["https://…mp4"], audio: ["https://…mp3"] }
+     * 对口型要视频+音频、换脸要视频+人脸图、reference-to-video 要 1~4 张图，
+     * 单个 image_base64 表达不了，所以新链路一律走这里；
+     * image_base64 / image_url 仅为兼容旧草稿与「套用」保留。
+     */
+    media: z
+      .record(
+        z.string().max(64),
+        z.array(z.string().url().max(2000)).max(8)
+      )
+      .optional(),
   })
   .superRefine((v, ctx) => {
     const meta = MODE_META[v.mode];
     if (meta.needsPrompt && !v.prompt?.trim()) {
       ctx.addIssue({ code: "custom", message: "请输入提示词", path: ["prompt"] });
     }
-    if (meta.needsImage && !v.image_base64 && !v.image_url) {
-      ctx.addIssue({ code: "custom", message: "该模式需要上传参考图片", path: ["image_base64"] });
+    const hasMedia =
+      Boolean(v.image_base64) ||
+      Boolean(v.image_url) ||
+      Object.values(v.media ?? {}).some((list) => list.length > 0);
+    if (meta.needsMedia && !hasMedia) {
+      ctx.addIssue({ code: "custom", message: "该模式需要上传输入媒体", path: ["media"] });
     }
     if (!meta.tiers.includes(v.tier)) {
       ctx.addIssue({ code: "custom", message: "该模式不支持所选档位", path: ["tier"] });

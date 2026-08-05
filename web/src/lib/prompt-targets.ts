@@ -11,7 +11,9 @@ export type PromptFormatId =
   | "image_i2i"
   | "image_edit"
   | "video_t2v"
-  | "video_i2v";
+  | "video_i2v"
+  | "video_edit"
+  | "model_3d";
 
 export type PromptTarget = {
   mode: GenerationMode;
@@ -30,6 +32,15 @@ const FORMAT_BY_MODE: Record<GenerationMode, PromptFormatId> = {
   undress: "image_edit",
   txt2vid: "video_t2v",
   img2vid: "video_i2v",
+  // 视频转视频一族：写作要求都是「在已有片子上改什么」，共用一套规则；
+  // 超分 / 对口型 / 换脸本身不需要提示词，走到这里也只是兜底
+  vid2vid: "video_edit",
+  vidupscale: "video_edit",
+  vidextend: "video_edit",
+  lipsync: "video_edit",
+  faceswap: "video_edit",
+  txt23d: "model_3d",
+  img23d: "model_3d",
 };
 
 export function resolvePromptTarget(
@@ -79,6 +90,19 @@ export const PROMPT_FORMAT_RULES: Record<PromptFormatId, string[]> = {
     "基于参考图写「动态指令」：表情/肢体/环境微动 + 轻微运镜",
     "保持人物与场景身份一致，不要改成另一个人",
     "动作幅度适中，匹配 5 秒短视频",
+    "不要输出 negative_prompt",
+  ],
+  video_edit: [
+    "目标字段: prompt（视频转视频，指令式）",
+    "写成一句明确的改动指令：改什么 + 保留什么",
+    "已有片子的主体身份、镜头调度默认全部保留，只描述要变的部分",
+    "不要重新描述整段视频内容，不要输出 negative_prompt",
+  ],
+  model_3d: [
+    "目标字段: prompt（生成 3D 模型）",
+    "描述单个物体：形态 → 材质 → 配色 → 风格，不要写场景与背景",
+    "强调结构完整、闭合网格，避免透明/镂空/极细长的悬空结构",
+    "不要写运镜、光影与画质词——它们对网格生成没有作用",
     "不要输出 negative_prompt",
   ],
 };

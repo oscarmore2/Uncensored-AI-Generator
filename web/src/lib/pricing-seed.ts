@@ -98,18 +98,23 @@ async function ensureGenerationProducts(): Promise<void> {
 
 /* ---------------------------------------------------- 模型绑定解析 */
 
-function matchBlueprint(
-  bp: SkuBlueprint,
-  catalog: Array<{ modelId: string; name: string; type: string }>
-): string | null {
+type CatalogRow = { provider: string; modelId: string; name: string; type: string };
+
+/**
+ * 命中的模型要连同它所属的渠道一起返回。
+ * 3D 与视频转视频的候选全是 Atlas 的 model_id，只写回 modelId 而把
+ * provider 留在默认的 wavespeed，任务提交时就会发给错误的上游。
+ */
+function matchBlueprint(bp: SkuBlueprint, catalog: CatalogRow[]): CatalogRow | null {
   for (const id of bp.modelCandidates) {
-    if (catalog.some((c) => c.modelId === id)) return id;
+    const hit = catalog.find((c) => c.modelId === id);
+    if (hit) return hit;
   }
   if (bp.modelPattern) {
     const hit = catalog.find(
       (c) => bp.modelPattern!.test(c.modelId) || bp.modelPattern!.test(c.name)
     );
-    if (hit) return hit.modelId;
+    if (hit) return hit;
   }
   return null;
 }
@@ -121,7 +126,7 @@ function matchBlueprint(
  */
 export async function rebindGenerationProducts(): Promise<{ bound: number; unbound: number }> {
   const catalog = await db.providerCatalogModel.findMany({
-    select: { modelId: true, name: true, type: true },
+    select: { provider: true, modelId: true, name: true, type: true },
   });
 
   let bound = 0;
@@ -136,11 +141,11 @@ export async function rebindGenerationProducts(): Promise<{ bound: number; unbou
       bound += 1;
       continue;
     }
-    const modelId = matchBlueprint(bp, catalog);
-    if (modelId) {
+    const hit = matchBlueprint(bp, catalog);
+    if (hit) {
       await db.generationProduct.update({
         where: { id: product.id },
-        data: { providerModelId: modelId },
+        data: { providerModelId: hit.modelId, provider: hit.provider },
       });
       bound += 1;
     } else {

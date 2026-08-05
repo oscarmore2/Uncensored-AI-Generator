@@ -13,7 +13,7 @@ import {
   toProviderId,
 } from "./providers";
 import { buildProviderInputs, inputsForPricing, parseRequestSchema } from "./generation-bridge";
-import { modeNeedsImage } from "./generation-modes";
+import { modeNeedsMedia } from "./generation-modes";
 import { isAdultContent, reviewImages, safetyAudit } from "./content-safety";
 import {
   applySourceAspectToInputs,
@@ -130,10 +130,15 @@ export async function processGeneration(genId: number): Promise<void> {
     }
     await db.generation.update({ where: { id: genId }, data: { provider } });
 
+    // 按字段提交的输入媒体（新链路）：对口型的视频+音频、换脸的视频+人脸图、
+    // reference-to-video 的多张图，都在这里
+    const mediaFields = parseMediaFields(params.media_fields);
+
     let imageUrl: string | null = null;
     let sourceDims: { width: number; height: number } | null = null;
-    if (modeNeedsImage(gen.mode)) {
-      // 套用历史任务时没有 base64，直接复用上次那张已在对象存储里的图
+    if (modeNeedsMedia(gen.mode) && Object.keys(mediaFields).length === 0) {
+      // 旧链路：单张 base64 参考图。套用历史任务时没有 base64，
+      // 直接复用上次那张已在对象存储里的图
       const reused =
         Array.isArray(params.input_urls) && typeof params.input_urls[0] === "string"
           ? (params.input_urls[0] as string)
@@ -142,7 +147,7 @@ export async function processGeneration(genId: number): Promise<void> {
         typeof params.image_base64 === "string" && params.image_base64
           ? params.image_base64
           : reused;
-      if (!raw) throw new Error("该模式需要上传参考图片");
+      if (!raw) throw new Error("该模式需要上传输入媒体");
       if (gen.mode === "undress") {
         sourceDims = readImageDimsFromDataUrl(raw);
       }
@@ -151,13 +156,22 @@ export async function processGeneration(genId: number): Promise<void> {
       imageUrl = await materializeReferenceImage(gen.userId, genId, raw, inputName);
       // 落进 params：收尾会删掉 base64，届时只剩这个 URL 能指认当初用的是哪张图
       await persistInputUrls(genId, [imageUrl]);
+    }
 
-      // 参考图必须过闸再提交上游：文本分类器看不见像素，
-      // 一张真人未成年照片配无害提示词能穿透纯文本审查
-      const refSafety = await reviewImages({ urls: [imageUrl], prompt: gen.prompt });
+    // 输入媒体必须过闸再提交上游：文本分类器看不见像素，
+    // 一张真人未成年照片配无害提示词能穿透纯文本审查。
+    // 只送图片去审查——视频/音频这两类分类器看不了，硬送只会白等一轮超时
+    const reviewUrls = [
+      ...(imageUrl ? [imageUrl] : []),
+      ...Object.entries(mediaFields)
+        .filter(([field]) => !/(video|audio|voice|speech|music)/i.test(field))
+        .flatMap(([, urls]) => urls),
+    ];
+    if (reviewUrls.length) {
+      const refSafety = await reviewImages({ urls: reviewUrls, prompt: gen.prompt });
       if (refSafety.level === "prohibited") {
-        await recordSafetyBlock(genId, gen.userId, "参考图", refSafety);
-        await failAndRefund(genId, `参考图内容审查未通过：${refSafety.reason}`);
+        await recordSafetyBlock(genId, gen.userId, "输入媒体", refSafety);
+        await failAndRefund(genId, `输入媒体内容审查未通过：${refSafety.reason}`);
         return;
       }
       if (isAdultContent(refSafety) && !gen.isAdult) {
@@ -182,6 +196,7 @@ export async function processGeneration(genId: number): Promise<void> {
       prompt: gen.prompt,
       negativePrompt: gen.negativePrompt ?? "",
       imageUrl,
+      mediaFields,
       uiParams: params,
       mappings,
     });
@@ -303,6 +318,20 @@ export async function processGeneration(genId: number): Promise<void> {
   } finally {
     await stripReferenceImage(genId);
   }
+}
+
+/** 解析 params.media_fields：{ 字段名: [URL, …] }，形状不对的一律丢掉 */
+function parseMediaFields(raw: unknown): Record<string, string[]> {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return {};
+  const out: Record<string, string[]> = {};
+  for (const [field, value] of Object.entries(raw as Record<string, unknown>)) {
+    if (!Array.isArray(value)) continue;
+    const urls = value.filter(
+      (u): u is string => typeof u === "string" && /^https?:\/\//i.test(u)
+    );
+    if (urls.length) out[field] = urls;
+  }
+  return out;
 }
 
 /** 解析已存的审查留痕，损坏时按空处理 */

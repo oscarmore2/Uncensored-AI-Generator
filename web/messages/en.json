@@ -211,7 +211,15 @@
       "txt2vid": "Text to video",
       "img2img": "Image to image",
       "img2vid": "Image to video",
-      "undress": "Undress"
+      "undress": "Undress",
+      "imgedit": "Image edit",
+      "vid2vid": "Video restyle",
+      "vidupscale": "Video upscale",
+      "vidextend": "Video extend",
+      "lipsync": "Lip sync",
+      "faceswap": "Face swap",
+      "txt23d": "Text to 3D",
+      "img23d": "Image to 3D"
     }
   },
   "History": {
@@ -301,7 +309,14 @@
       "img2img": "Image to image",
       "img2vid": "Image to video",
       "imgedit": "Image editing",
-      "undress": "Undress"
+      "undress": "Undress",
+      "vid2vid": "Video restyle",
+      "vidupscale": "Video upscale",
+      "vidextend": "Video extend",
+      "lipsync": "Lip sync",
+      "faceswap": "Face swap",
+      "txt23d": "Text to 3D",
+      "img23d": "Image to 3D"
     },
     "genderLabel": "Subject gender",
     "genders": {
@@ -427,7 +442,15 @@
     "insufficientShort": "Not enough credits",
     "applied": "Settings applied",
     "reuseLoadFailed": "Could not load the original settings",
-    "reusedImage": "Reusing the previous reference image"
+    "reusedImage": "Reusing the previous reference image",
+    "groups": {
+      "image": "Image",
+      "video": "Video",
+      "vid2vid": "Video to video",
+      "3d": "3D"
+    },
+    "missingMedia": "Upload the input media this mode requires first",
+    "mediaSlotsUnavailable": "The model bound to this tier declares no input media field. Ask an administrator to rebind it."
   },
   "Profile": {
     "title": "Profile",

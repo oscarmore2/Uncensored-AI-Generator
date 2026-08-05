@@ -95,6 +95,21 @@ export type CatalogProduct = {
   sort_order: number;
   /** 该档位绑定的模型实际支持的参数控件（按模型 schema 归一，不含模型信息） */
   params?: ParamControl[];
+  /**
+   * 该档位需要哪些输入媒体（字段名 / 图或视频或音频 / 数量上限），
+   * 同样按绑定模型的 schema 算出来，不含模型信息。
+   */
+  media_inputs?: MediaInputSpec[];
+};
+
+/** 一个输入媒体位：对口型会有「视频 + 音频」两位，换脸是「视频 + 人脸图」 */
+export type MediaInputSpec = {
+  field: string;
+  kind: "image" | "video" | "audio";
+  isArray: boolean;
+  minItems: number;
+  maxItems: number;
+  description: string;
 };
 
 export type CatalogMapping = {

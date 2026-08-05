@@ -23,6 +23,10 @@ type PropSpec = {
   items?: { type?: string };
   maximum?: number;
   minimum?: number;
+  /** 数组字段的元素数量约束，如 reference_images 的 1~4 张 */
+  minItems?: number;
+  maxItems?: number;
+  description?: string;
 };
 
 export type RequestSchema = {
@@ -55,6 +59,90 @@ const IMAGE_FIELD_ORDER = [
 ];
 
 export type ImageField = { name: string; isArray: boolean };
+
+/* ------------------------------------------------ 输入媒体字段的通用识别 */
+
+export type MediaInputKind = "image" | "video" | "audio";
+
+export type MediaInput = {
+  /** 上游字段名，提交时按它写回 inputs */
+  field: string;
+  kind: MediaInputKind;
+  isArray: boolean;
+  /** 最少几个（0 = 选填） */
+  minItems: number;
+  /** 最多几个 */
+  maxItems: number;
+  /** 该字段在 schema 里的说明，直接当表单提示 */
+  description: string;
+};
+
+/**
+ * 字段名 → 媒体类型。
+ *
+ * 这几条正则不是拍脑袋写的：把两家上游全部模型的 schema 扫了一遍，
+ * 真正收文件的字段名一共就这些——
+ *   图  image / images / image_url(s) / end_image / last_image /
+ *       reference_image(_url)s / sref / refers / mask_image / face_image
+ *   视频 video / videos / video_url / reference_videos
+ *   音频 audio / audios / audio_url / reference_audios
+ * 顺序很重要：reference_videos 里带 reference，先判图片就会认成图。
+ */
+function mediaKindOfField(name: string): MediaInputKind | null {
+  const n = name.toLowerCase();
+  if (/(audios?|voices?|speech|music|sound)(_url)?s?$|^(audio|voice)_/.test(n)) return "audio";
+  if (/(videos?|footage|clips?)(_url)?s?$|^video_/.test(n)) return "video";
+  if (/image|photo|picture|frame|face|mask|reference|^sref$|^refers$/.test(n)) return "image";
+  return null;
+}
+
+/**
+ * 名字里带媒体词但其实不是文件的字段。
+ * num_images 是张数、image_size 是尺寸、voice_ids 是音色编号，
+ * 全都会被上面的正则误伤，必须先排掉。
+ */
+const NON_MEDIA_FIELD =
+  /^(num|n|count|batch|enable|output|input)_|_(count|size|num|format|quality|strength|scale|mode|type|weight|ratio|id|ids|index|name|names|prompt)$|^(num_images|image_size|image_format|output_format|enable_base64_output)$/i;
+
+/**
+ * 从 schema 推导这个模型需要哪些输入媒体。
+ *
+ * 不按模式硬编码：对口型要「视频 + 音频」、换脸要「视频 + 人脸图」、
+ * reference-to-video 要「1~4 张图」，写死在模式上表达不了，
+ * 换绑一个模型就全错。字段名、类型、数量上限全部以模型自己的 schema 为准。
+ */
+export function resolveMediaInputs(schema: RequestSchema | null): MediaInput[] {
+  if (!schema) return [];
+  const out: MediaInput[] = [];
+
+  for (const [name, spec] of Object.entries(schema.properties)) {
+    if (NON_MEDIA_FIELD.test(name)) continue;
+    const kind = mediaKindOfField(name);
+    if (!kind) continue;
+
+    const isArray = spec.type === "array";
+    // 非数组且非字符串（如 number 的 mask_strength）不是文件字段
+    if (!isArray && spec.type && spec.type !== "string") continue;
+    // 有枚举的字符串是选项而不是上传字段
+    if (Array.isArray(spec.enum) && spec.enum.length > 0) continue;
+
+    const required = schema.required.includes(name);
+    const declaredMin = typeof spec.minItems === "number" ? spec.minItems : undefined;
+    const declaredMax = typeof spec.maxItems === "number" ? spec.maxItems : undefined;
+
+    out.push({
+      field: name,
+      kind,
+      isArray,
+      minItems: declaredMin ?? (required ? 1 : 0),
+      maxItems: declaredMax ?? (isArray ? 4 : 1),
+      description: typeof spec.description === "string" ? spec.description.slice(0, 400) : "",
+    });
+  }
+
+  // 必填的排前面，其余保持 schema 顺序：用户先看到不填就交不了的那些
+  return out.sort((a, b) => Number(b.minItems > 0) - Number(a.minItems > 0));
+}
 
 /** 在 schema 里找该模型接收参考图的字段；找不到返回 null */
 export function resolveImageField(schema: RequestSchema | null): ImageField | null {
@@ -346,8 +434,14 @@ export type BuildInputsArgs = {
   apiSchema: string | null;
   prompt: string;
   negativePrompt: string;
-  /** 已上传到对象存储的参考图公开 URL（或 data URI 兜底） */
+  /** 已上传到对象存储的参考图公开 URL（或 data URI 兜底）；旧的单图链路 */
   imageUrl: string | null;
+  /**
+   * 按上游字段名分组的输入媒体，来自 schema 驱动的上传控件。
+   * 有它时优先于 imageUrl：字段名是前端按模型 schema 选出来的，
+   * 比这里再猜一遍准确。
+   */
+  mediaFields?: Record<string, string[]>;
   /** 生成端提交的 UI 参数 */
   uiParams: Record<string, unknown>;
   mappings: ModeParamMapping[];
@@ -389,7 +483,19 @@ export function buildProviderInputs(args: BuildInputsArgs): BuiltInputs {
     delete inputs.negative_prompt;
   }
 
-  if (args.imageUrl) {
+  // 按字段提交的媒体：字段名已经是模型 schema 里的真名，直接写回，
+  // 只按 schema 决定该字段收数组还是单值
+  const mediaFields = args.mediaFields ?? {};
+  for (const [field, urls] of Object.entries(mediaFields)) {
+    if (!urls.length) continue;
+    const spec = schema?.properties[field];
+    // schema 里没有这个字段说明档位换绑过模型，硬塞会被上游 400
+    if (schema && !spec) continue;
+    inputs[field] = spec?.type === "array" ? urls : urls[0];
+  }
+
+  // 旧的单图链路：字段名靠 schema 猜
+  if (args.imageUrl && Object.keys(mediaFields).length === 0) {
     const field = resolveImageField(schema);
     if (field) {
       inputs[field.name] = field.isArray ? [args.imageUrl] : args.imageUrl;

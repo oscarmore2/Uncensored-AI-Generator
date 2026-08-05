@@ -371,6 +371,169 @@ function videoSkus(): SkuBlueprint[] {
   return out;
 }
 
+/* ------------------------------------------- 视频转视频（子 tab 一族） */
+
+/**
+ * 这一族每个子模式都独立绑定模型、独立定价：
+ * 超分几乎不要钱（$0.003），对口型是它的七十倍（$0.22），
+ * 混成一个档位定价必然要么亏要么贵得离谱。
+ * 全部不设 Spicy、不吃 VIP 门槛——任何等级用户都能用。
+ */
+type Vid2VidSpec = {
+  mode: "vid2vid" | "vidupscale" | "vidextend" | "lipsync" | "faceswap";
+  label: string;
+  /** 低档 / 高档的说明 */
+  descriptions: [string, string];
+  /** 低档 / 高档的 ZenCreator 对标点数 */
+  refCredits: [number, number];
+  refLabel: string;
+  sortOrder: number;
+  unitSeconds: number;
+  candidates: [ModelCandidate, ModelCandidate];
+};
+
+const VID2VID_SPECS: Vid2VidSpec[] = [
+  {
+    mode: "vid2vid",
+    label: "视频重绘",
+    descriptions: ["按提示词重绘画面风格 · 快速档", "保真度与稳定性更高 · 成片档"],
+    refCredits: [8, 12],
+    refLabel: "对标 ZC 视频编辑",
+    sortOrder: 10,
+    unitSeconds: 5,
+    candidates: [
+      { ids: ["alibaba/wan-2.6/video-to-video"], pattern: /video-to-video|video-edit/i },
+      { ids: ["alibaba/wan-2.7/video-edit"], pattern: /video-edit|video-to-video/i },
+    ],
+  },
+  {
+    mode: "vidupscale",
+    label: "视频超分",
+    descriptions: ["提升清晰度 · 成本最低", "更强修复与细节重建"],
+    refCredits: [1, 3],
+    refLabel: "对标 ZC 视频增强",
+    sortOrder: 20,
+    unitSeconds: 5,
+    candidates: [
+      { ids: ["byteplus/video/upscaler", "tencent/video/upscaler"], pattern: /upscal/i },
+      { ids: ["atlascloud/video-upscaler"], pattern: /upscal/i },
+    ],
+  },
+  {
+    mode: "vidextend",
+    label: "视频续写",
+    descriptions: ["在原片后续接一段 · 快速档", "衔接更自然 · 成片档"],
+    refCredits: [3, 6],
+    refLabel: "对标 ZC 视频续写",
+    sortOrder: 30,
+    unitSeconds: 5,
+    candidates: [
+      { ids: ["ltx-2.3-quality/extend-video", "pixverse/v6/video-extend"], pattern: /extend/i },
+      { ids: ["pixverse/v6/video-extend"], pattern: /extend/i },
+    ],
+  },
+  {
+    mode: "lipsync",
+    label: "视频对口型",
+    descriptions: ["按音频对口型 · 快速档", "口型与表情更贴 · 成片档"],
+    refCredits: [2, 20],
+    refLabel: "对标 ZC 对口型",
+    sortOrder: 40,
+    unitSeconds: 5,
+    candidates: [
+      { ids: ["veed/lipsync"], pattern: /lipsync|lip-sync/i },
+      { ids: ["sync/lipsync-v3"], pattern: /lipsync|lip-sync/i },
+    ],
+  },
+  {
+    mode: "faceswap",
+    label: "视频换脸",
+    descriptions: ["把指定人脸换进视频 · 快速档", "更稳定的贴合与光影"],
+    refCredits: [10, 18],
+    refLabel: "对标 ZC 换脸",
+    sortOrder: 50,
+    unitSeconds: 5,
+    candidates: [
+      { ids: ["atlascloud/face-swap-video"], pattern: /face.?swap/i },
+      { ids: ["atlascloud/face-swap-video"], pattern: /face.?swap/i },
+    ],
+  },
+];
+
+function vid2vidSkus(): SkuBlueprint[] {
+  const out: SkuBlueprint[] = [];
+  for (const spec of VID2VID_SPECS) {
+    (["low", "high"] as const).forEach((tier, i) => {
+      out.push({
+        mode: spec.mode,
+        tier,
+        spicy: false,
+        label: `${spec.label} · ${tier === "low" ? "标准" : "高级"}`,
+        description: spec.descriptions[i],
+        refCredits: spec.refCredits[i],
+        refLabel: spec.refLabel,
+        unitSeconds: spec.unitSeconds,
+        sortOrder: spec.sortOrder + i,
+        isDefault: tier === "low",
+        defaultInputs: {},
+        modelCandidates: spec.candidates[i].ids,
+        modelPattern: spec.candidates[i].pattern,
+      });
+    });
+  }
+  return out;
+}
+
+/* ------------------------------------------------------------------ 3D */
+
+/**
+ * 3D 单档：全网可选模型总共才 7 个、价格跨度也不大（$0.02–$0.35），
+ * 分档只会多出一堆没模型可绑的空档位。
+ */
+function threeDSkus(): SkuBlueprint[] {
+  return [
+    {
+      mode: "txt23d",
+      tier: "low",
+      spicy: false,
+      label: "文字生 3D · 标准",
+      description: "一句话生成可旋转的 3D 模型 · 支持导出 GLB",
+      refCredits: 4,
+      refLabel: "对标 ZC 3D 生成",
+      unitSeconds: 0,
+      sortOrder: 10,
+      isDefault: true,
+      defaultInputs: {},
+      modelCandidates: [
+        "tencent/hunyuan3d-rapid/text-to-3d",
+        "tencent/hunyuan3d-pro/text-to-3d",
+        "tripo-h3.1/text-to-3d",
+      ],
+      modelPattern: /text-to-3d/i,
+    },
+    {
+      mode: "img23d",
+      tier: "low",
+      spicy: false,
+      label: "图片生 3D · 标准",
+      description: "上传一张图，生成可旋转的 3D 模型 · 支持导出 GLB",
+      refCredits: 5,
+      refLabel: "对标 ZC 3D 生成",
+      unitSeconds: 0,
+      sortOrder: 10,
+      isDefault: true,
+      defaultInputs: {},
+      modelCandidates: [
+        "tencent/hunyuan3d-rapid/image-to-3d",
+        "tencent/hunyuan3d-pro/image-to-3d",
+        "tripo-h3.1/image-to-3d",
+        "bytedance/seed3d-v2.0/image-to-3d",
+      ],
+      modelPattern: /image-to-3d/i,
+    },
+  ];
+}
+
 export function skuBlueprints(): SkuBlueprint[] {
-  return [...imageSkus(), ...videoSkus()];
+  return [...imageSkus(), ...videoSkus(), ...vid2vidSkus(), ...threeDSkus()];
 }

@@ -17,7 +17,7 @@ import {
   type GenerationTier,
 } from "./generation-modes";
 import { ZC_STARTER_USD_PER_CREDIT, effectiveMultiplierBps } from "./generation-catalog";
-import { parseRequestSchema, supportedParams } from "./generation-bridge";
+import { parseRequestSchema, resolveMediaInputs, supportedParams } from "./generation-bridge";
 
 export { ensurePricingSeeded } from "./pricing-seed";
 
@@ -206,23 +206,30 @@ export async function listActiveCatalog(opts?: { vipActive?: boolean }) {
   // 按绑定模型的 schema 算出每个档位真正可用的参数。
   // 只回传 uiKey 与可选值，不含模型信息，生成端依旧无从得知底层模型。
   const bound = products.filter((p) => p.providerModelId.trim() !== "");
+  // 按「渠道 + model_id」取 schema。只按 model_id 查会串味：
+  // alibaba/wan-2.7/reference-to-video 这类 id 两家上游都有，
+  // 取错一份 schema 会让生成端显示出这个模型根本不认的参数
   const schemas = bound.length
     ? await db.providerCatalogModel.findMany({
         where: { modelId: { in: Array.from(new Set(bound.map((p) => p.providerModelId))) } },
-        select: { modelId: true, apiSchema: true },
+        select: { provider: true, modelId: true, apiSchema: true },
       })
     : [];
-  const schemaByModel = new Map(schemas.map((m) => [m.modelId, parseRequestSchema(m.apiSchema)]));
+  const schemaByModel = new Map(
+    schemas.map((m) => [`${m.provider} ${m.modelId}`, parseRequestSchema(m.apiSchema)])
+  );
+  const schemaOf = (p: { provider: string; providerModelId: string }) =>
+    schemaByModel.get(`${p.provider} ${p.providerModelId}`) ?? null;
 
   return {
     // 未绑定模型的档位对用户隐藏，避免点了必然失败
     products: bound.map((p) => ({
       ...productOut(p),
       // 完整控件描述：类型 / 枚举 / 上下限 / 默认值，供前端自适应渲染
-      params: supportedParams(
-        schemaByModel.get(p.providerModelId) ?? null,
-        mappings.filter((m) => m.mode === p.mode)
-      ),
+      params: supportedParams(schemaOf(p), mappings.filter((m) => m.mode === p.mode)),
+      // 输入媒体字段由模型 schema 说了算：几张图、要不要视频/音频，
+      // 全按绑定模型来，生成端据此渲染上传控件（仍然不暴露任何模型信息）
+      media_inputs: resolveMediaInputs(schemaOf(p)),
     })),
     param_mappings: mappings.map(mappingOut),
     credit_packages: packages.map(packageOut),

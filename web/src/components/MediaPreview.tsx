@@ -15,9 +15,16 @@ export function mediaKindOf(
   urls: string[] | null | undefined,
   mode?: string
 ): PlaythingMediaKind {
-  const fallback: PlaythingMediaKind =
-    mode?.endsWith("vid") || mode?.includes("video") ? "video" : "image";
-  return detectMediaKindFromUrls(urls, fallback);
+  return detectMediaKindFromUrls(urls, fallbackKindOfMode(mode));
+}
+
+/** 无扩展名的 CDN 直链只能靠模式猜；txt23d / vidupscale 这些都要认出来 */
+function fallbackKindOfMode(mode?: string): PlaythingMediaKind {
+  if (!mode) return "image";
+  if (mode.endsWith("3d")) return "3d";
+  if (mode.endsWith("vid") || mode.startsWith("vid") || mode.includes("video")) return "video";
+  if (mode === "lipsync" || mode === "faceswap") return "video";
+  return "image";
 }
 
 /** 富媒体优先级：一个任务同时产出封面图和视频时，作品本体是视频 */

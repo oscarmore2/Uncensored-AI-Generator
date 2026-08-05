@@ -211,7 +211,15 @@
       "txt2vid": "文生视频",
       "img2img": "图生图",
       "img2vid": "图生视频",
-      "undress": "脱衣模式"
+      "undress": "脱衣模式",
+      "imgedit": "图片编辑",
+      "vid2vid": "视频重绘",
+      "vidupscale": "视频超分",
+      "vidextend": "视频续写",
+      "lipsync": "对口型",
+      "faceswap": "换脸",
+      "txt23d": "文生 3D",
+      "img23d": "图生 3D"
     }
   },
   "History": {
@@ -301,7 +309,14 @@
       "img2img": "图片生图",
       "img2vid": "图片生视频",
       "imgedit": "图片编辑",
-      "undress": "脱衣模式"
+      "undress": "脱衣模式",
+      "vid2vid": "视频重绘",
+      "vidupscale": "视频超分",
+      "vidextend": "视频续写",
+      "lipsync": "视频对口型",
+      "faceswap": "视频换脸",
+      "txt23d": "文字生 3D",
+      "img23d": "图片生 3D"
     },
     "genderLabel": "人物性别",
     "genders": {
@@ -427,7 +442,15 @@
     "insufficientShort": "点数不足，请先充值",
     "applied": "参数已套用",
     "reuseLoadFailed": "读取原任务参数失败",
-    "reusedImage": "复用上次的参考图"
+    "reusedImage": "复用上次的参考图",
+    "groups": {
+      "image": "图片",
+      "video": "视频",
+      "vid2vid": "视频转视频",
+      "3d": "3D"
+    },
+    "missingMedia": "请先上传该模式必需的输入媒体",
+    "mediaSlotsUnavailable": "该档位绑定的模型未声明输入媒体字段，请联系管理员重新绑定"
   },
   "Profile": {
     "title": "个人中心",

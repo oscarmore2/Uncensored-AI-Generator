@@ -19,7 +19,22 @@ export type ExploreWork = {
   created_at: string;
 };
 
-const MODE_KEYS = new Set(["txt2img", "txt2vid", "img2img", "img2vid", "undress"]);
+// 有译名的模式；缺译名时角标退回原始 mode 字符串，不至于空着
+const MODE_KEYS = new Set([
+  "txt2img",
+  "txt2vid",
+  "img2img",
+  "img2vid",
+  "imgedit",
+  "undress",
+  "vid2vid",
+  "vidupscale",
+  "vidextend",
+  "lipsync",
+  "faceswap",
+  "txt23d",
+  "img23d",
+]);
 
 function displayValue(value: unknown, inlineMedia: string): string {
   if (value === null || value === undefined) return "—";
@@ -93,6 +108,7 @@ export function ExploreGallery({
                 mode={work.mode}
                 src={work.thumb_url ?? work.media_url}
                 autoPlay={!work.is_adult}
+                asThumbnail
                 className={`h-full w-full object-cover transition duration-300 ${
                   locked ? "scale-110 blur-2xl" : "group-hover:scale-105"
                 }`}

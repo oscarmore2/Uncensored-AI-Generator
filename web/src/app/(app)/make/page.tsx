@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   api,
@@ -11,7 +11,15 @@ import {
   type CatalogProduct,
   type CatalogResponse,
 } from "@/lib/client";
-import { MODE_META, isGenerationMode, type GenerationMode } from "@/lib/generation-modes";
+import {
+  GROUP_META,
+  MODE_GROUPS,
+  MODE_META,
+  isGenerationMode,
+  modesInGroup,
+  type GenerationMode,
+  type ModeGroup,
+} from "@/lib/generation-modes";
 import { UNDRESS_GENDERS, UNDRESS_LOCKED_UI_KEYS, type UndressGender } from "@/lib/undress-prompts";
 import {
   DEFAULT_UNDRESS_ADVANCED,
@@ -26,6 +34,13 @@ import { useApp } from "@/components/AppContext";
 import { useDraft } from "@/lib/use-draft";
 import { RetryConfirmDialog } from "@/components/InputMediaGoneDialog";
 import { AdaptiveMedia } from "@/components/WorkMedia";
+import {
+  MediaInputFields,
+  missingRequiredMedia,
+  pruneMediaToSpecs,
+  toMediaPayload,
+  type UploadedMedia,
+} from "@/components/MediaInputFields";
 import { MediaExpiryBadge } from "@/components/MediaExpiryBadge";
 import { useTranslations } from "next-intl";
 
@@ -47,6 +62,8 @@ type MakeDraft = {
   imageBase64: string | null;
   imageFilename: string | null;
   extraParams: Record<string, string>;
+  /** 按字段分组的输入媒体；已经是 OSS URL，刷新后可直接复用 */
+  media: Record<string, UploadedMedia[]>;
 };
 
 function MakePageInner() {
@@ -74,6 +91,8 @@ function MakePageInner() {
   const [duration, setDuration] = useState("5");
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const [imageBase64, setImageBase64] = useState<string | null>(null);
+  /** 字段名 → 已上传媒体；schema 驱动的新链路 */
+  const [media, setMedia] = useState<Record<string, UploadedMedia[]>>({});
   // 只为「这张参考图日后被清理时能报出文件名」而记，不参与生成
   const [imageFilename, setImageFilename] = useState<string | null>(null);
   /** 套用历史任务时复用的参考图 URL：有它就不必再传一份 base64 */
@@ -126,6 +145,7 @@ function MakePageInner() {
       setImageBase64(d.imageBase64 ?? null);
       setImageFilename(d.imageFilename ?? null);
       setExtraParams(d.extraParams ?? {});
+      setMedia(d.media ?? {});
     },
     {
       enabled: !deepLinked,
@@ -150,9 +170,11 @@ function MakePageInner() {
       imageBase64,
       imageFilename,
       extraParams,
+      media,
     });
   }, [
     saveDraft,
+    media,
     mode,
     tier,
     spicy,
@@ -180,6 +202,35 @@ function MakePageInner() {
   const visibleModes = useMemo(
     () => MODES.filter((m) => m.mode !== "undress" || adultEnabled),
     [adultEnabled]
+  );
+
+  /**
+   * 模式栏按组折叠。视频转视频那一族（重绘/超分/续写/对口型/换脸）能力差别很大，
+   * 平铺会让模式栏长到十三个按钮；折叠成一组、组内出子 tab 更好找。
+   * 只有一个成员的组不出子 tab。
+   */
+  const visibleGroups = useMemo(
+    () =>
+      MODE_GROUPS.map((g) => ({
+        group: g,
+        meta: GROUP_META[g],
+        modes: modesInGroup(g).filter((m) => visibleModes.some((v) => v.mode === m.mode)),
+      })).filter((g) => g.modes.length > 0),
+    [visibleModes]
+  );
+  const activeGroup: ModeGroup = MODE_META[mode].group;
+  const subModes = useMemo(
+    () => visibleGroups.find((g) => g.group === activeGroup)?.modes ?? [],
+    [visibleGroups, activeGroup]
+  );
+
+  /** 某个模式最低多少点起，用于模式栏上的价格角标 */
+  const cheapestOf = useCallback(
+    (m: string) =>
+      catalog?.products
+        .filter((p) => p.mode === m && !p.spicy)
+        .sort((a, b) => a.credit_cost - b.credit_cost)[0],
+    [catalog]
   );
 
   useEffect(() => {
@@ -371,6 +422,27 @@ function MakePageInner() {
     return raw.filter((c) => !UNDRESS_LOCKED_UI_KEYS.has(c.key));
   }, [selectedProduct, isUndress]);
 
+  /**
+   * 输入媒体位同样来自绑定模型的 schema。
+   * 脱衣模式例外：它的输入固定是一张人物图，走老的单图链路
+   * （服务端要读原图像素尺寸来保比例，那条路子不能绕）。
+   */
+  const mediaSpecs = useMemo(
+    () => (isUndress ? [] : (selectedProduct?.media_inputs ?? [])),
+    [selectedProduct, isUndress]
+  );
+
+  // 换档位/换模式后，把新模型不认的媒体字段丢掉，别带着它去提交
+  useEffect(() => {
+    setMedia((prev) => {
+      const next = pruneMediaToSpecs(mediaSpecs, prev);
+      const same =
+        Object.keys(next).length === Object.keys(prev).length &&
+        Object.entries(next).every(([k, v]) => prev[k]?.length === v.length);
+      return same ? prev : next;
+    });
+  }, [mediaSpecs]);
+
   // 档位切换后，把不合法的当前值回落到模型允许的第一个值，避免按不存在的规格计费
   useEffect(() => {
     for (const c of controls) {
@@ -468,7 +540,14 @@ function MakePageInner() {
 
   async function startGeneration() {
     if (!isUndress && meta.needsPrompt && !prompt.trim()) return toast(t("promptRequired"), true);
-    if (meta.needsImage && !imageBase64 && !reusedImageUrl) {
+    if (!isUndress && mediaSpecs.length > 0) {
+      const missing = missingRequiredMedia(mediaSpecs, media);
+      if (missing) {
+        toast(t("missingMedia"), true);
+        return;
+      }
+    }
+    if (isUndress && meta.needsMedia && !imageBase64 && !reusedImageUrl) {
       return toast(t("imageRequired"), true);
     }
     if (isUndress && !adultEnabled) return toast(t("undressNeedsAdult"), true);
@@ -504,6 +583,7 @@ function MakePageInner() {
           image_base64: imageBase64,
           ...(imageFilename ? { image_filename: imageFilename } : {}),
           ...(!imageBase64 && reusedImageUrl ? { image_url: reusedImageUrl } : {}),
+          ...(Object.keys(media).length ? { media: toMediaPayload(media) } : {}),
           ...extraParams,
         }),
       });
@@ -624,22 +704,30 @@ function MakePageInner() {
         </div>
       </div>
 
-      <div className="flex flex-wrap gap-2 mb-6">
-        {visibleModes.map((m) => {
-          const cheapest = catalog?.products
-            .filter((p) => p.mode === m.mode && !p.spicy)
-            .sort((a, b) => a.credit_cost - b.credit_cost)[0];
+      {/* 一级：按大类分组。视频转视频那一族折叠成一个入口，组内再出子 tab */}
+      <div className="flex flex-wrap gap-2 mb-3">
+        {visibleGroups.map((g) => {
+          const active = g.group === activeGroup;
+          const cheapest = g.modes
+            .map((m) => cheapestOf(m.mode))
+            .filter(Boolean)
+            .sort((a, b) => a!.credit_cost - b!.credit_cost)[0];
           return (
             <button
-              key={m.mode}
-              onClick={() => setMode(m.mode)}
+              key={g.group}
+              onClick={() => {
+                // 切组时落到该组第一个模式；已经在组内就不动，免得把用户选的子项打掉
+                if (!active && g.modes[0]) setMode(g.modes[0].mode);
+              }}
               className={`mode-tab flex-1 md:flex-none px-5 py-3 text-sm font-semibold rounded-3xl flex items-center justify-center gap-x-2 border ${
-                m.mode === mode ? "active border-orange-600" : "bg-black/[0.03] border-line"
+                active ? "active border-orange-600" : "bg-black/[0.03] border-line"
               }`}
             >
-              <i className={`fas ${m.icon}`} />
+              <i className={`fas ${g.meta.icon}`} />
               <span>
-                {t.has(`modes.${m.mode}`) ? t(`modes.${m.mode}` as "modes.txt2img") : m.fallbackLabel}
+                {t.has(`groups.${g.group}`)
+                  ? t(`groups.${g.group}` as "groups.image")
+                  : g.meta.fallbackLabel}
               </span>
               {cheapest && (
                 <span className="text-[10px] px-1.5 py-px bg-black/[0.06] rounded">
@@ -652,6 +740,36 @@ function MakePageInner() {
         })}
       </div>
 
+      {/* 二级：组内子 tab；只有一个成员时没必要出现 */}
+      {subModes.length > 1 && (
+        <div className="flex flex-wrap gap-1.5 mb-6">
+          {subModes.map((m) => {
+            const active = m.mode === mode;
+            const cheapest = cheapestOf(m.mode);
+            return (
+              <button
+                key={m.mode}
+                onClick={() => setMode(m.mode)}
+                className={`px-3.5 py-1.5 text-xs font-medium rounded-2xl border transition-colors flex items-center gap-1.5 ${
+                  active
+                    ? "bg-orange-600/20 border-orange-500 text-orange-700"
+                    : "bg-surface border-line text-ink-muted hover:border-line-strong hover:text-ink"
+                }`}
+              >
+                <i className={`fas ${m.icon}`} />
+                {t.has(`modes.${m.mode}`) ? t(`modes.${m.mode}` as "modes.txt2img") : m.fallbackLabel}
+                {cheapest && (
+                  <span className="text-[10px] text-ink-subtle">
+                    {cheapest.credit_cost}
+                    {t("creditsUnit")}起
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+      )}
+      {subModes.length <= 1 && <div className="mb-6" />}
       {noTiers && (
         <div className="mb-6 rounded-2xl bg-amber-500/10 border border-amber-500/20 px-4 py-3 text-sm text-amber-800/90">
           {t("tierUnavailable")}
@@ -726,7 +844,12 @@ function MakePageInner() {
             />
           )}
 
-          {isUndress ? null : (
+          {/*
+            提示词框只在这个模式真的用得上时才出现。
+            超分 / 对口型 / 换脸 / 图片生 3D 的模型压根不收 prompt，
+            摆一个写了也没用的输入框只会误导人。
+          */}
+          {isUndress || !meta.needsPrompt ? null : (
             <div className="mb-5">
               <div className="flex items-center justify-between mb-2 gap-2 flex-wrap">
                 <label className="text-sm font-semibold text-ink-muted">{t("prompt")}</label>
@@ -784,44 +907,63 @@ function MakePageInner() {
             </div>
           )}
 
-          {meta.needsImage && (
-            <div className="mb-5">
-              <label className="text-sm font-semibold text-ink-muted mb-2 block">{t("referenceImage")}</label>
-              <label className="block border-2 border-dashed border-line-strong hover:border-orange-500/40 rounded-3xl p-8 text-center cursor-pointer transition-colors">
-                <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
-                {imageBase64 || reusedImageUrl ? (
-                  <div>
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={imageBase64 ?? reusedImageUrl ?? ""}
-                      alt={t("preview")}
-                      className="mx-auto max-h-48 rounded-2xl shadow-xl mb-3"
-                    />
-                    {!imageBase64 && reusedImageUrl && (
-                      <div className="mb-2 text-[11px] text-ink-subtle">{t("reusedImage")}</div>
+          {/*
+            输入媒体：几个位、什么类型、最多几个，全部由绑定模型的 schema 决定。
+            脱衣模式例外，仍走老的单图 base64 链路——服务端要读原图像素尺寸来保比例。
+          */}
+          {isUndress ? (
+            meta.needsMedia && (
+                <div className="mb-5">
+                  <label className="text-sm font-semibold text-ink-muted mb-2 block">{t("referenceImage")}</label>
+                  <label className="block border-2 border-dashed border-line-strong hover:border-orange-500/40 rounded-3xl p-8 text-center cursor-pointer transition-colors">
+                    <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
+                    {imageBase64 || reusedImageUrl ? (
+                      <div>
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={imageBase64 ?? reusedImageUrl ?? ""}
+                          alt={t("preview")}
+                          className="mx-auto max-h-48 rounded-2xl shadow-xl mb-3"
+                        />
+                        {!imageBase64 && reusedImageUrl && (
+                          <div className="mb-2 text-[11px] text-ink-subtle">{t("reusedImage")}</div>
+                        )}
+                        <button
+                          onClick={(e) => {
+                            e.preventDefault();
+                            setImageBase64(null);
+                            setImageFilename(null);
+                            setReusedImageUrl(null);
+                          }}
+                          className="text-xs px-4 py-1 bg-black/[0.06] hover:bg-black/[0.08] rounded-full"
+                        >
+                          {t("removeImage")}
+                        </button>
+                      </div>
+                    ) : (
+                      <div>
+                        <i className="fas fa-cloud-upload-alt text-4xl text-ink-subtle mb-3" />
+                        <p className="text-sm">{t("uploadReference")}</p>
+                        <p className="text-xs text-ink-subtle mt-1">{t("uploadHint")}</p>
+                      </div>
                     )}
-                    <button
-                      onClick={(e) => {
-                        e.preventDefault();
-                        setImageBase64(null);
-                        setImageFilename(null);
-                        setReusedImageUrl(null);
-                      }}
-                      className="text-xs px-4 py-1 bg-black/[0.06] hover:bg-black/[0.08] rounded-full"
-                    >
-                      {t("removeImage")}
-                    </button>
-                  </div>
-                ) : (
-                  <div>
-                    <i className="fas fa-cloud-upload-alt text-4xl text-ink-subtle mb-3" />
-                    <p className="text-sm">{t("uploadReference")}</p>
-                    <p className="text-xs text-ink-subtle mt-1">{t("uploadHint")}</p>
-                  </div>
-                )}
-              </label>
+                  </label>
+                </div>
+            )
+          ) : mediaSpecs.length > 0 ? (
+            <MediaInputFields
+              specs={mediaSpecs}
+              value={media}
+              onChange={setMedia}
+              onError={(m) => toast(m, true)}
+              disabled={phase !== "idle"}
+            />
+          ) : meta.needsMedia && selectedProduct ? (
+            // 该模式要输入媒体，但绑定的模型没声明任何媒体字段——配置有问题，别让用户白填
+            <div className="mb-5 rounded-2xl border border-amber-500/20 bg-amber-500/10 px-4 py-3 text-sm text-amber-800/90">
+              {t("mediaSlotsUnavailable")}
             </div>
-          )}
+          ) : null}
 
           <div className="mb-2">
             <div className="flex items-center justify-between mb-3">

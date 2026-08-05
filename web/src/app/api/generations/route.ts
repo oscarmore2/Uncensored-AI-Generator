@@ -121,6 +121,33 @@ export async function POST(req: Request) {
     reusedImageUrl = asset.url;
   }
 
+  // 按字段提交的输入媒体走同一道校验：每条 URL 都必须是本人名下、未被清理的
+  // MediaAsset，否则这个接口就成了「让服务端去抓任意外链」的口子
+  const mediaFields: Record<string, string[]> = {};
+  const allMediaUrls = Object.values(gen.media ?? {}).flat();
+  if (allMediaUrls.length > 0) {
+    const owned = await db.mediaAsset.findMany({
+      where: {
+        userId: user.id,
+        url: { in: Array.from(new Set(allMediaUrls)) },
+        kind: "upload",
+        deletedAt: null,
+      },
+      select: { url: true },
+    });
+    const ownedSet = new Set(owned.map((a) => a.url));
+    for (const [field, urls] of Object.entries(gen.media ?? {})) {
+      const kept = urls.filter((u) => ownedSet.has(u));
+      if (kept.length !== urls.length) {
+        return NextResponse.json(
+          { error: "部分输入媒体已不可用，请重新上传", code: "INPUT_MEDIA_UNAVAILABLE" },
+          { status: 400 }
+        );
+      }
+      if (kept.length) mediaFields[field] = kept;
+    }
+  }
+
   const cost = quote.cost;
   const ownerVipAtCreation = isVipActive(user);
   const mediaExpiresAt = await generatedMediaExpiry("main", ownerVipAtCreation);
@@ -153,6 +180,7 @@ export async function POST(req: Request) {
     "image_base64",
     "image_filename",
     "image_url",
+    "media",
   ]);
   const extraUi: Record<string, unknown> = {};
   if (body && typeof body === "object" && !Array.isArray(body)) {
@@ -180,7 +208,16 @@ export async function POST(req: Request) {
         batch: gen.batch,
         image_base64: gen.image_base64 ?? null,
         ...(gen.image_filename ? { image_filename: gen.image_filename } : {}),
-        ...(reusedImageUrl ? { input_urls: [reusedImageUrl] } : {}),
+        ...(Object.keys(mediaFields).length ? { media_fields: mediaFields } : {}),
+        // input_urls 是作品页缩略图与「套用」唯一的线索，按字段提交的媒体也要汇进来
+        ...(reusedImageUrl || Object.keys(mediaFields).length
+          ? {
+              input_urls: [
+                ...(reusedImageUrl ? [reusedImageUrl] : []),
+                ...Object.values(mediaFields).flat(),
+              ],
+            }
+          : {}),
         ...(gen.mode === "undress" && gen.gender ? { gender: gen.gender } : {}),
         ...(gen.mode === "undress" && undressOptions ? { undress_options: undressOptions } : {}),
         ...extraUi,

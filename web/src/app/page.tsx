@@ -188,6 +188,7 @@ export default async function LandingPage() {
                 <WorkMedia
                   mode={w.mode}
                   src={w.thumbUrl ?? w.mediaUrl}
+                  asThumbnail
                   className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                 />
                 <div className="pointer-events-none absolute inset-x-0 bottom-0 px-4 pb-4 pt-10 bg-gradient-to-t from-black/95 via-black/55 to-transparent">

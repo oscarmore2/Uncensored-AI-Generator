@@ -12,6 +12,13 @@ const MODE_HINTS: Record<string, RegExp> = {
   undress: /(edit|image-to-image|kontext|inpaint)/i,
   txt2vid: /(text-to-video|t2v)/i,
   img2vid: /(image-to-video|i2v)/i,
+  vid2vid: /(video-to-video|video-edit|v2v)/i,
+  vidupscale: /(upscal|super.?resolution|enhance)/i,
+  vidextend: /(extend|continuation)/i,
+  lipsync: /(lipsync|lip-sync|talking|dubbing)/i,
+  faceswap: /(face.?swap|faceswap)/i,
+  txt23d: /(text-to-3d|t23d)/i,
+  img23d: /(image-to-3d|i23d)/i,
 };
 
 /** 档位 → 管理端可能贴的标签，命中则大幅提权 */
@@ -22,6 +29,13 @@ const MODE_TAG_HINTS: Record<string, string[]> = {
   undress: ["图片编辑", "图生图"],
   txt2vid: ["文生视频"],
   img2vid: ["图生视频"],
+  vid2vid: ["视频转视频", "视频编辑"],
+  vidupscale: ["视频超分", "超分"],
+  vidextend: ["视频续写", "续写"],
+  lipsync: ["对口型"],
+  faceswap: ["换脸"],
+  txt23d: ["文生3D", "3D"],
+  img23d: ["图生3D", "3D"],
 };
 
 const TIER_TAG_HINTS: Record<string, string[]> = {
