@@ -1,10 +1,12 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { AdaptiveMedia, WorkMedia } from "./WorkMedia";
 import { useTranslations } from "next-intl";
 import { useBodyScrollLock } from "@/lib/use-body-scroll-lock";
+import { GENERATION_MODES } from "@/lib/generation-modes";
 
 export type ExploreWork = {
   id: number;
@@ -19,22 +21,9 @@ export type ExploreWork = {
   created_at: string;
 };
 
-// 有译名的模式；缺译名时角标退回原始 mode 字符串，不至于空着
-const MODE_KEYS = new Set([
-  "txt2img",
-  "txt2vid",
-  "img2img",
-  "img2vid",
-  "imgedit",
-  "undress",
-  "vid2vid",
-  "vidupscale",
-  "vidextend",
-  "lipsync",
-  "faceswap",
-  "txt23d",
-  "img23d",
-]);
+// 有译名的模式；缺译名时角标退回原始 mode 字符串，不至于空着。
+// 从模式定义派生而不是手抄——抄一份就得记着每次加模式都回来补
+const MODE_KEYS = new Set<string>(GENERATION_MODES);
 
 function displayValue(value: unknown, inlineMedia: string): string {
   if (value === null || value === undefined) return "—";
@@ -161,12 +150,12 @@ export function ExploreGallery({
             窄屏放弃分栏，整个弹窗当一个滚动容器。
           */}
           <div className="modal-pop flex max-h-[94vh] w-full max-w-6xl flex-col overflow-y-auto overscroll-contain rounded-3xl border border-line bg-surface lg:grid lg:grid-cols-[minmax(0,1.45fr)_minmax(330px,.75fr)] lg:grid-rows-[minmax(0,1fr)] lg:overflow-hidden">
-            <div className="min-h-0 bg-black/[0.04] lg:overflow-auto">
+            <div className="flex min-h-0 flex-col bg-black/[0.04] lg:overflow-auto">
               <AdaptiveMedia
                 mode={selected.mode}
                 src={selected.media_url}
                 poster={selected.thumb_url}
-                className="min-h-[45vh]"
+                className="min-h-[45vh] flex-1"
               />
             </div>
             <aside className="min-h-0 border-t border-line p-6 lg:border-t-0 lg:border-l lg:overflow-y-auto lg:overscroll-contain">
@@ -180,15 +169,34 @@ export function ExploreGallery({
                   </div>
                   <h2 className="mt-3 text-xl font-bold">{selected.title ?? t("communityWork")}</h2>
                 </div>
-                <button type="button" onClick={() => setSelected(null)} className="text-3xl text-ink-subtle hover:text-ink">
-                  &times;
-                </button>
+                {/* 与「我的作品」弹窗同一套：最大化直达独立页 + 关闭，图标尺寸与命中区一致 */}
+                <div className="flex shrink-0 items-center gap-1">
+                  <Link
+                    href={`/explore/${selected.id}`}
+                    aria-label={t("openFullPage")}
+                    title={t("openFullPage")}
+                    className="flex h-9 w-9 items-center justify-center rounded-xl text-ink-muted hover:bg-black/[0.05] hover:text-ink"
+                  >
+                    <i className="fas fa-up-right-and-down-left-from-center text-sm" />
+                  </Link>
+                  <button
+                    type="button"
+                    onClick={() => setSelected(null)}
+                    aria-label={t("closeDialog")}
+                    className="flex h-9 w-9 items-center justify-center rounded-xl text-2xl text-ink-muted hover:bg-black/[0.05] hover:text-ink"
+                  >
+                    &times;
+                  </button>
+                </div>
               </div>
 
-              <div className="mt-5">
-                <div className="mb-2 text-xs font-semibold text-ink-subtle">PROMPT</div>
-                <p className="whitespace-pre-wrap text-sm leading-6 text-ink">{selected.prompt}</p>
-              </div>
+              {/* 3D、超分这些模式的模型压根不收提示词，空着只会留一个孤零零的标题 */}
+              {selected.prompt.trim() && (
+                <div className="mt-5">
+                  <div className="mb-2 text-xs font-semibold text-ink-subtle">PROMPT</div>
+                  <p className="whitespace-pre-wrap text-sm leading-6 text-ink">{selected.prompt}</p>
+                </div>
+              )}
               {selected.negative_prompt && (
                 <div className="mt-5">
                   <div className="mb-2 text-xs font-semibold text-ink-subtle">NEGATIVE PROMPT</div>
@@ -226,7 +234,8 @@ export function ExploreGallery({
               {paramEntries.length > 0 && (
                 <div className="mt-5">
                   <div className="mb-2 text-xs font-semibold text-ink-subtle">{t("parameters")}</div>
-                  <div className="divide-y divide-white/5 rounded-2xl border border-line px-4">
+                  {/* divide-white/5 是深色主题的遗留：白线压在浅色底上等于没有分隔线 */}
+                  <div className="divide-y divide-line rounded-2xl border border-line px-4">
                     {paramEntries.map(([key, value]) => (
                       <div key={key} className="flex justify-between gap-4 py-2.5 text-xs">
                         <span className="font-mono text-ink-subtle">{key}</span>
@@ -240,7 +249,8 @@ export function ExploreGallery({
               <button
                 type="button"
                 onClick={() => remix(selected)}
-                className="mt-6 w-full rounded-2xl bg-teal-700 py-3 font-bold text-white hover:bg-teal-700"
+                // 全站主行动色是橘，这里的青是早期遗留；hover 还写成了和底色同值，等于没有悬停反馈
+                className="mt-6 w-full rounded-2xl bg-orange-700 py-3 font-bold text-white hover:bg-orange-600"
               >
                 <i className="fas fa-copy mr-2" />
                 {signedIn ? t("copyToGenerator") : t("registerToCopy")}

@@ -7,10 +7,12 @@ import { hasAdultAccess } from "@/lib/adult-access";
 import { GuestHeader } from "@/components/GuestHeader";
 import { AdaptiveMedia } from "@/components/WorkMedia";
 import { getTranslations } from "next-intl/server";
+import { GENERATION_MODES } from "@/lib/generation-modes";
 
 export const dynamic = "force-dynamic";
 
-const MODE_KEYS = new Set(["txt2img", "txt2vid", "img2img", "img2vid", "undress"]);
+// 从模式定义派生：写死过一次，加了视频转视频与 3D 之后这里的角标就退回成了 model_id
+const MODE_KEYS = new Set<string>(GENERATION_MODES);
 
 export async function generateMetadata({
   params,
@@ -115,10 +117,13 @@ export default async function WorkDetailPage({ params }: { params: Promise<{ id:
               <h1 className="text-2xl font-bold tracking-tight mt-3">{work.title ?? t("communityWork")}</h1>
             </div>
 
-            <div className="glass rounded-3xl p-5">
-              <div className="text-xs font-semibold text-ink-muted mb-2">{t("prompt")}</div>
-              <p className="text-sm leading-relaxed whitespace-pre-wrap">{work.prompt}</p>
-            </div>
+            {/* 3D、超分这些模式的模型不收提示词，空着只会留一张空卡 */}
+            {work.prompt.trim() && (
+              <div className="glass rounded-3xl p-5">
+                <div className="text-xs font-semibold text-ink-muted mb-2">{t("prompt")}</div>
+                <p className="text-sm leading-relaxed whitespace-pre-wrap">{work.prompt}</p>
+              </div>
+            )}
 
             {work.negativePrompt && (
               <div className="glass rounded-3xl p-5">
@@ -134,7 +139,10 @@ export default async function WorkDetailPage({ params }: { params: Promise<{ id:
                   {paramEntries.map(([k, v]) => (
                     <div key={k} className="flex justify-between gap-x-4">
                       <span className="text-ink-muted font-mono">{k}</span>
-                      <span className="font-mono text-right break-all">{String(v)}</span>
+                      {/* media_fields 是对象，String() 会得到 [object Object] */}
+                      <span className="font-mono text-right break-all">
+                        {typeof v === "object" && v !== null ? JSON.stringify(v) : String(v)}
+                      </span>
                     </div>
                   ))}
                 </div>

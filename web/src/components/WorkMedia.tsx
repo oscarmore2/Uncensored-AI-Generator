@@ -65,7 +65,9 @@ function ModelStage({
   }
 
   return (
-    <div className={`relative w-full ${className ?? ""}`}>
+    // flex-1 + flex:1 让模型在「有确定高度的容器」里撑满（弹窗），
+    // 在自然流里则退回 minHeight——否则弹窗中模型下方会空出一大块底色
+    <div className={`relative flex w-full min-h-0 flex-1 flex-col ${className ?? ""}`}>
       {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
       <model-viewer
         ref={ref as any}
@@ -75,7 +77,13 @@ function ModelStage({
         camera-controls
         auto-rotate
         touch-action="pan-y"
-        style={{ width: "100%", height: "min(65vh, 640px)", background: "#0c0c0c", borderRadius: "1rem" }}
+        style={{
+          width: "100%",
+          flex: "1 1 auto",
+          minHeight: "min(60vh, 620px)",
+          background: "#0c0c0c",
+          borderRadius: "1rem",
+        }}
       />
       {error && (
         <div className="absolute bottom-2 left-2 right-2 flex items-start gap-2 rounded-xl border border-amber-500/30 bg-amber-950/90 px-3 py-2 text-[11px] text-amber-200">
@@ -216,8 +224,9 @@ export function AdaptiveMedia({
   const { model: modelUrl, poster: modelPoster } = splitModelResult(list);
   if (modelUrl) {
     return (
-      <div className={`rounded-2xl bg-stage p-3 sm:p-5 ${className ?? ""}`}>
-        <WorkMedia mode={mode} src={modelUrl} poster={modelPoster} alt="生成结果" />
+      <div className={`flex rounded-2xl bg-stage p-3 sm:p-5 ${className ?? ""}`}>
+        {/* 只给一条 URL 时（公共作品页）结果里挑不出封面，退回调用方传进来的缩略图 */}
+        <WorkMedia mode={mode} src={modelUrl} poster={modelPoster ?? poster} alt="生成结果" />
       </div>
     );
   }
