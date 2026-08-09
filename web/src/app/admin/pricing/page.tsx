@@ -18,7 +18,12 @@ const MODE_LABEL: Record<string, string> = Object.fromEntries(
   MODE_LIST.map((m) => [m.mode, m.fallbackLabel])
 );
 
-const TIER_LABEL: Record<string, string> = { low: "低档", mid: "中档", high: "高档" };
+const TIER_LABEL: Record<string, string> = {
+  low: "低档",
+  mid: "中档",
+  high: "高档",
+  ultra: "终极",
+};
 
 interface Product {
   id: number;

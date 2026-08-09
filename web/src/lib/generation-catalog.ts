@@ -48,7 +48,7 @@ export type SkuBlueprint = {
 /* ---------------------------------------------------------------- 图片档位 */
 
 type ImageTierSpec = {
-  tier: GenerationTier;
+  tier: ImageTier;
   label: string;
   description: string;
   refCredits: number;
@@ -92,11 +92,13 @@ const IMAGE_TIERS: ImageTierSpec[] = [
 ];
 
 type ImageMode = "txt2img" | "img2img" | "imgedit";
+/** 图片没有终极档：模型价格跨度撑不起第四档 */
+type ImageTier = "low" | "mid" | "high";
 type ModelCandidate = { ids: string[]; pattern?: RegExp };
 
 const IMAGE_MODEL_CANDIDATES: Record<
   ImageMode,
-  Record<"normal" | "spicy", Record<GenerationTier, ModelCandidate>>
+  Record<"normal" | "spicy", Record<ImageTier, ModelCandidate>>
 > = {
   txt2img: {
     normal: {
@@ -163,6 +165,8 @@ type VideoTierSpec = {
   refLabel: string;
   sortOrder: number;
   resolution: string;
+  /** 是否生成 Spicy 变体 */
+  spicy: boolean;
 };
 
 const VIDEO_TIERS: VideoTierSpec[] = [
@@ -174,6 +178,7 @@ const VIDEO_TIERS: VideoTierSpec[] = [
     refLabel: "ZC Seedance 2.0 480p/5s = 6 分",
     sortOrder: 10,
     resolution: "480p",
+    spicy: true,
   },
   {
     tier: "high",
@@ -183,32 +188,39 @@ const VIDEO_TIERS: VideoTierSpec[] = [
     refLabel: "ZC Wan 2.7 720p/5s = 10 分",
     sortOrder: 20,
     resolution: "720p",
+    spicy: true,
+  },
+  {
+    /*
+     * 终极档：留给单价明显高出一截的旗舰模型。
+     * 对标 Seedance 2.5 的 $0.134/5s，按现有换算口径（对标点数 ≈ 上游单价 × 100，
+     * 这个口径正好复现低档的 6 分和高档的 10 分）得 14 分。
+     *
+     * 分辨率仍是 720p——Seedance 2.5 本身只支持 480p/720p，它比高级档强在
+     * 运镜、光影与音画同步，不在像素数。description 是要给用户看的，
+     * 所以只说体感差别，不提模型名（上游模型信息一律不出现在生成端）。
+     *
+     * 不出 Spicy 变体：Atlas 上最贵的尺度档视频模型是 wan-2.7-spicy 的 $0.10，
+     * 连高级档都覆盖得住；再挂一个 14 分的 Spicy 终极档，等于拿同一个模型
+     * 多收用户四成。等真出现旗舰级的尺度档模型再把这里改成 true。
+     */
+    tier: "ultra",
+    label: "终极模式",
+    description: "720p · 5 秒起 · 旗舰模型，运镜、光影与音画同步最强",
+    refCredits: 14,
+    refLabel: "Seedance 2.5 720p/5s = $0.134",
+    sortOrder: 30,
+    resolution: "720p",
+    spicy: false,
   },
 ];
 
 type VideoMode = "txt2vid" | "img2vid" | "ref2vid";
-
-/**
- * 按模式改写档位的对标点数。
- *
- * 参考生视频这一族比文生 / 图生贵一截，沿用 6 / 10 分会直接卖亏：
- * 低档对标 seedance-2.0-fast/reference-to-video（上游 $0.072/5s），
- * 高档对标 seedance-2.5/reference-to-video（$0.134/5s，这一族里最强也最贵的）。
- * 换算沿用现有口径 —— 对标点数 ≈ 上游单价 × 100，正好复现出
- * 480p 那档的 6 分（$0.06）与 720p 那档的 10 分（Wan 2.7 $0.10）。
- */
-const VIDEO_REF_OVERRIDE: Partial<
-  Record<VideoMode, Record<"low" | "high", { refCredits: number; refLabel: string }>>
-> = {
-  ref2vid: {
-    low: { refCredits: 7, refLabel: "Seedance 2.0 Fast 参考生视频 $0.072/5s" },
-    high: { refCredits: 14, refLabel: "Seedance 2.5 参考生视频 $0.134/5s" },
-  },
-};
+type VideoTier = "low" | "high" | "ultra";
 
 const VIDEO_MODEL_CANDIDATES: Record<
   VideoMode,
-  Record<"normal" | "spicy", Record<"low" | "high", ModelCandidate>>
+  Record<"normal" | "spicy", Record<VideoTier, ModelCandidate>>
 > = {
   txt2vid: {
     normal: {
@@ -221,6 +233,9 @@ const VIDEO_MODEL_CANDIDATES: Record<
           "bytedance/seedance-2.0-fast/text-to-video",
           "wavespeed-ai/wan-2.2/t2v-720p-ultra-fast",
         ],
+      },
+      ultra: {
+        ids: ["bytedance/seedance-2.5/text-to-video", "bytedance/seedance-2.0/text-to-video"],
       },
     },
     spicy: {
@@ -238,6 +253,8 @@ const VIDEO_MODEL_CANDIDATES: Record<
         ],
         pattern: /spicy.*(text-to-video|t2v)|(text-to-video|t2v).*spicy/i,
       },
+      // 终极档不出 Spicy（见 VIDEO_TIERS 里的说明），候选留空免得日后被误填
+      ultra: { ids: [] },
     },
   },
   img2vid: {
@@ -251,6 +268,9 @@ const VIDEO_MODEL_CANDIDATES: Record<
           "bytedance/seedance-2.0-fast/image-to-video",
           "wavespeed-ai/wan-2.2/i2v-720p-ultra-fast",
         ],
+      },
+      ultra: {
+        ids: ["bytedance/seedance-2.5/image-to-video", "bytedance/seedance-2.0/image-to-video"],
       },
     },
     spicy: {
@@ -268,27 +288,39 @@ const VIDEO_MODEL_CANDIDATES: Record<
         ],
         pattern: /spicy.*(image-to-video|i2v)|(image-to-video|i2v).*spicy/i,
       },
+      ultra: { ids: [] },
     },
   },
-  // 上游有 25 个 reference-to-video 模型，能力（收几张图 / 收不收视频与音频）
-  // 差得很远，这里只按价格挑对得上档位的那几个，其余交给管理端手工换绑
+  /*
+   * 上游有 25 个 reference-to-video 模型，能力（收几张图 / 收不收视频与音频）
+   * 与单价都差得很远，这里按各档位的对标单价挑，其余交给管理端手工换绑：
+   *   低档 $0.06 一线 —— seedance-2.0-mini $0.039 / vidu-q3 $0.042
+   *   高档 $0.10 一线 —— wan-2.7 $0.10 / seedance-2.0-fast $0.072
+   *   终极 $0.134    —— seedance-2.5，这一族里最强也最贵的
+   */
   ref2vid: {
     normal: {
       low: {
         ids: [
-          "bytedance/seedance-2.0-fast/reference-to-video",
           "bytedance/seedance-2.0-mini/reference-to-video",
           "vidu/q3/reference-to-video",
+          "pixverse/v6/reference-to-video",
         ],
         pattern: /reference-to-video/i,
       },
       high: {
         ids: [
-          "bytedance/seedance-2.5/reference-to-video",
-          "bytedance/seedance-2.0/reference-to-video",
           "alibaba/wan-2.7/reference-to-video",
+          "bytedance/seedance-2.0-fast/reference-to-video",
+          "kwaivgi/kling-video-o3-std/reference-to-video",
         ],
         pattern: /reference-to-video/i,
+      },
+      ultra: {
+        ids: [
+          "bytedance/seedance-2.5/reference-to-video",
+          "bytedance/seedance-2.0/reference-to-video",
+        ],
       },
     },
     spicy: {
@@ -301,6 +333,7 @@ const VIDEO_MODEL_CANDIDATES: Record<
         ids: ["atlascloud/wan-2.7-spicy/reference-to-video"],
         pattern: /(spicy|uncensored|nsfw).*reference-to-video|reference-to-video.*(spicy|uncensored|nsfw)/i,
       },
+      ultra: { ids: [] },
     },
   },
 };
@@ -397,18 +430,19 @@ function videoSkus(): SkuBlueprint[] {
   for (const mode of modes) {
     for (const spec of VIDEO_TIERS) {
       for (const spicy of [false, true]) {
+        // 终极档没有尺度变体：上游没有配得上这个价位的尺度档模型
+        if (spicy && !spec.spicy) continue;
         const bucket = spicy ? "spicy" : "normal";
-        const tier = spec.tier as "low" | "high";
+        const tier = spec.tier as VideoTier;
         const cand = VIDEO_MODEL_CANDIDATES[mode][bucket][tier];
-        const ref = VIDEO_REF_OVERRIDE[mode]?.[tier] ?? spec;
         out.push({
           mode,
           tier: spec.tier,
           spicy,
           label: `${modeLabel[mode]} · ${spec.label}${spicy ? " Spicy" : ""}`,
           description: spicy ? `${spec.description} · 会员专属尺度档` : spec.description,
-          refCredits: ref.refCredits,
-          refLabel: ref.refLabel,
+          refCredits: spec.refCredits,
+          refLabel: spec.refLabel,
           unitSeconds: 5,
           sortOrder: spec.sortOrder + (spicy ? 100 : 0),
           isDefault: !spicy && spec.tier === "low",

@@ -3,11 +3,12 @@
  *
  * 产品结构：
  *   图片 —— 文字生图 / 图片生图 / 图片编辑，各分 低 / 中 / 高 三档
- *   视频 —— 文字生视频 / 图片生视频，各分 低 / 高 两档
+ *   视频 —— 文字生视频 / 图片生视频 / 参考生视频，各分 低 / 高 / 终极 三档
  *   视频转视频 —— 风格重绘 / 超分 / 续写 / 对口型 / 换脸，各分 低 / 高
  *   3D   —— 文字生 3D / 图片生 3D，单档
  *   脱衣 —— 成人模式专属，单档；系统注入 prompt，用户只选性别与参数
- * 图片/视频（文生、图生）另有 Spicy 变体（会员专属）；
+ * 图片/视频（文生、图生、参考生）另有 Spicy 变体（会员专属），但终极档没有：
+ * 上游最贵的尺度档视频模型也只有普通旗舰的七成价，终极档的 Spicy 只会多收钱。
  * 视频转视频与 3D 一律无 Spicy、不吃 VIP 门槛，任何等级用户都能用。
  */
 
@@ -31,8 +32,18 @@ export const GENERATION_MODES = [
 ] as const;
 export type GenerationMode = (typeof GENERATION_MODES)[number];
 
-export const GENERATION_TIERS = ["low", "mid", "high"] as const;
+export const GENERATION_TIERS = ["low", "mid", "high", "ultra"] as const;
 export type GenerationTier = (typeof GENERATION_TIERS)[number];
+
+/** 图片三档；没有 ultra——图片模型的价格跨度撑不起第四档 */
+const IMAGE_TIERS = ["low", "mid", "high"] as const;
+/**
+ * 视频转视频一族（超分/续写/对口型/换脸）只有快速档与成片档。
+ * 这些是「加工已有片子」，没有旗舰模型这一说。
+ */
+const VIDEO_TIERS = ["low", "high"] as const;
+/** 文生 / 图生 / 参考生视频：顶上多一档终极，留给单价明显更高的旗舰模型 */
+const VIDEO_GEN_TIERS = ["low", "high", "ultra"] as const;
 
 export type GenerationCategory = "image" | "video" | "3d";
 
@@ -69,14 +80,12 @@ export type ModeMeta = {
   fallbackLabel: string;
 };
 
-const VIDEO_TIERS = ["low", "high"] as const;
-
 export const MODE_META: Record<GenerationMode, ModeMeta> = {
   txt2img: {
     mode: "txt2img",
     category: "image",
     group: "image",
-    tiers: GENERATION_TIERS,
+    tiers: IMAGE_TIERS,
     needsMedia: false,
     needsPrompt: true,
     supportsNegative: true,
@@ -89,7 +98,7 @@ export const MODE_META: Record<GenerationMode, ModeMeta> = {
     mode: "img2img",
     category: "image",
     group: "image",
-    tiers: GENERATION_TIERS,
+    tiers: IMAGE_TIERS,
     needsMedia: true,
     needsPrompt: true,
     supportsNegative: true,
@@ -102,7 +111,7 @@ export const MODE_META: Record<GenerationMode, ModeMeta> = {
     mode: "imgedit",
     category: "image",
     group: "image",
-    tiers: GENERATION_TIERS,
+    tiers: IMAGE_TIERS,
     needsMedia: true,
     needsPrompt: true,
     supportsNegative: false,
@@ -128,7 +137,7 @@ export const MODE_META: Record<GenerationMode, ModeMeta> = {
     mode: "txt2vid",
     category: "video",
     group: "video",
-    tiers: VIDEO_TIERS,
+    tiers: VIDEO_GEN_TIERS,
     needsMedia: false,
     needsPrompt: true,
     supportsNegative: false,
@@ -141,7 +150,7 @@ export const MODE_META: Record<GenerationMode, ModeMeta> = {
     mode: "img2vid",
     category: "video",
     group: "video",
-    tiers: VIDEO_TIERS,
+    tiers: VIDEO_GEN_TIERS,
     needsMedia: true,
     needsPrompt: true,
     supportsNegative: false,
@@ -154,7 +163,7 @@ export const MODE_META: Record<GenerationMode, ModeMeta> = {
     mode: "ref2vid",
     category: "video",
     group: "video",
-    tiers: VIDEO_TIERS,
+    tiers: VIDEO_GEN_TIERS,
     /*
      * 参考生视频与图片生视频的差别不只是「能传几张」：
      * 图生视频那张图是首帧，参考生视频的图/视频/音频是「素材」——

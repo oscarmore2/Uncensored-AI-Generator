@@ -44,6 +44,7 @@ const TIER_TAG_HINTS: Record<string, string[]> = {
   low: ["低档"],
   mid: ["中档"],
   high: ["高档"],
+  ultra: ["终极", "旗舰"],
 };
 
 /**

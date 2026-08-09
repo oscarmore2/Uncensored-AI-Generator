@@ -360,6 +360,13 @@ function controlFromSpec(
       defaultValue,
       options: spec.enum
         .filter((v) => typeof v === "string" || typeof v === "number")
+        /*
+         * 时长枚举里的非正数是「由模型自己决定」的哨兵值（Seedance 2.5 的 -1）。
+         * 站内按时长计费——durationMultiplier 见到负数会退回一个计费单位，
+         * 也就是用户选了「自动」就可能拿到 30 秒却只付 5 秒的钱。
+         * 计费口径改不了，那就别把这个选项给出去。
+         */
+        .filter((v) => key !== "duration" || Number(v) > 0)
         .map((v) => {
           const value = String(v);
           return { value, label: labelOf.get(value) ?? value };
