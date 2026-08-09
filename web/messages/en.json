@@ -211,6 +211,7 @@
       "txt2vid": "Text to video",
       "img2img": "Image to image",
       "img2vid": "Image to video",
+      "ref2vid": "Reference to video",
       "undress": "Undress",
       "imgedit": "Image edit",
       "vid2vid": "Video restyle",
@@ -311,6 +312,7 @@
       "txt2vid": "Text to video",
       "img2img": "Image to image",
       "img2vid": "Image to video",
+      "ref2vid": "Reference to video",
       "imgedit": "Image editing",
       "undress": "Undress",
       "vid2vid": "Video restyle",
@@ -453,7 +455,14 @@
       "3d": "3D"
     },
     "missingMedia": "Upload the input media this mode requires first",
-    "mediaSlotsUnavailable": "The model bound to this tier declares no input media field. Ask an administrator to rebind it."
+    "mediaSlotsUnavailable": "The model bound to this tier declares no input media field. Ask an administrator to rebind it.",
+    "mentionHeader": "Material",
+    "mentionNavigate": "navigate",
+    "mentionSelect": "select",
+    "mentionClose": "close",
+    "mentionNoMatch": "No matching material",
+    "mentionHint": "Type @ in the prompt to cite uploaded material, e.g. @Image1",
+    "mentionUploadFirst": "Upload material below, then cite it with @ in the prompt"
   },
   "Profile": {
     "title": "Profile",

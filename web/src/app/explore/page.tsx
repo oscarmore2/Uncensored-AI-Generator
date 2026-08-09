@@ -7,6 +7,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { hasAdultAccess } from "@/lib/adult-access";
 import { publicWorkOut } from "@/lib/serialize";
 import { getTranslations } from "next-intl/server";
+import { GENERATION_MODES } from "@/lib/generation-modes";
 
 export const dynamic = "force-dynamic";
 
@@ -27,7 +28,9 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 const PAGE_SIZE = 24;
-const MODES = ["txt2img", "txt2vid", "img2img", "img2vid", "undress"] as const;
+// 从模式定义派生：这里原先手抄了 5 个模式，视频转视频一族与 3D 的作品
+// 在筛选条上根本点不到——每加一个模式都得回来补一次，抄一次就漏一次
+const MODES = GENERATION_MODES;
 
 export default async function ExplorePage({
   searchParams,
@@ -41,12 +44,9 @@ export default async function ExplorePage({
   const user = await getCurrentUser();
   const adultAccess = hasAdultAccess(user);
 
-  const where = {
-    isPublished: true,
-    ...(!adultAccess ? { isAdult: false } : {}),
-    ...(mode ? { mode } : {}),
-  };
-  const [total, works] = await Promise.all([
+  const visible = { isPublished: true, ...(!adultAccess ? { isAdult: false } : {}) };
+  const where = { ...visible, ...(mode ? { mode } : {}) };
+  const [total, works, published] = await Promise.all([
     db.publicWork.count({ where }),
     db.publicWork.findMany({
       where,
@@ -54,8 +54,11 @@ export default async function ExplorePage({
       skip: (page - 1) * PAGE_SIZE,
       take: PAGE_SIZE,
     }),
+    // 只列真有作品的模式：十三个模式全平铺出来，多数点进去是一张空页
+    db.publicWork.groupBy({ by: ["mode"], where: visible }),
   ]);
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const availableModes = MODES.filter((m) => published.some((row) => row.mode === m));
 
   return (
     <div className="min-h-screen">
@@ -66,7 +69,7 @@ export default async function ExplorePage({
             <h1 className="text-4xl font-bold tracking-tighter">{t("title")}</h1>
             <p className="text-ink-muted mt-1">{t("subtitle")}</p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <Link
               href="/explore"
               className={`px-4 py-2 text-sm rounded-2xl border ${
@@ -75,7 +78,7 @@ export default async function ExplorePage({
             >
               {t("all")}
             </Link>
-            {MODES.map((key) => (
+            {availableModes.map((key) => (
               <Link
                 key={key}
                 href={`/explore?mode=${key}`}

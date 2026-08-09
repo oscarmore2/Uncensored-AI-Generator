@@ -186,8 +186,28 @@ const VIDEO_TIERS: VideoTierSpec[] = [
   },
 ];
 
+type VideoMode = "txt2vid" | "img2vid" | "ref2vid";
+
+/**
+ * 按模式改写档位的对标点数。
+ *
+ * 参考生视频这一族比文生 / 图生贵一截，沿用 6 / 10 分会直接卖亏：
+ * 低档对标 seedance-2.0-fast/reference-to-video（上游 $0.072/5s），
+ * 高档对标 seedance-2.5/reference-to-video（$0.134/5s，这一族里最强也最贵的）。
+ * 换算沿用现有口径 —— 对标点数 ≈ 上游单价 × 100，正好复现出
+ * 480p 那档的 6 分（$0.06）与 720p 那档的 10 分（Wan 2.7 $0.10）。
+ */
+const VIDEO_REF_OVERRIDE: Partial<
+  Record<VideoMode, Record<"low" | "high", { refCredits: number; refLabel: string }>>
+> = {
+  ref2vid: {
+    low: { refCredits: 7, refLabel: "Seedance 2.0 Fast 参考生视频 $0.072/5s" },
+    high: { refCredits: 14, refLabel: "Seedance 2.5 参考生视频 $0.134/5s" },
+  },
+};
+
 const VIDEO_MODEL_CANDIDATES: Record<
-  "txt2vid" | "img2vid",
+  VideoMode,
   Record<"normal" | "spicy", Record<"low" | "high", ModelCandidate>>
 > = {
   txt2vid: {
@@ -247,6 +267,39 @@ const VIDEO_MODEL_CANDIDATES: Record<
           "bytedance/seedance-v1.5-pro/image-to-video-spicy",
         ],
         pattern: /spicy.*(image-to-video|i2v)|(image-to-video|i2v).*spicy/i,
+      },
+    },
+  },
+  // 上游有 25 个 reference-to-video 模型，能力（收几张图 / 收不收视频与音频）
+  // 差得很远，这里只按价格挑对得上档位的那几个，其余交给管理端手工换绑
+  ref2vid: {
+    normal: {
+      low: {
+        ids: [
+          "bytedance/seedance-2.0-fast/reference-to-video",
+          "bytedance/seedance-2.0-mini/reference-to-video",
+          "vidu/q3/reference-to-video",
+        ],
+        pattern: /reference-to-video/i,
+      },
+      high: {
+        ids: [
+          "bytedance/seedance-2.5/reference-to-video",
+          "bytedance/seedance-2.0/reference-to-video",
+          "alibaba/wan-2.7/reference-to-video",
+        ],
+        pattern: /reference-to-video/i,
+      },
+    },
+    spicy: {
+      // 这一族目前只有 wan-2.7-spicy 一个尺度档，低/高共用
+      low: {
+        ids: ["atlascloud/wan-2.7-spicy/reference-to-video"],
+        pattern: /(spicy|uncensored|nsfw).*reference-to-video|reference-to-video.*(spicy|uncensored|nsfw)/i,
+      },
+      high: {
+        ids: ["atlascloud/wan-2.7-spicy/reference-to-video"],
+        pattern: /(spicy|uncensored|nsfw).*reference-to-video|reference-to-video.*(spicy|uncensored|nsfw)/i,
       },
     },
   },
@@ -334,33 +387,42 @@ function imageSkus(): SkuBlueprint[] {
 
 function videoSkus(): SkuBlueprint[] {
   const out: SkuBlueprint[] = [];
-  const modes = ["txt2vid", "img2vid"] as const;
-  const modeLabel: Record<string, string> = {
+  const modes: VideoMode[] = ["txt2vid", "img2vid", "ref2vid"];
+  const modeLabel: Record<VideoMode, string> = {
     txt2vid: "文字生视频",
     img2vid: "图片生视频",
+    ref2vid: "参考生视频",
   };
 
   for (const mode of modes) {
     for (const spec of VIDEO_TIERS) {
       for (const spicy of [false, true]) {
         const bucket = spicy ? "spicy" : "normal";
-        const cand = VIDEO_MODEL_CANDIDATES[mode][bucket][spec.tier as "low" | "high"];
+        const tier = spec.tier as "low" | "high";
+        const cand = VIDEO_MODEL_CANDIDATES[mode][bucket][tier];
+        const ref = VIDEO_REF_OVERRIDE[mode]?.[tier] ?? spec;
         out.push({
           mode,
           tier: spec.tier,
           spicy,
           label: `${modeLabel[mode]} · ${spec.label}${spicy ? " Spicy" : ""}`,
           description: spicy ? `${spec.description} · 会员专属尺度档` : spec.description,
-          refCredits: spec.refCredits,
-          refLabel: spec.refLabel,
+          refCredits: ref.refCredits,
+          refLabel: ref.refLabel,
           unitSeconds: 5,
           sortOrder: spec.sortOrder + (spicy ? 100 : 0),
           isDefault: !spicy && spec.tier === "low",
           defaultInputs: {
             resolution: spec.resolution,
             duration: 5,
-            // Spicy 视频模型默认带音轨会翻倍计价，关掉以保住毛利
-            ...(spicy ? { enable_audio: false } : {}),
+            /*
+             * Spicy 视频模型默认带音轨会翻倍计价，关掉以保住毛利。
+             * 两个字段名都写：这个开关在 WaveSpeed 叫 enable_audio，
+             * 在 Atlas 叫 generate_audio（Atlas 上 enable_audio 一个模型都没有），
+             * 只写一个的话另一家的模型会把它当未知字段丢掉，音轨照开、照收钱。
+             * 桥接层会按绑定模型的 schema 只留下它认识的那个。
+             */
+            ...(spicy ? { enable_audio: false, generate_audio: false } : {}),
           },
           modelCandidates: cand.ids,
           modelPattern: cand.pattern,

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { api, ApiError } from "@/lib/client";
+import { MODE_LIST } from "@/lib/generation-modes";
 
 interface ModPublicWork {
   id: number;
@@ -189,11 +190,13 @@ export default function ModPublicPage() {
                 onChange={(e) => setForm({ ...form, mode: e.target.value })}
                 className="w-full bg-surface border border-line rounded-2xl px-3 py-2.5 text-sm"
               >
-                <option value="txt2img">txt2img</option>
-                <option value="txt2vid">txt2vid</option>
-                <option value="img2img">img2img</option>
-                <option value="img2vid">img2vid</option>
-                <option value="undress">undress</option>
+                {/* 从模式定义派生：手抄的那份停在 5 个模式，
+                    视频转视频一族、3D 与参考生视频的作品在这里根本建不出来 */}
+                {MODE_LIST.map((m) => (
+                  <option key={m.mode} value={m.mode}>
+                    {m.mode} · {m.fallbackLabel}
+                  </option>
+                ))}
               </select>
             </div>
             <div>

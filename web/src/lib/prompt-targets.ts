@@ -32,6 +32,9 @@ const FORMAT_BY_MODE: Record<GenerationMode, PromptFormatId> = {
   undress: "image_edit",
   txt2vid: "video_t2v",
   img2vid: "video_i2v",
+  // 参考生视频的提示词写法与图生视频同源，区别只是要按 @Image1 之类引用素材，
+  // 那是提示词内部的语法，不影响「写一段镜头描述」这个写作要求本身
+  ref2vid: "video_i2v",
   // 视频转视频一族：写作要求都是「在已有片子上改什么」，共用一套规则；
   // 超分 / 对口型 / 换脸本身不需要提示词，走到这里也只是兜底
   vid2vid: "video_edit",

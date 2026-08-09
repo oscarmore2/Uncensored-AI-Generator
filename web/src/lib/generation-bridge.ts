@@ -261,6 +261,43 @@ export function coerceToSchema(
   return { value: out };
 }
 
+/* ------------------------------------------------ 上游字段名的同义词 */
+
+/**
+ * 同一个能力在两家上游、甚至同一家的不同模型上字段名不一样。
+ * 管理端的映射表一行只能填一个字段名，填哪个都会让另一边的模型丢掉这个控件。
+ *
+ * 扫过 Atlas 全部 203 个视频模型：
+ *   画面比例  aspect_ratio 71 个 · ratio 22 个（seedance-2.5 / minimax-h3 / happyhorse
+ *             这一批只有 ratio），两者从不同时出现；
+ *   生成音轨  generate_audio 56 个 · enable_audio **0 个** ——
+ *             enable_audio 是 WaveSpeed 的叫法，所以音轨开关在 Atlas 模型上
+ *             从来没显示过，Spicy 档位靠它关音轨省下的钱也一直没省到。
+ *
+ * 注意 audio 不在同义词里：那 19 个模型的 audio 是音频文件 URL（string），
+ * 把布尔开关写进去等于给上游发一个叫 "false" 的音频地址。
+ */
+const FIELD_ALIASES: Record<string, readonly string[]> = {
+  aspect_ratio: ["ratio"],
+  ratio: ["aspect_ratio"],
+  enable_audio: ["generate_audio"],
+  generate_audio: ["enable_audio"],
+};
+
+/**
+ * 把映射/默认值里写的字段名落到这个模型真正拥有的那个上。
+ * schema 未知时原样返回（保持旧行为）；同义词也找不到时返回 null，
+ * 由调用方决定是隐藏控件还是丢弃该字段。
+ */
+function resolveProviderPath(schema: RequestSchema | null, path: string): string | null {
+  if (!schema) return path;
+  if (path in schema.properties) return path;
+  for (const alias of FIELD_ALIASES[path] ?? []) {
+    if (alias in schema.properties) return alias;
+  }
+  return null;
+}
+
 export type SupportedParam = ParamControl;
 
 /**
@@ -291,12 +328,15 @@ export function supportedParams(
       continue;
     }
 
-    const spec = schema.properties[m.providerPath];
-    if (!spec) continue; // 模型不认这个字段，直接不给用户看
+    // 连同义词都对不上才是真不认，这时不给用户看
+    const path = resolveProviderPath(schema, m.providerPath);
+    if (!path) continue;
+    const spec = schema.properties[path];
+    if (!spec) continue;
 
     out.push({
       ...controlFromSpec(m.uiKey, spec, configured),
-      required: schema.required.includes(m.providerPath),
+      required: schema.required.includes(path),
     });
   }
 
@@ -396,7 +436,8 @@ export function unsupportedDefaults(
   defaultInputs: Record<string, unknown>
 ): string[] {
   if (!schema) return [];
-  return Object.keys(defaultInputs).filter((k) => !(k in schema.properties));
+  // 有同义词兜底的不算失效：enable_audio 在 Atlas 模型上会落到 generate_audio
+  return Object.keys(defaultInputs).filter((k) => resolveProviderPath(schema, k) === null);
 }
 
 /** schema 中声明的默认值 */
@@ -431,11 +472,14 @@ const FALLBACK_ALLOWED = new Set([
   "size",
   "resolution",
   "aspect_ratio",
+  // aspect_ratio / enable_audio 的同义词，见 FIELD_ALIASES
+  "ratio",
   "duration",
   "seed",
   "num_images",
   "guidance_scale",
   "enable_audio",
+  "generate_audio",
   "enable_base64_output",
   "enable_sync_mode",
 ]);
@@ -485,9 +529,11 @@ export function buildProviderInputs(args: BuildInputsArgs): BuiltInputs {
     if (raw === undefined || raw === null || raw === "") continue;
     const valueMap = parseJsonObject(m.valueMap);
     const key = String(raw);
-    inputs[m.providerPath] = Object.prototype.hasOwnProperty.call(valueMap, key)
-      ? valueMap[key]
-      : raw;
+    // 按模型实际拥有的字段名落地：站内的「画面比例」在有的模型上叫
+    // aspect_ratio、有的叫 ratio，映射表里只能填一个
+    const path = resolveProviderPath(schema, m.providerPath);
+    if (!path) continue;
+    inputs[path] = Object.prototype.hasOwnProperty.call(valueMap, key) ? valueMap[key] : raw;
   }
 
   if (args.prompt.trim()) inputs.prompt = args.prompt.trim();
@@ -526,15 +572,40 @@ export function buildProviderInputs(args: BuildInputsArgs): BuiltInputs {
   const droppedKeys: string[] = [];
   const snapped: BuiltInputs["snapped"] = [];
 
-  for (const key of Object.keys(inputs)) {
-    const known = schema ? key in schema.properties : FALLBACK_ALLOWED.has(key);
-    const empty = inputs[key] === null || inputs[key] === undefined || inputs[key] === "";
-    if (!known || empty) {
-      droppedKeys.push(key);
-      delete inputs[key];
+  for (const rawKey of Object.keys(inputs)) {
+    const empty =
+      inputs[rawKey] === null || inputs[rawKey] === undefined || inputs[rawKey] === "";
+    if (empty) {
+      droppedKeys.push(rawKey);
+      delete inputs[rawKey];
       continue;
     }
-    if (!schema) continue;
+    if (!schema) {
+      if (!FALLBACK_ALLOWED.has(rawKey)) {
+        droppedKeys.push(rawKey);
+        delete inputs[rawKey];
+      }
+      continue;
+    }
+
+    /*
+     * 档位 defaultInputs 是管理端手填的自由 JSON，字段名可能是另一家上游的叫法
+     * （Spicy 视频档的 enable_audio 在 Atlas 模型上叫 generate_audio）。
+     * 直接丢掉的话，关音轨这类省钱设置就静默失效了，所以先按同义词改名再判断。
+     */
+    let key = rawKey;
+    if (!(rawKey in schema.properties)) {
+      const alias = resolveProviderPath(schema, rawKey);
+      // 正主已经在 inputs 里时别拿别名去盖它
+      if (!alias || alias in inputs) {
+        droppedKeys.push(rawKey);
+        delete inputs[rawKey];
+        continue;
+      }
+      inputs[alias] = inputs[rawKey];
+      delete inputs[rawKey];
+      key = alias;
+    }
 
     const spec = schema.properties[key];
     const coerced = coerceToSchema(inputs[key], spec);

@@ -18,6 +18,7 @@ export const GENERATION_MODES = [
   "undress",
   "txt2vid",
   "img2vid",
+  "ref2vid",
   // 视频转视频family：各自独立绑定模型与定价，UI 上折叠成一组子 tab
   "vid2vid",
   "vidupscale",
@@ -148,6 +149,30 @@ export const MODE_META: Record<GenerationMode, ModeMeta> = {
     hasSpicy: true,
     icon: "fa-film",
     fallbackLabel: "图片生视频",
+  },
+  ref2vid: {
+    mode: "ref2vid",
+    category: "video",
+    group: "video",
+    tiers: VIDEO_TIERS,
+    /*
+     * 参考生视频与图片生视频的差别不只是「能传几张」：
+     * 图生视频那张图是首帧，参考生视频的图/视频/音频是「素材」——
+     * 模型按提示词里的 @Image1 / @Video1 / @Audio1 引用它们来组合画面。
+     * Seedance 2.5 一次能收 30 图 + 10 视频 + 10 音频，塞进 img2vid 的
+     * 单张首帧语义里表达不了，所以单开一个模式。
+     *
+     * needsMedia 为真，但上游把三个参考位都声明成选填（minItems 0）：
+     * 一张不传就退化成文生视频，还按更贵的档位扣点，因此生成端另有一道
+     * 「至少给一样素材」的拦截。
+     */
+    needsMedia: true,
+    needsPrompt: true,
+    supportsNegative: false,
+    supportsBatch: false,
+    hasSpicy: true,
+    icon: "fa-layer-group",
+    fallbackLabel: "参考生视频",
   },
 
   /* ------------------------------------------------ 视频转视频（子 tab 一组） */

@@ -211,6 +211,7 @@
       "txt2vid": "文生视频",
       "img2img": "图生图",
       "img2vid": "图生视频",
+      "ref2vid": "参考生视频",
       "undress": "脱衣模式",
       "imgedit": "图片编辑",
       "vid2vid": "视频重绘",
@@ -311,6 +312,7 @@
       "txt2vid": "文字生视频",
       "img2img": "图片生图",
       "img2vid": "图片生视频",
+      "ref2vid": "参考生视频",
       "imgedit": "图片编辑",
       "undress": "脱衣模式",
       "vid2vid": "视频重绘",
@@ -453,7 +455,14 @@
       "3d": "3D"
     },
     "missingMedia": "请先上传该模式必需的输入媒体",
-    "mediaSlotsUnavailable": "该档位绑定的模型未声明输入媒体字段，请联系管理员重新绑定"
+    "mediaSlotsUnavailable": "该档位绑定的模型未声明输入媒体字段，请联系管理员重新绑定",
+    "mentionHeader": "可引用素材",
+    "mentionNavigate": "移动",
+    "mentionSelect": "选中",
+    "mentionClose": "关闭",
+    "mentionNoMatch": "没有匹配的素材",
+    "mentionHint": "提示词里输入 @ 可引用已上传的素材，例如 @Image1",
+    "mentionUploadFirst": "先在下方上传素材，就能在提示词里用 @ 引用它们"
   },
   "Profile": {
     "title": "个人中心",

@@ -204,7 +204,7 @@ async function ensureParamMappings(): Promise<void> {
   ]);
 
   const IMAGE_MODES = ["txt2img", "img2img", "imgedit", "undress"] as const;
-  const VIDEO_MODES = ["txt2vid", "img2vid"] as const;
+  const VIDEO_MODES = ["txt2vid", "img2vid", "ref2vid"] as const;
 
   /**
    * 映射表按「所有模型的并集」配置，不必为每个模型单独维护：
