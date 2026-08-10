@@ -5,7 +5,7 @@ import { hasAdultAccess } from "./adult-access";
 
 export function userOut(
   user: User & {
-    vipTier?: Pick<VipTier, "id" | "code" | "name" | "discountBps"> | null;
+    vipTier?: Pick<VipTier, "id" | "code" | "name" | "rank" | "discountBps"> | null;
   }
 ) {
   const vipActive = isVipActive(user);
@@ -28,6 +28,7 @@ export function userOut(
           id: user.vipTier.id,
           code: user.vipTier.code,
           name: user.vipTier.name,
+          rank: user.vipTier.rank,
           discount_bps: user.vipTier.discountBps,
           discount_percent: user.vipTier.discountBps / 100,
         }

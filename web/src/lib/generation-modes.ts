@@ -299,6 +299,29 @@ export function modesInGroup(group: ModeGroup): ModeMeta[] {
   return MODE_LIST.filter((m) => m.group === group);
 }
 
+/* ------------------------------------------------------- 档位的 VIP 门槛 */
+
+/** 终极档 Spicy 变体要求的 VIP 等级（对应 VipTier.rank） */
+export const ULTRA_SPICY_MIN_VIP_RANK = 2;
+
+/**
+ * 该档位要求的最低 VIP 等级；0 表示不限等级
+ * （requiresVip 仍然独立生效：Spicy 档一律要有效会员）。
+ *
+ * 为什么是派生规则而不是 GenerationProduct 上的一列：本项目部署在 Railway，
+ * schema 变更不会自动迁移，加一列就得先手工 db push，否则新代码一上线
+ * 每次查档位都会报「列不存在」，整个生成端瘫掉。而这条规则本来就跟档位拓扑
+ * （哪些档位存在、有没有 Spicy 变体）同源，不是运营会逐行去调的东西。
+ */
+export function minVipRankFor(product: { tier: string; spicy: boolean }): number {
+  return product.tier === "ultra" && product.spicy ? ULTRA_SPICY_MIN_VIP_RANK : 0;
+}
+
+/** 用户的 VIP 等级够不够解锁这个档位 */
+export function meetsVipRank(required: number, userRank: number | null | undefined): boolean {
+  return required <= 0 || (userRank ?? 0) >= required;
+}
+
 export function isGenerationMode(v: unknown): v is GenerationMode {
   return typeof v === "string" && (GENERATION_MODES as readonly string[]).includes(v);
 }

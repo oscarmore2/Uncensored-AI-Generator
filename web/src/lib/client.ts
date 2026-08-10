@@ -21,6 +21,8 @@ export interface ApiUser {
     id: number;
     code: string;
     name: string;
+    /** VIP 等级序号；档位的 min_vip_rank 跟它比 */
+    rank: number;
     discount_bps: number;
     discount_percent: number;
   } | null;
@@ -91,6 +93,8 @@ export type CatalogProduct = {
   batch_four_multiplier: number;
   unit_seconds: number;
   requires_vip: boolean;
+  /** 该档位要求的最低 VIP 等级；0 = 只要是有效会员即可 */
+  min_vip_rank?: number;
   is_default: boolean;
   sort_order: number;
   /** 该档位绑定的模型实际支持的参数控件（按模型 schema 归一，不含模型信息） */
@@ -139,6 +143,7 @@ export type CatalogVipPlan = {
     id: number;
     code: string;
     name: string;
+    rank: number;
     discount_bps: number;
     discount_percent: number;
   };

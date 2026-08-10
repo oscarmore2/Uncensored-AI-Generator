@@ -7,7 +7,7 @@ import { getSession } from "./session";
 export type AuthUser = User & {
   vipTier: Pick<
     VipTier,
-    "id" | "code" | "name" | "discountBps" | "isActive" | "playthingAccess"
+    "id" | "code" | "name" | "rank" | "discountBps" | "isActive" | "playthingAccess"
   > | null;
 };
 
@@ -34,6 +34,8 @@ export async function getCurrentUser(): Promise<AuthUser | null> {
           id: true,
           code: true,
           name: true,
+          // 档位的等级门槛按 rank 判（终极档的 Spicy 变体要 VIP2）
+          rank: true,
           discountBps: true,
           isActive: true,
           playthingAccess: true,

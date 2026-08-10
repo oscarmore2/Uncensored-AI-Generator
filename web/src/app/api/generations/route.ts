@@ -3,7 +3,12 @@ import { db } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
 import { generationSchema } from "@/lib/validators";
 import { processGeneration } from "@/lib/generation-runner";
-import { SpicyRequiresVipError, isVipActive, resolveGenerationQuote } from "@/lib/pricing";
+import {
+  SpicyRequiresVipError,
+  VipRankTooLowError,
+  isVipActive,
+  resolveGenerationQuote,
+} from "@/lib/pricing";
 import { generationOut } from "@/lib/serialize";
 import { rateLimit } from "@/lib/rate-limit";
 import { isAdultContent, isBlocked, reviewPrompt, safetyAudit } from "@/lib/content-safety";
@@ -83,7 +88,7 @@ export async function POST(req: Request) {
       user,
     });
   } catch (error) {
-    if (error instanceof SpicyRequiresVipError) {
+    if (error instanceof SpicyRequiresVipError || error instanceof VipRankTooLowError) {
       return NextResponse.json({ error: error.message, code: error.code }, { status: 403 });
     }
     return NextResponse.json(

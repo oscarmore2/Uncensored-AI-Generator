@@ -194,6 +194,8 @@ function MakePageInner() {
 
   const meta = MODE_META[mode];
   const isVip = Boolean(catalog?.user_vip.is_active);
+  /** 当前用户的 VIP 等级；没有有效会员时按 0 算 */
+  const vipRank = isVip ? (catalog?.user_vip.tier?.rank ?? user?.vip_tier?.rank ?? 0) : 0;
   const adultEnabled = Boolean(user?.adult_mode_enabled);
   const isUndress = mode === "undress";
   const isVip2Undress = hasUndressAdvancedAccess(
@@ -515,6 +517,13 @@ function MakePageInner() {
       router.push("/pricing");
       return;
     }
+    // 等级门槛：终极档的 Spicy 变体只对 VIP2 及以上开放
+    const needRank = product.min_vip_rank ?? 0;
+    if (needRank > 0 && vipRank < needRank) {
+      toast(t("tierNeedsVipRank", { rank: needRank }), true);
+      router.push("/pricing");
+      return;
+    }
     setTier(product.tier);
     setSpicy(product.spicy);
   }
@@ -572,6 +581,13 @@ function MakePageInner() {
     if (isUndress && !adultEnabled) return toast(t("undressNeedsAdult"), true);
     if (phase !== "idle") return;
     if (!selectedProduct) return toast(t("tierUnavailable"), true);
+    // 档位可能是草稿恢复回来的，绕过了 selectTier 那道门槛检查
+    const needRank = selectedProduct.min_vip_rank ?? 0;
+    if (needRank > 0 && vipRank < needRank) {
+      toast(t("tierNeedsVipRank", { rank: needRank }), true);
+      router.push("/pricing");
+      return;
+    }
     // 余额不足直接拦在本地：服务端扣费是原子的、必然拒绝，
     // 提前拦住可以避免把最多 14MB 的 base64 参考图白传一遍。
     if (insufficientCredits) {
@@ -620,7 +636,9 @@ function MakePageInner() {
       toast(t("generationFailed", { error: errorMessage }), true);
       if (
         e instanceof ApiError &&
-        (e.code === "INSUFFICIENT_CREDITS" || e.code === "SPICY_REQUIRES_VIP")
+        (e.code === "INSUFFICIENT_CREDITS" ||
+          e.code === "SPICY_REQUIRES_VIP" ||
+          e.code === "VIP_RANK_TOO_LOW")
       ) {
         router.push("/pricing");
       }
@@ -677,7 +695,8 @@ function MakePageInner() {
 
   function TierCard({ product }: { product: CatalogProduct }) {
     const active = selectedProduct?.id === product.id;
-    const locked = product.requires_vip && !isVip;
+    const needRank = product.min_vip_rank ?? 0;
+    const locked = (product.requires_vip && !isVip) || (needRank > 0 && vipRank < needRank);
     return (
       <button
         type="button"
@@ -695,6 +714,12 @@ function MakePageInner() {
           {product.spicy && (
             <span className="px-1.5 py-px rounded text-[10px] font-bold bg-fuchsia-700 text-white">
               SPICY
+            </span>
+          )}
+          {/* 有等级门槛的档位直接把等级标出来，别让用户点了才知道进不去 */}
+          {needRank > 0 && (
+            <span className="px-1.5 py-px rounded text-[10px] font-bold bg-amber-500/25 text-amber-800">
+              VIP{needRank}
             </span>
           )}
           {locked && <i className="fas fa-lock text-[10px] text-amber-800" />}

@@ -165,8 +165,20 @@ type VideoTierSpec = {
   refLabel: string;
   sortOrder: number;
   resolution: string;
-  /** 是否生成 Spicy 变体 */
-  spicy: boolean;
+};
+
+/**
+ * 终极档在各模式下开哪些变体（false = 普通档，true = Spicy 档）。
+ * 低档与高档一律普通 + Spicy 两个都开，只有终极档按模式分。
+ *
+ * 图片生视频与参考生视频拿用户自己的素材做旗舰级视频，是尺度档才成立的玩法，
+ * 所以这两个模式的终极档**只有** Spicy，并且锁到 VIP2（见 minVipRankFor）。
+ * 文生视频没有输入素材，终极档走普通档。
+ */
+const ULTRA_FLAVORS: Record<VideoMode, boolean[]> = {
+  txt2vid: [false],
+  img2vid: [true],
+  ref2vid: [true],
 };
 
 const VIDEO_TIERS: VideoTierSpec[] = [
@@ -178,7 +190,6 @@ const VIDEO_TIERS: VideoTierSpec[] = [
     refLabel: "ZC Seedance 2.0 480p/5s = 6 分",
     sortOrder: 10,
     resolution: "480p",
-    spicy: true,
   },
   {
     tier: "high",
@@ -188,7 +199,6 @@ const VIDEO_TIERS: VideoTierSpec[] = [
     refLabel: "ZC Wan 2.7 720p/5s = 10 分",
     sortOrder: 20,
     resolution: "720p",
-    spicy: true,
   },
   {
     /*
@@ -200,9 +210,7 @@ const VIDEO_TIERS: VideoTierSpec[] = [
      * 运镜、光影与音画同步，不在像素数。description 是要给用户看的，
      * 所以只说体感差别，不提模型名（上游模型信息一律不出现在生成端）。
      *
-     * 不出 Spicy 变体：Atlas 上最贵的尺度档视频模型是 wan-2.7-spicy 的 $0.10，
-     * 连高级档都覆盖得住；再挂一个 14 分的 Spicy 终极档，等于拿同一个模型
-     * 多收用户四成。等真出现旗舰级的尺度档模型再把这里改成 true。
+     * 开哪些变体按模式走，见 ULTRA_FLAVORS。
      */
     tier: "ultra",
     label: "终极模式",
@@ -211,7 +219,6 @@ const VIDEO_TIERS: VideoTierSpec[] = [
     refLabel: "Seedance 2.5 720p/5s = $0.134",
     sortOrder: 30,
     resolution: "720p",
-    spicy: false,
   },
 ];
 
@@ -288,7 +295,17 @@ const VIDEO_MODEL_CANDIDATES: Record<
         ],
         pattern: /spicy.*(image-to-video|i2v)|(image-to-video|i2v).*spicy/i,
       },
-      ultra: { ids: [] },
+      /*
+       * 终极档的 Spicy 变体仍然对标 Seedance 2.5——这里的 spicy 是「会员专属档」
+       * 的产品标记（requiresVip + 1.5 倍率），不代表一定要绑 uncensored 模型。
+       * 绑成 wan-2.7-spicy（$0.10）的话，14 分的定价就失去成本依据了：
+       * 那个模型高级档就覆盖得住，同一个模型在终极档多收四成。
+       * 想要「最强尺度档」而不是「最强模型」的话，把首选换成 wan-2.7-spicy
+       * 并把 refCredits 调回 10。
+       */
+      ultra: {
+        ids: ["bytedance/seedance-2.5/image-to-video", "bytedance/seedance-2.0/image-to-video"],
+      },
     },
   },
   /*
@@ -333,7 +350,13 @@ const VIDEO_MODEL_CANDIDATES: Record<
         ids: ["atlascloud/wan-2.7-spicy/reference-to-video"],
         pattern: /(spicy|uncensored|nsfw).*reference-to-video|reference-to-video.*(spicy|uncensored|nsfw)/i,
       },
-      ultra: { ids: [] },
+      // 同 img2vid 的终极档：仍然对标 Seedance 2.5，理由见上
+      ultra: {
+        ids: [
+          "bytedance/seedance-2.5/reference-to-video",
+          "bytedance/seedance-2.0/reference-to-video",
+        ],
+      },
     },
   },
 };
@@ -429,9 +452,8 @@ function videoSkus(): SkuBlueprint[] {
 
   for (const mode of modes) {
     for (const spec of VIDEO_TIERS) {
-      for (const spicy of [false, true]) {
-        // 终极档没有尺度变体：上游没有配得上这个价位的尺度档模型
-        if (spicy && !spec.spicy) continue;
+      const flavors = spec.tier === "ultra" ? ULTRA_FLAVORS[mode] : [false, true];
+      for (const spicy of flavors) {
         const bucket = spicy ? "spicy" : "normal";
         const tier = spec.tier as VideoTier;
         const cand = VIDEO_MODEL_CANDIDATES[mode][bucket][tier];

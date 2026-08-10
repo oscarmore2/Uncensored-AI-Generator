@@ -19,6 +19,8 @@ export async function GET() {
             id: user.vipTier.id,
             code: user.vipTier.code,
             name: user.vipTier.name,
+            // 生成端要拿它跟档位的 min_vip_rank 比，判断终极档能不能点
+            rank: user.vipTier.rank,
             discount_bps: user.vipTier.discountBps,
             discount_percent: user.vipTier.discountBps / 100,
           }

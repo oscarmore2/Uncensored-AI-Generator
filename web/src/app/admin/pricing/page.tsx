@@ -36,6 +36,8 @@ interface Product {
   batch_four_multiplier: number;
   unit_seconds: number;
   requires_vip: boolean;
+  /** 0 = 不限等级；2 = 仅 VIP2 及以上（终极档的 Spicy 变体） */
+  min_vip_rank?: number;
   is_active: boolean;
   is_default: boolean;
   sort_order: number;
@@ -368,6 +370,13 @@ export default function AdminPricingPage() {
                       {p.spicy && (
                         <span className="text-[10px] px-1.5 py-0.5 bg-fuchsia-700 text-white rounded font-bold">
                           SPICY · 会员专属
+                        </span>
+                      )}
+                      {/* 等级门槛是按 (档位, spicy) 派生的，不是这一行能改的字段，
+                          标出来免得运营以为「会员专属」就等于 VIP1 也能用 */}
+                      {(p.min_vip_rank ?? 0) > 0 && (
+                        <span className="text-[10px] px-1.5 py-0.5 bg-amber-500/25 text-amber-800 rounded font-bold">
+                          仅 VIP{p.min_vip_rank} 及以上
                         </span>
                       )}
                       {!p.is_active && <span className="text-xs text-ink-subtle">停用</span>}

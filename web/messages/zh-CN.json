@@ -427,6 +427,7 @@
     "spicyLabel": "Spicy 档位（会员专属）",
     "spicyUnlock": "开通会员解锁",
     "spicyNeedsVip": "Spicy 档位为会员专属，请先开通会员",
+    "tierNeedsVipRank": "该档位仅对 VIP{rank} 及以上开放",
     "spicyNotice": "Spicy 档位放宽了创作尺度。未开启成人模式时，涉及裸露的提示词仍会被内容审查拦截，仅支持性感、擦边范围的表达。",
     "tierUnavailable": "该模式的生成档位正在配置中，请稍后再试",
     "editPlaceholder": "描述你想怎么改这张图，例如：把背景换成黄昏的海边，保留人物与姿态…",

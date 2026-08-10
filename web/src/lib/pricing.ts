@@ -14,6 +14,8 @@ import {
   durationMultiplier,
   isGenerationMode,
   isGenerationTier,
+  meetsVipRank,
+  minVipRankFor,
   type GenerationTier,
 } from "./generation-modes";
 import { ZC_STARTER_USD_PER_CREDIT, effectiveMultiplierBps } from "./generation-catalog";
@@ -31,6 +33,14 @@ export class SpicyRequiresVipError extends Error {
   }
 }
 
+/** VIP 等级不够（终极档的 Spicy 变体要 VIP2） */
+export class VipRankTooLowError extends Error {
+  code = "VIP_RANK_TOO_LOW" as const;
+  constructor(public requiredRank: number) {
+    super(`该档位仅对 VIP${requiredRank} 及以上开放`);
+  }
+}
+
 export type GenerationQuoteInput = {
   mode: string;
   tier?: string | null;
@@ -39,7 +49,7 @@ export type GenerationQuoteInput = {
   /** 视频时长（秒）；按 ceil(duration / unitSeconds) 倍率计费 */
   durationSeconds?: number | null;
   user?: Pick<User, "isVip" | "vipExpiresAt" | "vipTierId"> & {
-    vipTier?: Pick<VipTier, "id" | "code" | "name" | "discountBps" | "isActive"> | null;
+    vipTier?: Pick<VipTier, "id" | "code" | "name" | "discountBps" | "isActive" | "rank"> | null;
   };
 };
 
@@ -137,6 +147,13 @@ export async function resolveGenerationQuote(input: GenerationQuoteInput): Promi
   const vipActive = input.user ? isVipActive(input.user) : false;
   if (product.requiresVip && !vipActive) throw new SpicyRequiresVipError();
 
+  // 等级门槛：VIP 有效还不够，终极档的 Spicy 变体要 VIP2 及以上。
+  // 放在扣点之前——这条不拦住，VIP1 用户直接 POST 就能按 VIP2 的价买到 VIP2 的档。
+  const requiredRank = minVipRankFor(product);
+  if (requiredRank > 0 && !meetsVipRank(requiredRank, vipActive ? input.user?.vipTier?.rank : 0)) {
+    throw new VipRankTooLowError(requiredRank);
+  }
+
   const meta = isGenerationMode(product.mode) ? MODE_META[product.mode] : null;
   const batch = meta?.supportsBatch ? (input.batch ?? 1) : 1;
   const durationUnits =
@@ -157,7 +174,7 @@ export async function resolveGenerationQuote(input: GenerationQuoteInput): Promi
     if (!vipTier && input.user.vipTierId) {
       vipTier = await db.vipTier.findFirst({
         where: { id: input.user.vipTierId, isActive: true },
-        select: { id: true, code: true, name: true, discountBps: true, isActive: true },
+        select: { id: true, code: true, name: true, rank: true, discountBps: true, isActive: true },
       });
     }
     if (vipTier?.isActive && vipTier.discountBps > 0) {
@@ -275,6 +292,8 @@ export function productOut(p: GenerationProduct) {
     batch_four_multiplier: p.batchFourMultiplier,
     unit_seconds: p.unitSeconds,
     requires_vip: p.requiresVip,
+    /** 0 = 不限等级；2 = 需要 VIP2（终极档的 Spicy 变体） */
+    min_vip_rank: minVipRankFor(p),
     is_default: p.isDefault,
     sort_order: p.sortOrder,
   };

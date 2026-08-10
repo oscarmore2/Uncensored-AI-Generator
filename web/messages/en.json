@@ -427,6 +427,7 @@
     "spicyLabel": "Spicy tiers (members only)",
     "spicyUnlock": "Unlock with membership",
     "spicyNeedsVip": "Spicy tiers are members only. Please upgrade first.",
+    "tierNeedsVipRank": "This tier is open to VIP{rank} and above only.",
     "spicyNotice": "Spicy tiers allow a wider creative range. Without adult mode enabled, prompts involving nudity are still blocked by content review — only suggestive content is supported.",
     "tierUnavailable": "Tiers for this mode are still being configured. Please try again later.",
     "editPlaceholder": "Describe the edit, e.g. replace the background with a sunset beach, keep the subject and pose…",
