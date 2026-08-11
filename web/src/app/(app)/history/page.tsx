@@ -42,18 +42,22 @@ export default function HistoryPage() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-4xl font-bold tracking-tighter">{t("title")}</h1>
-        <div className="flex gap-2">
+      {/*
+        原来标题与工具栏是一行，搜索框写死 w-64：手机上这一行要 485px，整页横向滚动。
+        窄屏改成上下两段，搜索框吃满剩余宽度。
+      */}
+      <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <h1 className="text-3xl font-bold tracking-tighter sm:text-4xl">{t("title")}</h1>
+        <div className="flex min-w-0 gap-2">
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder={t("search")}
-            className="bg-surface border border-line px-4 py-2 rounded-2xl text-sm w-64 focus:border-orange-500/50 outline-none"
+            className="w-full min-w-0 rounded-2xl border border-line bg-surface px-4 py-2 text-sm outline-none focus:border-orange-500/50 sm:w-64"
           />
           <button
             onClick={load}
-            className="px-4 py-2 text-sm bg-black/[0.03] hover:bg-black/[0.06] border border-line rounded-2xl flex items-center gap-x-2"
+            className="flex shrink-0 items-center gap-x-2 rounded-2xl border border-line bg-black/[0.03] px-4 py-2 text-sm hover:bg-black/[0.06]"
           >
             <i className="fas fa-sync-alt" /> <span className="hidden md:inline">{t("refresh")}</span>
           </button>

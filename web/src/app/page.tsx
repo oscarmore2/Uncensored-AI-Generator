@@ -98,16 +98,17 @@ export default async function LandingPage() {
             {t("subheading")}
           </p>
 
-          <div className="mt-10 flex items-center justify-center gap-x-4">
+          {/* 窄屏两个按钮各自换行成两行（Enter/studio），改成上下排布、各占满一行 */}
+          <div className="mt-10 flex flex-col items-stretch justify-center gap-3 sm:flex-row sm:items-center sm:gap-x-4">
             <Link
               href={session ? "/make" : "/login?mode=register"}
-              className="generate-btn px-10 py-4 text-ink font-bold text-lg rounded-3xl shadow-xl active:scale-[0.985]"
+              className="generate-btn rounded-3xl px-6 py-4 text-center text-lg font-bold text-ink shadow-xl active:scale-[0.985] sm:px-10"
             >
               {session ? t("enterStudio") : t("startFree")}
             </Link>
             <Link
               href="/explore"
-              className="px-8 py-4 font-semibold rounded-3xl border border-line hover:bg-black/[0.04] transition-colors"
+              className="rounded-3xl border border-line px-6 py-4 text-center font-semibold transition-colors hover:bg-black/[0.04] sm:px-8"
             >
               {t("browse")}
             </Link>

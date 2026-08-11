@@ -150,7 +150,13 @@ export function ExploreGallery({
             窄屏放弃分栏，整个弹窗当一个滚动容器。
           */}
           <div className="modal-pop flex max-h-[94vh] w-full max-w-6xl flex-col overflow-y-auto overscroll-contain rounded-3xl border border-line bg-surface lg:grid lg:grid-cols-[minmax(0,1.45fr)_minmax(330px,.75fr)] lg:grid-rows-[minmax(0,1fr)] lg:overflow-hidden">
-            <div className="flex min-h-0 flex-col bg-black/[0.04] lg:overflow-auto">
+            {/*
+              min-h-0 只能给分栏那一档用。窄屏时弹窗是一列 flex，min-h-0 允许
+              这一格被压到比内容还矮（实测 116px），里面的视频仍然是它自己的
+              183px，于是直接盖住下面的标题和最大化/关闭按钮。
+              窄屏改成不许收缩，高度由内容说了算。
+            */}
+            <div className="flex shrink-0 flex-col bg-black/[0.04] lg:min-h-0 lg:shrink lg:overflow-auto">
               <AdaptiveMedia
                 mode={selected.mode}
                 src={selected.media_url}

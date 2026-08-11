@@ -65,8 +65,8 @@ export function Header() {
 
   return (
     <header className="sticky top-0 z-50 border-b border-line bg-surface/95 backdrop-blur-xl">
-      <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-        <BrandLogo href="/make" compact />
+      <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-2 px-4 sm:px-6">
+        <BrandLogo href="/make" compact hideNameOnMobile />
 
         <nav className="hidden md:flex items-center gap-x-1 text-sm">
           {navItems.map((item) => (
@@ -82,19 +82,20 @@ export function Header() {
           ))}
         </nav>
 
-        <div className="flex items-center gap-x-3">
+        <div className="flex min-w-0 items-center gap-x-2 sm:gap-x-3">
           <div className="hidden lg:block">
             <LanguageSwitcher compact />
           </div>
           <div
             onClick={() => router.push("/pricing")}
-            className="credit-display flex items-center gap-x-2 px-4 h-9 rounded-2xl cursor-pointer hover:border-orange-500/50 transition-colors"
+            className="credit-display flex h-9 cursor-pointer items-center gap-x-2 rounded-2xl px-2.5 transition-colors hover:border-orange-500/50 sm:px-4"
           >
             <div className="flex items-center gap-x-1.5">
               <i className="fas fa-coins text-amber-800" />
               <span className="font-mono font-semibold text-lg stat-number">{user?.balance ?? "—"}</span>
             </div>
-            <span className="text-xs text-ink-muted">{common("credits")}</span>
+            {/* 旁边就是金币图标，窄屏上「点数」两个字省下来给余额数字 */}
+            <span className="hidden text-xs text-ink-muted sm:inline">{common("credits")}</span>
           </div>
 
           <Link href="/profile" className="flex items-center gap-x-2 cursor-pointer">
