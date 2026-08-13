@@ -106,6 +106,7 @@ export function WorkMedia({
   src,
   poster,
   className,
+  eager = false,
   controls = false,
   autoPlay = true,
   muted = true,
@@ -129,6 +130,14 @@ export function WorkMedia({
    * 浏览器直接卡死；作品本体等点开弹窗再渲染。
    */
   asThumbnail?: boolean;
+  /**
+   * 主视图要立即加载。
+   *
+   * 默认的 loading="lazy" 是给网格缩略图用的，放在详情画布上会死锁：
+   * 图还没加载 → 元素 0×0 → 容器跟着塌成几十像素 → 浏览器认为它不在视口内
+   * → 永远不触发加载 → 元素一直 0×0。实测手机端就卡在这个循环里。
+   */
+  eager?: boolean;
 }) {
   const kind = workMediaKind(mode, src);
 
@@ -183,7 +192,7 @@ export function WorkMedia({
   }
   // 外部媒体域名不固定，直接用 img 而非 next/image
   // eslint-disable-next-line @next/next/no-img-element
-  return <img src={src} alt={alt} loading="lazy" className={className} />;
+  return <img src={src} alt={alt} loading={eager ? "eager" : "lazy"} className={className} />;
 }
 
 /**

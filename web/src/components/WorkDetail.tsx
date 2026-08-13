@@ -139,7 +139,12 @@ export function WorkDetail({
         里面的视频仍是自己的高度，于是直接盖住下面的标题和按钮。
       */}
       <section className="flex shrink-0 flex-col bg-stage lg:min-h-0 lg:shrink">
-        <div className="relative flex min-h-0 flex-1 items-center justify-center p-3 sm:p-5">
+        {/*
+          min-h 不能省：媒体还没加载出来时元素是 0×0，容器会跟着塌，
+          塌掉之后浏览器又认为图不在视口内而不去加载它——自己锁死自己。
+          兜个底高，顺便让加载中/加载失败的画面不至于抽成一条缝。
+        */}
+        <div className="relative flex min-h-[220px] flex-1 items-center justify-center p-3 sm:min-h-[280px] sm:p-5">
           {current ? (
             <>
               {gallery.multi && (
@@ -210,6 +215,7 @@ export function WorkDetail({
                 mode={mode}
                 src={current.url}
                 poster={current.poster}
+                eager
                 controls
                 autoPlay
                 muted
