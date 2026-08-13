@@ -3,6 +3,7 @@
 import { EmptyState } from "./ImageAlbum";
 import type { PlaythingGen } from "./types";
 import { MediaExpiryBadge } from "@/components/MediaExpiryBadge";
+import { buildWorkGallery } from "@/lib/plaything-categories";
 import { useTranslations } from "next-intl";
 
 export function AudioLibrary({
@@ -17,7 +18,10 @@ export function AudioLibrary({
   const t = useTranslations("Plaything");
   const succeeded = items.filter((g) => g.status === "succeeded" && g.result_urls?.length);
   const selected = succeeded.find((g) => g.id === selectedId) ?? succeeded[0] ?? null;
-  const url = selected?.result_urls?.[0] ?? null;
+  // 同 VideoLibrary：结果里可能还有一张封面，[0] 未必是音频本体
+  const url = selected
+    ? (buildWorkGallery(selected.result_urls, undefined, "audio").items[0]?.url ?? null)
+    : null;
 
   if (!items.length) {
     return <EmptyState title={t("noAudio")} hint={t("audioHint")} />;

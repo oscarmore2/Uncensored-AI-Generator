@@ -255,10 +255,12 @@ export interface WorkGallery {
  */
 export function buildWorkGallery(
   urls: string[] | null | undefined,
-  mode?: string
+  mode?: string,
+  /** 调用方已经知道类型时直接给（玩物专区的 media_kind），比按 URL 猜准 */
+  knownKind?: PlaythingMediaKind
 ): WorkGallery {
   const list = (urls ?? []).filter((u): u is string => typeof u === "string" && Boolean(u));
-  const kind = primaryMediaKind(list, mode);
+  const kind = knownKind ?? primaryMediaKind(list, mode);
 
   const file = (url: string, galleryIndex: number | null): WorkGalleryFile => ({
     url,

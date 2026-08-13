@@ -3,7 +3,18 @@
 import { EmptyState } from "./ImageAlbum";
 import type { PlaythingGen } from "./types";
 import { MediaExpiryBadge } from "@/components/MediaExpiryBadge";
+import { buildWorkGallery } from "@/lib/plaything-categories";
 import { useTranslations } from "next-intl";
+
+/**
+ * 取这条结果里真正的视频。
+ * 不能直接用 result_urls[0]：上游常常同时给 [封面.jpg, 片子.mp4]，顺序还不保证，
+ * 撞上封面在前就会把一张图喂给 <video>，播放器直接空着。
+ */
+function videoOf(g: { result_urls: string[] | null; media_kind: string }) {
+  const gallery = buildWorkGallery(g.result_urls, undefined, "video");
+  return gallery.items[0] ?? null;
+}
 
 export function VideoLibrary({
   items,
@@ -17,7 +28,8 @@ export function VideoLibrary({
   const t = useTranslations("Plaything");
   const succeeded = items.filter((g) => g.status === "succeeded" && g.result_urls?.length);
   const selected = succeeded.find((g) => g.id === selectedId) ?? succeeded[0] ?? null;
-  const activeUrl = selected?.result_urls?.[0] ?? null;
+  const active = selected ? videoOf(selected) : null;
+  const activeUrl = active?.url ?? null;
 
   if (!items.length) {
     return <EmptyState title={t("noVideos")} hint={t("videoHint")} />;
@@ -31,6 +43,7 @@ export function VideoLibrary({
             <video
               key={activeUrl}
               src={activeUrl}
+              poster={active?.poster ?? undefined}
               controls
               playsInline
               className="max-h-[min(60vh,560px)] w-full object-contain"
@@ -54,19 +67,26 @@ export function VideoLibrary({
       </div>
       <div className="lg:w-48 shrink-0 space-y-2 max-h-[60vh] overflow-y-auto overscroll-contain">
         {succeeded.map((g) => {
-          const url = g.result_urls![0];
-          const active = g.id === (selected?.id ?? null);
+          const thumb = videoOf(g);
+          const url = thumb?.url ?? "";
+          const isActive = g.id === (selected?.id ?? null);
           return (
             <button
               key={g.id}
               type="button"
               onClick={() => onSelect(g.id)}
               className={`w-full text-left rounded-xl border overflow-hidden ${
-                active ? "border-orange-500/50" : "border-line hover:border-line-strong"
+                isActive ? "border-orange-500/50" : "border-line hover:border-line-strong"
               }`}
             >
               <div className="aspect-video bg-stage relative">
-                <video src={url} muted preload="metadata" className="w-full h-full object-cover" />
+                <video
+                  src={url}
+                  poster={thumb?.poster ?? undefined}
+                  muted
+                  preload="metadata"
+                  className="w-full h-full object-cover"
+                />
                 <span className="absolute bottom-1 left-1 text-[10px] px-1 rounded bg-black/60 font-mono text-white">
                   #{g.id}
                 </span>

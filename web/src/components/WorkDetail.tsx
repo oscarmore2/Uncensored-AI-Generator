@@ -34,6 +34,7 @@ export function WorkDetail({
   fullPageHref,
   actions,
   emptyHint,
+  extra,
   layout = "dialog",
 }: {
   source: DownloadSource;
@@ -55,6 +56,8 @@ export function WorkDetail({
   actions?: ReactNode;
   /** 没有结果时显示的文案 */
   emptyHint?: ReactNode;
+  /** 信息栏末尾的附加区块（探索页的参考图等调用方独有的内容） */
+  extra?: ReactNode;
   /** dialog 走弹窗高度限制；page 铺在整页里，不设上限 */
   layout?: "dialog" | "page";
 }) {
@@ -420,6 +423,8 @@ export function WorkDetail({
             </div>
           </div>
         )}
+
+        {extra}
       </aside>
     </div>
   );

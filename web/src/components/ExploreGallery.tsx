@@ -1,12 +1,12 @@
 "use client";
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
-import { AdaptiveMedia, WorkMedia } from "./WorkMedia";
+import { WorkMedia } from "./WorkMedia";
 import { useTranslations } from "next-intl";
 import { useBodyScrollLock } from "@/lib/use-body-scroll-lock";
 import { GENERATION_MODES } from "@/lib/generation-modes";
+import { WorkDetail } from "./WorkDetail";
 
 export type ExploreWork = {
   id: number;
@@ -24,13 +24,6 @@ export type ExploreWork = {
 // 有译名的模式；缺译名时角标退回原始 mode 字符串，不至于空着。
 // 从模式定义派生而不是手抄——抄一份就得记着每次加模式都回来补
 const MODE_KEYS = new Set<string>(GENERATION_MODES);
-
-function displayValue(value: unknown, inlineMedia: string): string {
-  if (value === null || value === undefined) return "—";
-  if (typeof value === "object") return JSON.stringify(value);
-  const text = String(value);
-  return text.startsWith("data:") ? inlineMedia : text;
-}
 
 function referenceMedia(params: Record<string, unknown>): string[] {
   const found: string[] = [];
@@ -78,7 +71,6 @@ export function ExploreGallery({
   }
 
   const refs = useMemo(() => selected ? referenceMedia(selected.params) : [], [selected]);
-  const paramEntries = selected ? Object.entries(selected.params) : [];
 
   return (
     <>
@@ -145,123 +137,53 @@ export function ExploreGallery({
           }}
         >
           {/*
-            两栏各自滚动的关键是 grid-rows-[minmax(0,1fr)]：行若是默认的 auto，
-            会撑到内容高度并溢出 max-h，子元素拿到完整行高，overflow-y-auto overscroll-contain 永远不触发。
-            窄屏放弃分栏，整个弹窗当一个滚动容器。
+            外观与画廊逻辑共用 WorkDetail；探索页独有的参考图区块走 extra 插槽。
+            公共作品只有一条 mediaUrl，天然是单件，不会出现缩略图条。
           */}
-          <div className="modal-pop flex max-h-[94vh] w-full max-w-6xl flex-col overflow-y-auto overscroll-contain rounded-3xl border border-line bg-surface lg:grid lg:grid-cols-[minmax(0,1.45fr)_minmax(330px,.75fr)] lg:grid-rows-[minmax(0,1fr)] lg:overflow-hidden">
-            {/*
-              min-h-0 只能给分栏那一档用。窄屏时弹窗是一列 flex，min-h-0 允许
-              这一格被压到比内容还矮（实测 116px），里面的视频仍然是它自己的
-              183px，于是直接盖住下面的标题和最大化/关闭按钮。
-              窄屏改成不许收缩，高度由内容说了算。
-            */}
-            <div className="flex shrink-0 flex-col bg-black/[0.04] lg:min-h-0 lg:shrink lg:overflow-auto">
-              <AdaptiveMedia
-                mode={selected.mode}
-                src={selected.media_url}
-                poster={selected.thumb_url}
-                className="min-h-[45vh] flex-1"
-              />
-            </div>
-            <aside className="min-h-0 border-t border-line p-6 lg:border-t-0 lg:border-l lg:overflow-y-auto lg:overscroll-contain">
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <div className="flex gap-2">
-                    <span className="media-badge">{MODE_KEYS.has(selected.mode) ? t(`modes.${selected.mode}` as "modes.txt2img") : selected.mode}</span>
-                    {selected.is_adult && (
-                      <span className="rounded-full bg-red-600 px-2 py-0.5 text-[10px] font-bold text-white">18+</span>
-                    )}
+          <div className="modal-pop w-full max-w-6xl">
+            <WorkDetail
+              source={{ work: selected.id }}
+              mode={MODE_KEYS.has(selected.mode) ? t(`modes.${selected.mode}` as "modes.txt2img") : selected.mode}
+              urls={[selected.media_url]}
+              title={selected.title ?? t("communityWork")}
+              timestamp={new Date(selected.created_at).toISOString().slice(0, 19).replace("T", " ")}
+              prompt={selected.prompt}
+              negativePrompt={selected.negative_prompt}
+              params={selected.params}
+              adult={selected.is_adult}
+              onClose={() => setSelected(null)}
+              fullPageHref={`/explore/${selected.id}`}
+              actions={
+                <button
+                  type="button"
+                  onClick={() => remix(selected)}
+                  className="flex w-full items-center justify-center gap-2 rounded-2xl border border-line bg-black/[0.03] py-3 font-semibold hover:bg-black/[0.06]"
+                >
+                  <i className="fas fa-copy" />
+                  {signedIn ? t("copyToGenerator") : t("registerToCopy")}
+                </button>
+              }
+              extra={
+                refs.length > 0 ? (
+                  <div>
+                    <div className="mb-2 font-mono text-[10px] uppercase tracking-widest text-ink-subtle">
+                      {t("referenceImages")}
+                    </div>
+                    <div className="grid grid-cols-3 gap-2">
+                      {refs.map((src, index) => (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          key={`${src.slice(0, 60)}-${index}`}
+                          src={src}
+                          alt={t("referenceAlt", { number: index + 1 })}
+                          className="aspect-square w-full rounded-xl border border-line object-cover"
+                        />
+                      ))}
+                    </div>
                   </div>
-                  <h2 className="mt-3 text-xl font-bold">{selected.title ?? t("communityWork")}</h2>
-                </div>
-                {/* 与「我的作品」弹窗同一套：最大化直达独立页 + 关闭，图标尺寸与命中区一致 */}
-                <div className="flex shrink-0 items-center gap-1">
-                  <Link
-                    href={`/explore/${selected.id}`}
-                    aria-label={t("openFullPage")}
-                    title={t("openFullPage")}
-                    className="flex h-9 w-9 items-center justify-center rounded-xl text-ink-muted hover:bg-black/[0.05] hover:text-ink"
-                  >
-                    <i className="fas fa-up-right-and-down-left-from-center text-sm" />
-                  </Link>
-                  <button
-                    type="button"
-                    onClick={() => setSelected(null)}
-                    aria-label={t("closeDialog")}
-                    className="flex h-9 w-9 items-center justify-center rounded-xl text-2xl text-ink-muted hover:bg-black/[0.05] hover:text-ink"
-                  >
-                    &times;
-                  </button>
-                </div>
-              </div>
-
-              {/* 3D、超分这些模式的模型压根不收提示词，空着只会留一个孤零零的标题 */}
-              {selected.prompt.trim() && (
-                <div className="mt-5">
-                  <div className="mb-2 text-xs font-semibold text-ink-subtle">PROMPT</div>
-                  <p className="whitespace-pre-wrap text-sm leading-6 text-ink">{selected.prompt}</p>
-                </div>
-              )}
-              {selected.negative_prompt && (
-                <div className="mt-5">
-                  <div className="mb-2 text-xs font-semibold text-ink-subtle">NEGATIVE PROMPT</div>
-                  <p className="text-sm leading-6 text-ink-muted">{selected.negative_prompt}</p>
-                </div>
-              )}
-
-              <div className="mt-5 grid grid-cols-2 gap-3">
-                <div className="rounded-2xl border border-line bg-black/[0.03] p-3">
-                  <div className="text-[10px] font-semibold text-ink-subtle">TIER</div>
-                  <div className="mt-1 truncate text-xs font-mono text-ink">
-                    {displayValue(selected.params.tier, t("inlineMedia"))}
-                  </div>
-                </div>
-                <div className="rounded-2xl border border-line bg-black/[0.03] p-3">
-                  <div className="text-[10px] font-semibold text-ink-subtle">SEED</div>
-                  <div className="mt-1 truncate text-xs font-mono text-ink">
-                    {displayValue(selected.params.seed, t("inlineMedia"))}
-                  </div>
-                </div>
-              </div>
-
-              {refs.length > 0 && (
-                <div className="mt-5">
-                  <div className="mb-2 text-xs font-semibold text-ink-subtle">{t("referenceImages")}</div>
-                  <div className="grid grid-cols-3 gap-2">
-                    {refs.map((src, index) => (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img key={`${src.slice(0, 60)}-${index}`} src={src} alt={t("referenceAlt", { number: index + 1 })} className="aspect-square w-full rounded-xl object-cover" />
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {paramEntries.length > 0 && (
-                <div className="mt-5">
-                  <div className="mb-2 text-xs font-semibold text-ink-subtle">{t("parameters")}</div>
-                  {/* divide-white/5 是深色主题的遗留：白线压在浅色底上等于没有分隔线 */}
-                  <div className="divide-y divide-line rounded-2xl border border-line px-4">
-                    {paramEntries.map(([key, value]) => (
-                      <div key={key} className="flex justify-between gap-4 py-2.5 text-xs">
-                        <span className="font-mono text-ink-subtle">{key}</span>
-                        <span className="max-w-[65%] break-all text-right font-mono text-ink-muted">{displayValue(value, t("inlineMedia"))}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              <button
-                type="button"
-                onClick={() => remix(selected)}
-                // 全站主行动色是橘，这里的青是早期遗留；hover 还写成了和底色同值，等于没有悬停反馈
-                className="mt-6 w-full rounded-2xl bg-orange-700 py-3 font-bold text-white hover:bg-orange-600"
-              >
-                <i className="fas fa-copy mr-2" />
-                {signedIn ? t("copyToGenerator") : t("registerToCopy")}
-              </button>
-            </aside>
+                ) : null
+              }
+            />
           </div>
         </div>
       )}
