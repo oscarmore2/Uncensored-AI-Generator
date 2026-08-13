@@ -3,8 +3,8 @@
 :root {
   /**
    * 浅色外壳。底色取图标同款奶油米，比纯白柔和、不刺眼，也和暖橘主色同调。
-   * 唯独「作品预览区」保持深色（见 --stage）：图片/视频/3D 在深底上才看得准颜色，
-   * 浅底会和画面本身抢。所以是「浅色外壳 + 深色画布」，不是整站刷白。
+   * 作品预览区（--stage）曾经保留深色以便看准画面颜色，后改为一并翻浅——
+   * 取「整站观感统一」，代价是暗调画面与视频在浅底上不如深底衬得准，这是有意的取舍。
    */
   --bg: #faf6ef;
   --fg: #1c1917;
@@ -20,8 +20,16 @@
   --fg-muted: #57534e;
   --fg-subtle: #6d655b;
 
-  /** 媒体舞台：预览图片/视频/3D 的衬底，始终保持深色 */
-  --stage: #17130f;
+  /**
+   * 媒体舞台：预览图片/视频/3D 的衬底。
+   * 比 --surface-2 再深一点，好让白底图片仍能和衬底分开；
+   * --stage-inset 供舞台内的次级区域用（缩略图条等），再深一档。
+   *
+   * 注意：改浅之后，任何压在舞台上的文字/图标都不能再写死 text-white/*，
+   * 要走 ink 系列——占位图标、空态文案曾经就是白的，翻浅后直接消失。
+   */
+  --stage: #f2ebdf;
+  --stage-inset: #e9e0d1;
 
   /**
    * 弹窗遮罩。浅色主题下 95% 纯黑太重，像把整页关灯；
@@ -78,6 +86,7 @@
   --color-ink-muted: var(--fg-muted);
   --color-ink-subtle: var(--fg-subtle);
   --color-stage: var(--stage);
+  --color-stage-inset: var(--stage-inset);
   --color-sidebar: var(--sidebar);
   --color-sidebar-fg: var(--sidebar-fg);
   --color-sidebar-fg-muted: var(--sidebar-fg-muted);

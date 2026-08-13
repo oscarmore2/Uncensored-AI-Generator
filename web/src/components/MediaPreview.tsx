@@ -172,9 +172,9 @@ export function MediaThumb({
       return <img src={poster} alt={alt ?? "作品"} className={className} loading="lazy" />;
     }
     return (
-      <div className="w-full h-full flex flex-col items-center justify-center gap-2 bg-gradient-to-br from-white/[0.06] to-transparent">
-        <i className={`fas ${meta.icon} text-3xl text-gray-400`} />
-        <span className="text-[11px] text-gray-400">{meta.label}</span>
+      <div className="w-full h-full flex flex-col items-center justify-center gap-2 bg-stage">
+        <i className={`fas ${meta.icon} text-3xl text-ink-subtle`} />
+        <span className="text-[11px] text-ink-subtle">{meta.label}</span>
       </div>
     );
   }

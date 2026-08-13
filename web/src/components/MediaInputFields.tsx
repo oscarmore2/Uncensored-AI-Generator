@@ -250,7 +250,7 @@ function MediaChip({ item }: { item: UploadedMedia }) {
     );
   }
   return (
-    <div className="flex h-full w-full flex-col items-center justify-center gap-1 text-white/60">
+    <div className="flex h-full w-full flex-col items-center justify-center gap-1 text-ink-subtle">
       <i className="fas fa-music text-xl" />
       <span className="w-full truncate px-1 text-center text-[9px]">{item.name}</span>
     </div>

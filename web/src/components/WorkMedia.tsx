@@ -141,8 +141,8 @@ export function WorkMedia({
       }
       return (
         <div className={`flex flex-col items-center justify-center gap-2 bg-stage ${className ?? ""}`}>
-          <i className="fas fa-cube text-3xl text-white/45" />
-          <span className="text-[11px] text-white/45">3D 模型</span>
+          <i className="fas fa-cube text-3xl text-ink-subtle" />
+          <span className="text-[11px] text-ink-subtle">3D 模型</span>
         </div>
       );
     }
@@ -153,8 +153,8 @@ export function WorkMedia({
     if (asThumbnail) {
       return (
         <div className={`flex flex-col items-center justify-center gap-2 bg-stage ${className ?? ""}`}>
-          <i className="fas fa-music text-3xl text-white/45" />
-          <span className="text-[11px] text-white/45">音频</span>
+          <i className="fas fa-music text-3xl text-ink-subtle" />
+          <span className="text-[11px] text-ink-subtle">音频</span>
         </div>
       );
     }
