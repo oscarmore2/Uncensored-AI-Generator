@@ -623,5 +623,26 @@
     "retryConfirm": "Confirm",
     "applied": "Settings applied",
     "loadFailed": "Could not load the original settings"
+  },
+  "WorkDetail": {
+    "downloadThis": "Download this file",
+    "share": "Share",
+    "shareTitle": "Wanwankewu creation",
+    "copyLink": "Copy link",
+    "copied": "Copied",
+    "prev": "Previous",
+    "next": "Next",
+    "galleryAria": "Outputs",
+    "itemAria": "Item {number}",
+    "noMedia": "No media to show",
+    "openFullPage": "Open full page",
+    "close": "Close",
+    "download": "Download",
+    "downloadAll": "Download all ({count})",
+    "prompt": "Prompt",
+    "negativePrompt": "Negative",
+    "files": "Files",
+    "fileCount": "{count}",
+    "parameters": "Parameters"
   }
 }

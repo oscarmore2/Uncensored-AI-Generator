@@ -1,14 +1,12 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import Link from "next/link";
 import { api, type ApiGeneration } from "@/lib/client";
-import { AdaptiveMedia } from "@/components/WorkMedia";
 import { MediaKindBadge, MediaThumb } from "@/components/MediaPreview";
 import { MediaExpiryBadge } from "@/components/MediaExpiryBadge";
 import { useApp } from "@/components/AppContext";
 import { WorkReuseActions } from "@/components/WorkReuseActions";
-import { downloadExtOf } from "@/lib/plaything-categories";
+import { WorkDetail } from "@/components/WorkDetail";
 import { useLocale, useTranslations } from "next-intl";
 import { useBodyScrollLock } from "@/lib/use-body-scroll-lock";
 
@@ -137,87 +135,39 @@ export default function HistoryPage() {
 
       {selected && (
         <div
-          className="fixed inset-0 scrim z-[110] flex items-center justify-center p-4"
+          className="fixed inset-0 scrim z-[110] flex items-center justify-center p-3 sm:p-4"
           onClick={(e) => {
             if (e.target === e.currentTarget) setSelected(null);
           }}
         >
-          <div className="max-w-3xl w-full max-h-[90vh] flex flex-col glass rounded-3xl overflow-hidden modal-pop">
-            <div className="shrink-0 p-5 flex justify-between border-b border-line">
-              <div>
-                <span className="font-semibold">{selected.mode}</span>
-                {selected.is_adult && (
-                  <span className="ml-2 rounded-full bg-red-700 px-2 py-0.5 text-[10px] font-bold text-white">18+</span>
-                )}
-              </div>
-              <div className="flex items-center gap-1">
-                {/* 弹窗最高只有 90vh，3D 转起来实在看不清；给一个直达整页的出口 */}
-                <Link
-                  href={`/works/${selected.id}`}
-                  aria-label={t("openFullPage")}
-                  title={t("openFullPage")}
-                  className="flex h-9 w-9 items-center justify-center rounded-xl text-ink-muted hover:bg-black/[0.05] hover:text-ink"
-                >
-                  <i className="fas fa-up-right-and-down-left-from-center text-sm" />
-                </Link>
-                <button
-                  onClick={() => setSelected(null)}
-                  aria-label={t("close")}
-                  className="flex h-9 w-9 items-center justify-center rounded-xl text-2xl text-ink-muted hover:bg-black/[0.05] hover:text-ink"
-                >
-                  &times;
-                </button>
-              </div>
-            </div>
-            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-2 sm:p-4">
-              {selected.status === "succeeded" && selected.result_urls?.length ? (
-                <AdaptiveMedia mode={selected.mode} urls={selected.result_urls} />
-              ) : (
-                <div className="fake-image rounded-2xl h-80 flex items-center justify-center text-center">
-                  <div>
-                    {selected.media_deleted_at ? t("mediaDeleted") : t("processingOrFailed")}
-                    <br />
-                    <span className="text-xs">{selected.status}</span>
-                  </div>
-                </div>
-              )}
-              <div className="mt-6 text-sm bg-black/[0.04] p-4 rounded-2xl">{selected.prompt}</div>
-              <div className="mt-3">
-                <MediaExpiryBadge
-                  expiresAt={selected.media_expires_at}
-                  deletedAt={selected.media_deleted_at}
+          {/* 外观与画廊逻辑都在 WorkDetail 里，这里只负责遮罩与定位 */}
+          <div className="modal-pop w-full max-w-6xl">
+            <WorkDetail
+              source={{ gen: selected.id }}
+              mode={selected.mode}
+              urls={selected.result_urls ?? []}
+              title={`#${selected.id}`}
+              timestamp={new Date(selected.created_at).toLocaleString(locale)}
+              prompt={selected.prompt}
+              spicy={selected.spicy}
+              adult={selected.is_adult}
+              cost={selected.cost}
+              expiresAt={selected.media_expires_at}
+              deletedAt={selected.media_deleted_at}
+              onClose={() => setSelected(null)}
+              fullPageHref={`/works/${selected.id}`}
+              emptyHint={selected.media_deleted_at ? t("mediaDeleted") : t("processingOrFailed")}
+              actions={
+                <WorkReuseActions
+                  generationId={selected.id}
+                  onNavigate={() => setSelected(null)}
                 />
-              </div>
-            </div>
-            <div className="shrink-0 border-t border-line bg-surface p-4 space-y-3">
-              <div className="flex gap-3">
-                {selected.result_urls?.length ? (
-                  <a
-                    href={selected.result_urls[0]}
-                    // 后缀按实际 URL 取：以前按 mode 猜，3D 会被存成 .jpg 下下来打不开
-                    download={`wanwankewu_${selected.id}.${downloadExtOf(selected.result_urls[0])}`}
-                    target="_blank"
-                    rel="noopener"
-                    className="flex-1 py-3 bg-orange-700 text-white font-semibold rounded-2xl flex items-center justify-center gap-x-2"
-                  >
-                    <i className="fas fa-download" /> {t("download")}
-                  </a>
-                ) : null}
-                <button
-                  onClick={() => setSelected(null)}
-                  className="flex-1 py-3 bg-black/[0.03] border border-line rounded-2xl"
-                >
-                  {t("close")}
-                </button>
-              </div>
-              <WorkReuseActions
-                generationId={selected.id}
-                onNavigate={() => setSelected(null)}
-              />
-            </div>
+              }
+            />
           </div>
         </div>
       )}
+
     </div>
   );
 }

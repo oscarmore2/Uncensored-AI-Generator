@@ -176,6 +176,131 @@ export function downloadExtOf(url: string | null | undefined, fallback = "jpg"):
   return m ? m[1].toLowerCase() : fallback;
 }
 
+/** 无扩展名的 CDN 直链只能靠模式猜；txt23d / vidupscale 这些都要认出来 */
+export function fallbackKindOfMode(mode?: string): PlaythingMediaKind {
+  if (!mode) return "image";
+  if (mode.endsWith("3d")) return "3d";
+  if (mode.endsWith("vid") || mode.startsWith("vid") || mode.includes("video")) return "video";
+  if (mode === "lipsync" || mode === "faceswap") return "video";
+  return "image";
+}
+
+/** 先按 URL 后缀判定，判不出来时用生成模式兜底 */
+export function mediaKindOf(
+  urls: string[] | null | undefined,
+  mode?: string
+): PlaythingMediaKind {
+  return detectMediaKindFromUrls(urls, fallbackKindOfMode(mode));
+}
+
+/** 富媒体优先级：一个任务同时产出封面图和视频时，作品本体是视频 */
+const KIND_WEIGHT: Record<PlaythingMediaKind, number> = {
+  video: 3,
+  "3d": 3,
+  audio: 2,
+  image: 1,
+};
+
+/**
+ * 一组结果里最能代表作品的类型。
+ * 逐条判定后取权重最高的——否则 [cover.jpg, clip.mp4] 会被当成图片，
+ * 卡片就丢了视频角标和播放入口。
+ */
+export function primaryMediaKind(
+  urls: string[] | null | undefined,
+  mode?: string
+): PlaythingMediaKind {
+  if (!urls?.length) return mediaKindOf(urls, mode);
+  let best = mediaKindOf([urls[0]], mode);
+  for (const u of urls) {
+    const k = mediaKindOf([u], mode);
+    if (KIND_WEIGHT[k] > KIND_WEIGHT[best]) best = k;
+  }
+  return best;
+}
+
+export interface WorkGalleryItem {
+  url: string;
+  /** 视频/3D 的封面，图片没有 */
+  poster: string | null;
+}
+
+export interface WorkGalleryFile {
+  url: string;
+  ext: string;
+  /** 对应画廊里的第几项；封面等附属件不进画廊，为 null */
+  galleryIndex: number | null;
+}
+
+export interface WorkGallery {
+  kind: PlaythingMediaKind;
+  items: WorkGalleryItem[];
+  files: WorkGalleryFile[];
+  /** 是否值得出缩略图条与翻页 */
+  multi: boolean;
+}
+
+/**
+ * 把一次生成的结果 URL 拆成「画廊条目」与「文件清单」两份。
+ *
+ * 规则：**只有图片可以是多件**。
+ *
+ * 视频 / 3D / 音频固定单件——上游给的第二条几乎总是封面图或附属件
+ * （3D 是 模型+预览图，视频是 mp4+封面），它们是同一件作品的组成部分，
+ * 不是第二个产出。以前 AdaptiveMedia 拿到 [mp4, jpg] 会铺成两格网格，
+ * 左边视频右边一张封面，看着像生成了两件东西。
+ *
+ * 另一层原因是成本：视频与 3D 每挂一个实例就是一份解码缓冲/WebGL 上下文，
+ * 做成可切换的画廊等于同时压着两份内存，不值当。
+ */
+export function buildWorkGallery(
+  urls: string[] | null | undefined,
+  mode?: string
+): WorkGallery {
+  const list = (urls ?? []).filter((u): u is string => typeof u === "string" && Boolean(u));
+  const kind = primaryMediaKind(list, mode);
+
+  const file = (url: string, galleryIndex: number | null): WorkGalleryFile => ({
+    url,
+    ext: downloadExtOf(url),
+    galleryIndex,
+  });
+
+  if (!list.length) return { kind, items: [], files: [], multi: false };
+
+  if (kind === "image") {
+    const items = list.map((url) => ({ url, poster: null }));
+    return {
+      kind,
+      items,
+      files: list.map((url, i) => file(url, i)),
+      multi: items.length > 1,
+    };
+  }
+
+  // 单件类：挑出主体，其余一律只进文件清单
+  let primary: string | null = null;
+  let poster: string | null = null;
+
+  if (kind === "3d") {
+    const split = splitModelResult(list);
+    primary = split.model;
+    poster = split.poster;
+  } else {
+    primary = list.find((u) => mediaKindOf([u], mode) === kind) ?? null;
+    poster = list.find((u) => u !== primary && detectMediaKindFromUrl(u, "image") === "image") ?? null;
+  }
+  // 一条都认不出来时退回第一条，总比整个空掉强
+  if (!primary) primary = list[0];
+
+  return {
+    kind,
+    items: [{ url: primary, poster }],
+    files: list.map((url) => file(url, url === primary ? 0 : null)),
+    multi: false,
+  };
+}
+
 export function detectMediaKindFromUrls(
   urls: string[] | null | undefined,
   fallback: PlaythingMediaKind

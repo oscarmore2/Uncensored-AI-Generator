@@ -623,5 +623,26 @@
     "retryConfirm": "确认发起",
     "applied": "参数已套用",
     "loadFailed": "读取原任务参数失败"
+  },
+  "WorkDetail": {
+    "downloadThis": "下载这一件",
+    "share": "分享",
+    "shareTitle": "玩玩可物作品",
+    "copyLink": "复制链接",
+    "copied": "已复制",
+    "prev": "上一件",
+    "next": "下一件",
+    "galleryAria": "产出列表",
+    "itemAria": "第 {number} 件",
+    "noMedia": "暂无可展示的媒体",
+    "openFullPage": "在独立页打开",
+    "close": "关闭",
+    "download": "下载",
+    "downloadAll": "下载全部（{count}）",
+    "prompt": "Prompt",
+    "negativePrompt": "Negative",
+    "files": "文件",
+    "fileCount": "{count} 个",
+    "parameters": "参数"
   }
 }

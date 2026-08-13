@@ -2,7 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import {
-  detectMediaKindFromUrls,
+  mediaKindOf,
+  primaryMediaKind,
   splitModelResult,
   type PlaythingMediaKind,
 } from "@/lib/plaything-categories";
@@ -14,48 +15,9 @@ import { useBodyScrollLock } from "@/lib/use-body-scroll-lock";
  * 支持图片 / 视频 / 3D / 音频；视频缩略图直接用浏览器抽帧，不依赖服务端生成。
  */
 
-/** 先按 URL 后缀判定，判不出来时用生成模式兜底 */
-export function mediaKindOf(
-  urls: string[] | null | undefined,
-  mode?: string
-): PlaythingMediaKind {
-  return detectMediaKindFromUrls(urls, fallbackKindOfMode(mode));
-}
-
-/** 无扩展名的 CDN 直链只能靠模式猜；txt23d / vidupscale 这些都要认出来 */
-function fallbackKindOfMode(mode?: string): PlaythingMediaKind {
-  if (!mode) return "image";
-  if (mode.endsWith("3d")) return "3d";
-  if (mode.endsWith("vid") || mode.startsWith("vid") || mode.includes("video")) return "video";
-  if (mode === "lipsync" || mode === "faceswap") return "video";
-  return "image";
-}
-
-/** 富媒体优先级：一个任务同时产出封面图和视频时，作品本体是视频 */
-const KIND_WEIGHT: Record<PlaythingMediaKind, number> = {
-  video: 3,
-  "3d": 3,
-  audio: 2,
-  image: 1,
-};
-
-/**
- * 一组结果里最能代表作品的类型。
- * 逐条判定后取权重最高的——否则 [cover.jpg, clip.mp4] 会被当成图片，
- * 卡片就丢了视频角标和播放入口。
- */
-export function primaryMediaKind(
-  urls: string[] | null | undefined,
-  mode?: string
-): PlaythingMediaKind {
-  if (!urls?.length) return mediaKindOf(urls, mode);
-  let best = mediaKindOf([urls[0]], mode);
-  for (const u of urls) {
-    const k = mediaKindOf([u], mode);
-    if (KIND_WEIGHT[k] > KIND_WEIGHT[best]) best = k;
-  }
-  return best;
-}
+// 媒体类型判定已挪到 lib/plaything-categories.ts，好让服务端与纯逻辑模块也能用；
+// 这里保留再导出，原有 import 路径不变。
+export { mediaKindOf, primaryMediaKind };
 
 /** 结果里的静态图，可直接当视频/3D 的封面 */
 function posterUrlOf(urls: string[] | null | undefined, mode?: string): string | null {
