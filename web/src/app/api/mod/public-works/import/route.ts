@@ -3,7 +3,7 @@ import { db } from "@/lib/db";
 import { requireRole } from "@/lib/auth";
 import { publicWorkModOut } from "@/lib/serialize";
 import { publicWorkImportSchema } from "@/lib/validators";
-import { mirrorRemoteUrls } from "@/lib/oss";
+import { mirrorForPermanentUse } from "@/lib/oss";
 
 /**
  * 采集导入公共库：审核员填表提交，媒体统一镜像到对象存储。
@@ -25,8 +25,18 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "请提供 media_url" }, { status: 400 });
   }
 
-  const [mirrored] = await mirrorRemoteUrls([mediaUrl], `public/import-${Date.now()}`);
-  const storedUrl = mirrored ?? mediaUrl;
+  // 同曝光路径：镜像不成就不入库，别把会过期的上游直链挂到公共库上
+  const { urls: mirrored, unmirrored } = await mirrorForPermanentUse(
+    [mediaUrl],
+    `public/import-${Date.now()}`
+  );
+  if (unmirrored.length) {
+    return NextResponse.json(
+      { error: "媒体未能镜像到对象存储，已取消导入。请检查 OSS 配置与来源主机白名单后重试。" },
+      { status: 502 }
+    );
+  }
+  const storedUrl = mirrored[0] ?? mediaUrl;
 
   const work = await db.publicWork.create({
     data: {

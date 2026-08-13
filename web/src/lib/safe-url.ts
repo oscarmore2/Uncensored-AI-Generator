@@ -1,11 +1,31 @@
 import "server-only";
 import dns from "dns/promises";
 import net from "net";
+import { env } from "./env";
 
+/**
+ * 允许镜像来源的主机后缀。
+ *
+ * 这份名单是「能不能把上游产物抓回自家 OSS」的开关，不是安全边界的全部——
+ * 私网 IP 由下面的 isPrivateIp + DNS 复核单独挡。名单没覆盖到的上游，
+ * mirrorRemoteUrls 会静默回落到上游直链，等上游过期就是一片裂图。
+ *
+ * 踩过的坑：接入 Atlas 之后没有回来补这里，于是 Atlas/Seedance 的产出
+ * 一次都没有镜像成功过（cloudfront.net 与 volces.com 都不在名单里），
+ * 上游一清理，探索页和我的作品同时裂掉。**加新渠道必须回来补这里。**
+ *
+ * cloudfront.net / volces.com 是公有 CDN，放行等于允许服务端抓取任意
+ * 该 CDN 上的公开对象。这类 SSRF 危害有限（拿不到内网、拿不到元数据端点），
+ * 换来的是媒体能真正落到自己手里，值得。
+ */
 const DEFAULT_ALLOWED_HOST_SUFFIXES = [
   "zencreator.pro",
   "zencreator.com",
   "wavespeed.ai",
+  // Atlas Cloud 的分发 CDN
+  "cloudfront.net",
+  // 火山引擎 TOS：Seedance 系列的产出落在这里
+  "volces.com",
   "cloudflarestorage.com",
   "amazonaws.com",
   "aliyuncs.com",
@@ -13,6 +33,13 @@ const DEFAULT_ALLOWED_HOST_SUFFIXES = [
   "hf.co",
   "huggingface.co",
 ];
+
+/** 上游换 CDN 时的应急出口：改环境变量即可，不必等一次发版 */
+function envExtraHostSuffixes(): string[] {
+  return env.MEDIA_MIRROR_EXTRA_HOSTS.split(",")
+    .map((s) => s.trim().toLowerCase().replace(/^\.+/, ""))
+    .filter(Boolean);
+}
 
 function isPrivateIp(ip: string): boolean {
   if (ip === "0.0.0.0" || ip === "::" || ip === "::1") return true;
@@ -36,7 +63,7 @@ function hostAllowed(hostname: string, extraSuffixes: string[] = []): boolean {
   if (host === "localhost") return false;
   if (net.isIP(host)) return !isPrivateIp(host);
 
-  const suffixes = [...DEFAULT_ALLOWED_HOST_SUFFIXES, ...extraSuffixes]
+  const suffixes = [...DEFAULT_ALLOWED_HOST_SUFFIXES, ...envExtraHostSuffixes(), ...extraSuffixes]
     .map((s) => s.toLowerCase().replace(/^\.+/, ""))
     .filter(Boolean);
 

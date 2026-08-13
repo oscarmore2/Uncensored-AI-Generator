@@ -42,6 +42,11 @@ const envSchema = z.object({
     .string()
     .default("true")
     .transform((v) => v.toLowerCase() === "true"),
+  /**
+   * 追加到镜像来源白名单的主机后缀，逗号分隔（如 "foo-cdn.com,bar.net"）。
+   * 上游临时换 CDN 时不必等发版——白名单主体见 lib/safe-url.ts。
+   */
+  MEDIA_MIRROR_EXTRA_HOSTS: z.string().default(""),
   OSS_FORCE_PATH_STYLE: z
     .string()
     .default("false")

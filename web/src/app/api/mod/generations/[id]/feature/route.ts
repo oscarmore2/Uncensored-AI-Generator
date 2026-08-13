@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { requireRole } from "@/lib/auth";
 import { publicWorkModOut } from "@/lib/serialize";
-import { mirrorRemoteUrls } from "@/lib/oss";
+import { mirrorForPermanentUse } from "@/lib/oss";
 import { splitModelResult } from "@/lib/plaything-categories";
 
 /** 曝光：把用户作品复制为 PublicWork 独立副本，并标记原作品 visibility=featured */
@@ -35,8 +35,21 @@ export async function POST(_req: Request, ctx: { params: Promise<{ id: string }>
   const urls = JSON.parse(gen.resultUrls) as string[];
   if (!urls.length) return NextResponse.json({ error: "作品没有可用的结果 URL" }, { status: 400 });
 
-  const mirrored = await mirrorRemoteUrls(urls, `public/gen-${genId}`);
-  const stored = mirrored.length ? mirrored : urls;
+  /*
+   * 曝光必须先把媒体拿到自己手里。以前这里用 mirrorRemoteUrls，失败会静默
+   * 回落到上游直链——Atlas 的产出因为主机不在白名单里，一次都没镜像成功过，
+   * 上游清理后探索页整片裂图。现在镜像不成就不让曝光，把问题挡在写库之前。
+   */
+  const { urls: stored, unmirrored } = await mirrorForPermanentUse(urls, `public/gen-${genId}`);
+  if (unmirrored.length) {
+    return NextResponse.json(
+      {
+        error: `媒体未能镜像到对象存储（${unmirrored.length}/${urls.length} 失败），已取消曝光。请检查 OSS 配置与来源主机白名单后重试。`,
+        unmirrored,
+      },
+      { status: 502 }
+    );
+  }
   /*
    * 3D 的结果是「模型 + 预览图」两条，原先主体和封面都取第一条，
    * 于是公共库里模型当了封面——探索页只能显示一个立方体占位，

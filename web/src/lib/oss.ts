@@ -315,6 +315,27 @@ export async function mirrorRemoteUrls(
   return mirrored;
 }
 
+/**
+ * 镜像到自家 OSS，并逐条确认真的落地了。
+ *
+ * mirrorRemoteUrls 在任何一步失败时都会静默回落到上游直链——对普通生成结果
+ * 这是对的（宁可留个能看的链接，也别把结果整个丢掉），但对「公共库」这种
+ * 要长期挂在站上的东西就是隐患：上游一清理就是一片裂图，而且事后无从补救。
+ *
+ * 所以曝光/导入这类路径改用这个，把失败暴露给调用方去拒绝写库。
+ * OSS 没配或没开镜像时不拦——那种情况下本来就没得选。
+ */
+export async function mirrorForPermanentUse(
+  urls: string[],
+  keyPrefix: string
+): Promise<{ urls: string[]; unmirrored: string[] }> {
+  const cfg = await getActiveOssConfig();
+  const mirrored = await mirrorRemoteUrls(urls, keyPrefix, cfg ?? undefined);
+  if (!cfg || !cfg.mirrorResults) return { urls: mirrored, unmirrored: [] };
+  const unmirrored = mirrored.filter((u) => objectKeyFromPublicUrl(cfg, u) === null);
+  return { urls: mirrored, unmirrored };
+}
+
 /** 连通性测试：HeadBucket */
 export async function testOssConnection(config: OssConfig): Promise<{ ok: true; bucket: string }> {
   const client = createS3Client(config);
