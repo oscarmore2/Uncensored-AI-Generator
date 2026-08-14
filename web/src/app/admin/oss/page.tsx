@@ -225,13 +225,26 @@ export default function AdminOssPage() {
               />
             </label>
             <label className="block text-sm md:col-span-2">
-              <span className="text-ink-muted text-xs">CDN 公网域名（选填）</span>
+              <span className="text-ink-muted text-xs">公网访问域名</span>
               <input
-                placeholder="https://cdn.yourdomain.com"
+                placeholder="https://pub-xxxx.r2.dev 或 https://cdn.yourdomain.com"
                 value={form.public_base_url}
                 onChange={(e) => setForm({ ...form, public_base_url: e.target.value })}
                 className="mt-1 w-full bg-surface border border-line rounded-xl px-3 py-2 font-mono text-xs"
               />
+              {/*
+                这一栏名义上选填，实际对 R2/S3 是必填。留空时 publicUrlForKey
+                会退回 https://{bucket}.{endpoint}/，而那是 S3 API 端点——
+                只接受签名请求，浏览器直接取会 401，表现为全站图片裂掉。
+              */}
+              {!form.public_base_url.trim() && (
+                <span className="mt-1.5 block rounded-xl border border-amber-400/30 bg-amber-500/10 px-3 py-2 text-[11px] leading-5 text-amber-800">
+                  留空会退回用 S3 API 端点拼地址（<code className="font-mono">{"{bucket}.{endpoint}"}</code>），
+                  那个端点只接受签名请求，浏览器取不到，表现就是图片全裂。
+                  R2 请填存储桶的公开域名 <code className="font-mono">https://pub-xxxx.r2.dev</code>，
+                  或你自己绑的 CDN 域名。
+                </span>
+              )}
             </label>
             <label className="block text-sm">
               <span className="text-ink-muted text-xs">路径前缀</span>

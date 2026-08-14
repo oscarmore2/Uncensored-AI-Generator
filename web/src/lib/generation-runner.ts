@@ -53,9 +53,10 @@ async function materializeReferenceImage(
   if (!(await ossConfigured())) return dataUrl;
 
   const ext = contentType.split("/")[1]?.replace(/[^a-z0-9]/gi, "") || "jpg";
+  // 与 api/uploads 同一个前缀：这是用户喂进来的参考图，不是生成产出
   const uploaded = await uploadBufferWithMeta(
     buffer,
-    `generations/${userId}/${randomUUID()}.${ext}`,
+    `uploads/${userId}/${randomUUID()}.${ext}`,
     contentType
   );
 

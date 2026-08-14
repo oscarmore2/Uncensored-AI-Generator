@@ -72,7 +72,19 @@ export async function POST(req: Request) {
   }
 
   const ext = extForMime(validated.contentType);
-  const relativePath = `generations/${user.id}/${randomUUID()}.${ext}`;
+  /*
+   * 用户上传物必须和生成结果分开放。
+   *
+   * 原先两边都写 generations/：上传用 generations/{用户id}/，
+   * 生成结果用 generations/{生成id}/——两个完全不同的 ID 空间挤在同一个
+   * 命名空间里。generations/4/ 既可能是 4 号用户传的参考图，也可能是
+   * 4 号生成的产出，光看路径分不出来，将来任何按前缀做的批量操作
+   * （清理某次生成的目录之类）都会误伤用户的上传物。
+   *
+   * 改前缀不影响已有文件：老对象的 key 原样留在库里的 URL 上，
+   * 删除走的是 objectKeyFromPublicUrl 反解，照样能对上。
+   */
+  const relativePath = `uploads/${user.id}/${randomUUID()}.${ext}`;
 
   try {
     const uploaded = await uploadBufferWithMeta(buffer, relativePath, validated.contentType);
