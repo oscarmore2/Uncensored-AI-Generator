@@ -108,6 +108,38 @@ export default function MediaCleanupPage() {
     }
   }
 
+  /**
+   * 媒体补录：把还挂在上游、没镜像到自家 OSS 的文件抓回来。
+   * 上游随时可能清理文件，抓回来之前那些作品都是「随时会裂」的状态。
+   */
+  async function backfill(dryRun: boolean) {
+    if (!dryRun && !window.confirm("开始补录？会把还能取到的上游媒体下载并转存到对象存储。")) return;
+    setBusy(true);
+    setMessage("");
+    try {
+      const r = await api<{
+        scanned: { publicWorks: number; generations: number };
+        alreadyMirrored: number;
+        rescued: number;
+        dead: number;
+        failed: number;
+      }>("/api/admin/media-backfill", {
+        method: "POST",
+        body: JSON.stringify({ dry_run: dryRun, limit: 200 }),
+      });
+      setMessage(
+        `${dryRun ? "补录体检" : "补录"}完成：扫描公共作品 ${r.scanned.publicWorks}、用户作品 ${r.scanned.generations}；` +
+          `已在自家 OSS ${r.alreadyMirrored}，${dryRun ? "可补录" : "已补录"} ${r.rescued}，` +
+          `上游已失效 ${r.dead}，失败可重试 ${r.failed}`
+      );
+      await load();
+    } catch (error) {
+      setMessage(error instanceof ApiError ? error.message : "补录失败");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
     <div className="space-y-7">
       <div>
@@ -130,6 +162,32 @@ export default function MediaCleanupPage() {
             <div className="text-2xl font-bold mt-1">{value}</div>
           </div>
         ))}
+      </div>
+
+      <div className="glass rounded-3xl overflow-hidden">
+        <div className="p-5 border-b border-line">
+          <h2 className="font-semibold">媒体补录</h2>
+          <p className="text-xs text-ink-subtle mt-1">
+            把还挂在上游 CDN、没镜像到自家对象存储的媒体抓回来。上游随时会清理文件，
+            没抓回来的作品都是「随时会裂」的状态。先体检看数字，再执行。
+          </p>
+        </div>
+        <div className="p-5 flex flex-wrap gap-3">
+          <button
+            disabled={busy}
+            onClick={() => backfill(true)}
+            className="px-4 py-2 rounded-xl border border-line text-sm disabled:opacity-50"
+          >
+            体检（不写库）
+          </button>
+          <button
+            disabled={busy}
+            onClick={() => backfill(false)}
+            className="px-4 py-2 rounded-xl bg-orange-700 text-white text-sm disabled:opacity-50"
+          >
+            执行补录
+          </button>
+        </div>
       </div>
 
       <div className="glass rounded-3xl overflow-hidden">
