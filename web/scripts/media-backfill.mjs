@@ -22,7 +22,9 @@ if (!appUrl || !secret) {
 }
 
 const apply = process.argv.includes("--apply");
-const limit = Number(process.env.MEDIA_BACKFILL_LIMIT || 50);
+// 定时跑时要扫得多一点：已经镜像好的判定只是字符串比较、不发网络请求，
+// 真正花时间的只有那几条还挂在上游的
+const limit = Number(process.env.MEDIA_BACKFILL_LIMIT || (apply ? 200 : 50));
 
 console.log(apply ? "== 补录模式：会写库 ==" : "== 体检模式：不写库（加 --apply 才真补）==");
 

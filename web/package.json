@@ -11,6 +11,7 @@
     "db:deploy": "node scripts/migrate-wavespeed-bridge.mjs && node scripts/migrate-provider-dimension.mjs && prisma db push",
     "cleanup:media": "node scripts/media-cleanup.mjs",
     "backfill:media": "node scripts/media-backfill.mjs",
+    "backfill:media:apply": "node scripts/media-backfill.mjs --apply",
     "db:preflight": "node scripts/preflight-migration.mjs",
     "db:migrate:providers": "node scripts/migrate-provider-dimension.mjs"
   },

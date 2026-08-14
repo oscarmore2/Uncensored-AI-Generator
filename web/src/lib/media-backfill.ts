@@ -83,8 +83,10 @@ export async function runMediaBackfill(opts: {
   if (!cfg.mirrorResults) throw new Error("当前 OSS 账户关闭了镜像（mirrorResults=false），先打开再补录");
 
   // ---- PublicWork ----
+  // 必须从最新的扫起。定时任务每轮只看 limit 条，若从最旧扫起会永远卡在
+  // 那批早就失效、救不回来的老数据上，真正处在 24 小时窗口里的新作品反而扫不到。
   const works = await db.publicWork.findMany({
-    orderBy: { id: "asc" },
+    orderBy: { id: "desc" },
     take: limit,
     select: { id: true, mediaUrl: true, thumbUrl: true },
   });

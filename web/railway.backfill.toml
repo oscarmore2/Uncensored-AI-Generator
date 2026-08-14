@@ -1,0 +1,21 @@
+# 定时媒体补录服务（与 web 服务同一镜像，只是换个启动命令）
+#
+# 为什么需要它：上游给的是短时效签名链接——Seedance 那批是
+# X-Tos-Expires=86400（24 小时）且限 100 次请求。生成完成那一刻会同步镜像
+# 到自家 OSS，但那一次若失败（网络抖动、上游限流、超 100MB、60 秒超时），
+# 代码会回落到上游原链，作品就在 24 小时后静悄悄裂掉，事后再也救不回来。
+#
+# 这个服务每 30 分钟扫一遍还挂在上游的 URL 补抓回来，
+# 在 24 小时窗口内有 48 次机会，足够兜住偶发失败。
+#
+# 前置条件：MEDIA_CLEANUP_SECRET 与 APP_URL 必须配置，且与 web 服务一致。
+# 缺了的话脚本会直接退出（和 cleanup 服务同一把钥匙）。
+
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "Dockerfile"
+
+[deploy]
+startCommand = "npm run backfill:media:apply"
+cronSchedule = "*/30 * * * *"
+restartPolicyType = "NEVER"

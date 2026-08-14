@@ -305,7 +305,20 @@ export async function mirrorRemoteUrls(
       }
       usedNames.add(filename);
       const rel = `${keyPrefix}/${filename}`;
-      const publicUrl = await uploadFromUrl(url, rel, cfg);
+      let publicUrl: string;
+      try {
+        publicUrl = await uploadFromUrl(url, rel, cfg);
+      } catch (first) {
+        /*
+         * 重试一次再放弃。上游给的常常是短时效签名链接——Seedance 那批
+         * X-Tos-Expires=86400 且限 100 次请求——一旦这里失败并回落到原链，
+         * 作品就是 24 小时后静悄悄裂掉，事后无从补救。
+         * 网络抖动、上游限流这类瞬时故障值得再试一次；仍失败才回落。
+         */
+        console.warn(`[oss] mirror attempt 1 failed for ${url}, retrying:`, first);
+        await new Promise((r) => setTimeout(r, 1500));
+        publicUrl = await uploadFromUrl(url, rel, cfg);
+      }
       mirrored.push(publicUrl);
     } catch (err) {
       console.warn(`[oss] mirror failed for ${url}:`, err);
