@@ -5,7 +5,7 @@ import { db } from "./db";
 /**
  * 建 / 改 MediaAsset 时对「库还没迁移」保持容错。
  *
- * filename 与 deleteReason 是后加的两列，纯记账用途。库若还没跑 db push，
+ * filename、deleteReason、sha256 都是后加的列，纯记账用途。库若还没跑 db push，
  * 带上它们的写入会抛 P2022，结果是**参考图传不上去、整个生成用不了**——
  * 为两个可有可无的字段赔上主流程，不划算。
  *

@@ -21,6 +21,7 @@ import {
 } from "./undress-geometry";
 import { sanitizeFilename } from "./media-delete-reason";
 import { createMediaAssetCompat } from "./media-asset-compat";
+import { contentAddressedPath, findReusableUpload, sha256OfBuffer } from "./media-dedup";
 import { uploadMediaExpiry } from "./media-retention";
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -53,12 +54,14 @@ async function materializeReferenceImage(
   if (!(await ossConfigured())) return dataUrl;
 
   const ext = contentType.split("/")[1]?.replace(/[^a-z0-9]/gi, "") || "jpg";
-  // 与 api/uploads 同一个前缀：这是用户喂进来的参考图，不是生成产出
-  const uploaded = await uploadBufferWithMeta(
-    buffer,
-    `uploads/${userId}/${randomUUID()}.${ext}`,
-    contentType
-  );
+  const sha256 = sha256OfBuffer(buffer);
+
+  // 与 api/uploads 同一套：内容寻址 + 命中就复用，这条路径重复率最高
+  // （同一张参考图换档位重跑、多次重试，每次都会再走一遍这里）
+  const reuse = await findReusableUpload(sha256);
+  const uploaded =
+    reuse ??
+    (await uploadBufferWithMeta(buffer, contentAddressedPath(sha256, ext), contentType));
 
   try {
     await createMediaAssetCompat({
@@ -70,6 +73,7 @@ async function materializeReferenceImage(
       contentType,
       bytes: buffer.length,
       filename: sanitizeFilename(filename),
+      sha256,
       sourceId: genId,
       retentionAssigned: true,
       expiresAt: await uploadMediaExpiry(),

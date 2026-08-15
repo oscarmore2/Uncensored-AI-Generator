@@ -6,6 +6,7 @@ import { db } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
 import { hasPlaythingAccess } from "@/lib/plaything-access";
 import { deleteObjectKey, uploadBufferWithMeta, ossConfigured } from "@/lib/oss";
+import { contentAddressedPath, findReusableUpload, sha256OfBuffer } from "@/lib/media-dedup";
 import { mergeMediaPolicy } from "@/lib/plaything-param-policy";
 import { extForMime, validateUploadedMedia } from "@/lib/plaything-media-validate";
 import { rateLimit } from "@/lib/rate-limit";
@@ -78,10 +79,16 @@ export async function POST(req: Request) {
   }
 
   const ext = extForMime(validated.contentType);
-  const relativePath = `plaything/${user.id}/${randomUUID()}.${ext}`;
+  const sha256 = sha256OfBuffer(buffer);
+  // 玩物专区的上传物与创作中心共用同一个内容寻址空间——同一张图在两边传，
+  // 也只该占一份存储
+  const relativePath = contentAddressedPath(sha256, ext);
 
   try {
-    const uploaded = await uploadBufferWithMeta(buffer, relativePath, validated.contentType);
+    const reuse = await findReusableUpload(sha256);
+    const uploaded = reuse
+      ? { url: reuse.url, objectKey: reuse.objectKey, config: null }
+      : await uploadBufferWithMeta(buffer, relativePath, validated.contentType);
     let asset;
     let expiresAt;
     try {
@@ -95,11 +102,14 @@ export async function POST(req: Request) {
         contentType: validated.contentType,
         bytes: validated.bytes,
         filename: sanitizeFilename(file.name),
+        sha256,
         retentionAssigned: true,
         expiresAt,
       });
     } catch (error) {
-      await deleteObjectKey(uploaded.objectKey, uploaded.config).catch(() => undefined);
+      if (!reuse && uploaded.config) {
+        await deleteObjectKey(uploaded.objectKey, uploaded.config).catch(() => undefined);
+      }
       throw error;
     }
     return NextResponse.json({

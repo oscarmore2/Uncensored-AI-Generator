@@ -3,6 +3,7 @@ import { MEDIA_DELETE_REASONS } from "./media-delete-reason";
 import { markMediaAssetDeletedCompat } from "./media-asset-compat";
 import { db } from "./db";
 import { deleteManagedMediaUrl, deleteObjectKey } from "./oss";
+import { objectStillReferenced } from "./media-dedup";
 import { backfillMissingMediaExpirations, ensureMediaCleanupPolicies } from "./media-retention";
 
 function parseUrls(raw: string | null): string[] {
@@ -99,8 +100,18 @@ export async function runMediaCleanup(opts?: {
         continue;
       }
       try {
-        if (asset.objectKey) await deleteObjectKey(asset.objectKey);
-        else await deleteManagedMediaUrl(asset.url);
+        /*
+         * 去重之后一个对象可能被多条记录共用，物理删除前必须数一下引用。
+         * 少了这一步，A 的上传物到期被清理会把 B 正在用的同一个文件一起删掉。
+         * 这条记录本身照常标记删除，只是不动 OSS 上的对象。
+         */
+        if (asset.objectKey) {
+          if (!(await objectStillReferenced(asset.objectKey, asset.id))) {
+            await deleteObjectKey(asset.objectKey);
+          }
+        } else {
+          await deleteManagedMediaUrl(asset.url);
+        }
         // 缺列时退化成只写删除时间，别让整个清理任务卡在一条记录上
         await markMediaAssetDeletedCompat(asset.id, {
           deletedAt: now,

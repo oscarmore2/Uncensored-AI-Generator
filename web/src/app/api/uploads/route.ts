@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { randomUUID } from "crypto";
 import { getCurrentUser } from "@/lib/auth";
 import { deleteObjectKey, uploadBufferWithMeta, ossConfigured } from "@/lib/oss";
+import { contentAddressedPath, findReusableUpload, sha256OfBuffer } from "@/lib/media-dedup";
 import { mergeMediaPolicy } from "@/lib/plaything-param-policy";
 import { extForMime, validateUploadedMedia } from "@/lib/plaything-media-validate";
 import { createMediaAssetCompat } from "@/lib/media-asset-compat";
@@ -72,22 +73,26 @@ export async function POST(req: Request) {
   }
 
   const ext = extForMime(validated.contentType);
+  const sha256 = sha256OfBuffer(buffer);
+
   /*
-   * 用户上传物必须和生成结果分开放。
+   * 上传物与生成结果分开放：生成结果在 generations/{生成id}/，上传物在 uploads/。
+   * 早先两边都写 generations/，但一个按用户 id、一个按生成 id——两个完全不同的
+   * ID 空间挤在同一命名空间里，光看路径分不出来，按前缀做批量操作必然误伤。
    *
-   * 原先两边都写 generations/：上传用 generations/{用户id}/，
-   * 生成结果用 generations/{生成id}/——两个完全不同的 ID 空间挤在同一个
-   * 命名空间里。generations/4/ 既可能是 4 号用户传的参考图，也可能是
-   * 4 号生成的产出，光看路径分不出来，将来任何按前缀做的批量操作
-   * （清理某次生成的目录之类）都会误伤用户的上传物。
-   *
-   * 改前缀不影响已有文件：老对象的 key 原样留在库里的 URL 上，
-   * 删除走的是 objectKeyFromPublicUrl 反解，照样能对上。
+   * 上传物再进一步用内容寻址（uploads/sha256/<hash>.<ext>）：
+   * key 由内容决定，同样的字节必然落在同一个对象上，天然不会存两份；
+   * 也不把用户 id 写进路径——否则复用方拿到的 URL 会露出首传者的 id。
    */
-  const relativePath = `uploads/${user.id}/${randomUUID()}.${ext}`;
+  const relativePath = contentAddressedPath(sha256, ext);
 
   try {
-    const uploaded = await uploadBufferWithMeta(buffer, relativePath, validated.contentType);
+    // 库里已有同内容且对象还在当前桶上，直接复用，省掉一次上传
+    const reuse = await findReusableUpload(sha256);
+    const uploaded = reuse
+      ? { url: reuse.url, objectKey: reuse.objectKey, config: null }
+      : await uploadBufferWithMeta(buffer, relativePath, validated.contentType);
+
     let asset;
     let expiresAt;
     try {
@@ -101,12 +106,18 @@ export async function POST(req: Request) {
         contentType: validated.contentType,
         bytes: validated.bytes,
         filename: sanitizeFilename(file.name),
+        sha256,
         retentionAssigned: true,
         expiresAt,
       });
     } catch (error) {
-      // 登记失败就把已经传上去的对象删掉，别在 OSS 里留下永不回收的孤儿
-      await deleteObjectKey(uploaded.objectKey, uploaded.config).catch(() => undefined);
+      /*
+       * 登记失败要回收刚传上去的对象，别在 OSS 里留永不回收的孤儿。
+       * 但复用的对象绝不能删——它是别人的文件，我们只是引用了一下。
+       */
+      if (!reuse && uploaded.config) {
+        await deleteObjectKey(uploaded.objectKey, uploaded.config).catch(() => undefined);
+      }
       throw error;
     }
     return NextResponse.json({

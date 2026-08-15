@@ -223,6 +223,10 @@ model MediaAsset {
   filename          String?
   /// 删除原因（retention_expired / admin_manual / user_deleted…），同上
   deleteReason      String?
+  /// 文件内容的 SHA-256（hex）。相同内容只在 OSS 上存一份，多条记录共用同一个
+  /// objectKey；因此删除对象前必须确认没有别的存活记录还指着它（见 media-cleanup）。
+  /// 老数据为空，不参与去重。
+  sha256            String?
   sourceId          Int?
   retentionAssigned Boolean   @default(false)
   expiresAt         DateTime?
@@ -237,6 +241,10 @@ model MediaAsset {
   @@index([expiresAt, deletedAt])
   @@index([userId, createdAt])
   @@index([sourceId])
+  /// 秒传查找：按内容哈希找还活着的同内容记录
+  @@index([sha256, deletedAt])
+  /// 引用计数：删对象前数一下还有几条存活记录指着同一个 objectKey
+  @@index([objectKey, deletedAt])
 }
 
 model MediaCleanupRun {
