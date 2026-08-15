@@ -42,6 +42,7 @@ import {
   type UploadedMedia,
 } from "@/components/MediaInputFields";
 import { PromptMentionBox, buildMentionTargets } from "@/components/PromptMentionBox";
+import { detectMediaKindFromUrl } from "@/lib/plaything-categories";
 import { MediaExpiryBadge } from "@/components/MediaExpiryBadge";
 import { useTranslations } from "next-intl";
 
@@ -328,6 +329,7 @@ function MakePageInner() {
       gender: string | null;
       undress_options: unknown;
       media: { usable_urls: string[] };
+      media_fields: Record<string, Array<{ url: string; name: string }>>;
     }>(`/api/generations/${encodeURIComponent(reuseId)}/reuse`)
       .then((d) => {
         if (isGenerationMode(d.mode)) {
@@ -352,9 +354,32 @@ function MakePageInner() {
           Object.fromEntries(Object.entries(p).filter(([key]) => !known.has(key)))
         );
 
-        if (!skipMedia && d.media?.usable_urls?.length) {
-          setReusedImageUrl(d.media.usable_urls[0]);
-          setImageBase64(null);
+        if (!skipMedia) {
+          /*
+           * 按字段还原（新链路：对口型、换脸、参考生视频……）。
+           * kind 由 URL 后缀判定；判不出来的退回 image，
+           * 反正紧接着的 pruneMediaToSpecs 会按当前档位的 specs 再筛一遍。
+           */
+          const fields = d.media_fields ?? {};
+          if (Object.keys(fields).length) {
+            setMedia(
+              Object.fromEntries(
+                Object.entries(fields).map(([field, items]) => [
+                  field,
+                  items.map((it) => ({
+                    url: it.url,
+                    name: it.name,
+                    kind: detectMediaKindFromUrl(it.url, "image") as UploadedMedia["kind"],
+                  })),
+                ])
+              )
+            );
+          }
+          // 旧链路的单张参考图
+          if (d.media?.usable_urls?.length) {
+            setReusedImageUrl(d.media.usable_urls[0]);
+            setImageBase64(null);
+          }
         }
         toast(t("applied"));
         // run=1 表示「重新生成」：参数就位后弹确认框，由用户确认再扣点发单

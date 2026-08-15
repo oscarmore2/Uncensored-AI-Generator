@@ -42,8 +42,26 @@ export function extractInputUrls(rawParams: unknown): string[] {
 
   const found: string[] = [];
   const seen = new Set<string>();
+
+  /*
+   * media_fields 是嵌套结构（字段名 → URL 数组），下面那圈按顶层值扫的循环
+   * 看不见它——Array.isArray 为假，整个对象被当成单个候选项丢掉。
+   * 结果是新链路（对口型、换脸、参考生视频等按字段提交的模式）的输入媒体
+   * 一条都提取不出来，「套用」时判定为「没有媒体」，用户得重新上传一遍。
+   */
+  const fields = params.media_fields;
+  if (fields && typeof fields === "object" && !Array.isArray(fields)) {
+    for (const value of Object.values(fields as Record<string, unknown>)) {
+      for (const item of Array.isArray(value) ? value : [value]) {
+        if (!isHttpUrl(item) || seen.has(item)) continue;
+        seen.add(item);
+        found.push(item);
+      }
+    }
+  }
+
   for (const [key, value] of Object.entries(params)) {
-    if (key === "input_urls" || key === "result_thumb_urls") continue;
+    if (key === "input_urls" || key === "result_thumb_urls" || key === "media_fields") continue;
     const candidates = Array.isArray(value) ? value : [value];
     for (const item of candidates) {
       if (!isHttpUrl(item) || !looksLikeMedia(key, item) || seen.has(item)) continue;

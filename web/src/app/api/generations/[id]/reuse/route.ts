@@ -76,7 +76,35 @@ async function buildReusePayload(
 
   const needsImage = modeNeedsImage(gen.mode);
 
+  /*
+   * 按字段还原输入媒体。
+   *
+   * 早先只回传一个扁平的 usable_urls，前端拿第一条塞进旧的单图字段——
+   * 对口型、换脸、参考生视频这些按字段提交的模式于是什么都恢复不了，
+   * 明明文件还在，用户还得重新传一遍。
+   *
+   * 只带回还活着的那些：已被清理的 URL 留在这里会让生成直接失败。
+   */
+  const usable = new Set(media.usable_urls);
+  const nameByUrl = new Map(media.items.map((i) => [i.url, i.filename]));
+  const mediaFields: Record<string, Array<{ url: string; name: string }>> = {};
+  const rawFields = params.media_fields;
+  if (rawFields && typeof rawFields === "object" && !Array.isArray(rawFields)) {
+    for (const [field, value] of Object.entries(rawFields as Record<string, unknown>)) {
+      const urls = (Array.isArray(value) ? value : [value]).filter(
+        (u): u is string => typeof u === "string" && usable.has(u)
+      );
+      if (urls.length) {
+        mediaFields[field] = urls.map((url) => ({
+          url,
+          name: nameByUrl.get(url) ?? url.split("/").pop()?.split(/[?#]/)[0] ?? "media",
+        }));
+      }
+    }
+  }
+
   return {
+    media_fields: mediaFields,
     id: gen.id,
     mode: gen.mode,
     tier: gen.tier,
