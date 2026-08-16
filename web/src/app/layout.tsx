@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Inter, Noto_Sans_SC } from "next/font/google";
+import localFont from "next/font/local";
 import { CookieConsent } from "@/components/CookieConsent";
 import { NextIntlClientProvider } from "next-intl";
 import { getLocale, getMessages, getTranslations } from "next-intl/server";
@@ -14,18 +14,27 @@ import "./globals.css";
  * 于是这两个字体从上线起就没生效过，一直在用系统字体兜底。
  * 而单纯把域名加进 CSP 并不解决问题：fonts.googleapis.com 在中国大陆打不开，
  * 放行只会把「立即失败」换成「阻塞渲染直到超时」，对主力用户更糟。
- * next/font 在构建期下载并从本站提供，CSP 不用改，大陆也能拿到。
+ *
+ * 曾经用 next/font/google，字体文件在构建期下载。但那把 fonts.gstatic.com
+ * 变成了构建的硬依赖——Railway 的构建容器连不上它，整个部署就挂在这里，
+ * 且重试无用（重试三次全败的日志见 2026-08-16）。运行期的正确性不该由
+ * 构建机的出网能力决定，所以 woff2 直接进仓库（见 ./fonts/README.md）。
+ *
+ * 两个都是可变字体，一个文件覆盖 100–900 全部字重；只含 latin 子集，
+ * 中文本来就落在下面 globals.css 的 system-ui 兜底上，这点没变。
  */
-const inter = Inter({
-  subsets: ["latin"],
-  weight: ["300", "400", "500", "600", "700", "900"],
+const inter = localFont({
+  src: "./fonts/Inter-latin-var.woff2",
+  weight: "100 900",
+  style: "normal",
   variable: "--font-inter",
   display: "swap",
 });
 
-const notoSansSC = Noto_Sans_SC({
-  subsets: ["latin"],
-  weight: ["300", "400", "500", "700"],
+const notoSansSC = localFont({
+  src: "./fonts/NotoSansSC-latin-var.woff2",
+  weight: "100 900",
+  style: "normal",
   variable: "--font-noto-sans-sc",
   display: "swap",
 });
