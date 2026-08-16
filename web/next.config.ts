@@ -26,6 +26,12 @@ const securityHeaders = [
       "connect-src 'self' https: blob:",
       "frame-src https://challenges.cloudflare.com",
       "child-src https://challenges.cloudflare.com",
+      // worker-src 必须显式写出来。CSP3 的回退链是 worker-src → child-src → script-src，
+      // 上面那条 child-src 一旦存在，Worker 就被限死在 challenges.cloudflare.com 上。
+      // 而 three 的 DRACOLoader / KTX2Loader 是把解码器代码拼成 Blob 再 new Worker()，
+      // 于是所有 draco 压缩的模型都解不出来——不分地区，所有人都是坏的。
+      // 实测：不加这条 blob worker 直接 error，加了就通。
+      "worker-src 'self' blob:",
       "frame-ancestors 'none'",
       "base-uri 'self'",
       "form-action 'self'",
@@ -55,6 +61,13 @@ const nextConfig: NextConfig = {
       {
         source: "/(.*)",
         headers: securityHeaders,
+      },
+      {
+        // draco / basis 解码器按版本号钉死（1.5.6 与 2021-04-15-ba1c3e4），
+        // 内容永不变，换版本就是换路径。public/ 默认 max-age=0，
+        // 意味着每看一次 3D 都要为这 900KB 回源验证一轮。
+        source: "/vendor/:path*",
+        headers: [{ key: "Cache-Control", value: "public, max-age=31536000, immutable" }],
       },
       ...privateRouteHeaders,
     ];

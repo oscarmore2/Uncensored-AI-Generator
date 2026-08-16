@@ -5,6 +5,7 @@ import { MediaThumb } from "@/components/MediaPreview";
 import { EmptyState } from "./ImageAlbum";
 import { detectMediaKindFromUrl } from "@/lib/plaything-categories";
 import { useModelViewerDiagnostics } from "@/lib/model-viewer-diagnostics";
+import { loadModelViewer } from "@/lib/model-viewer-loader";
 import type { PlaythingGen } from "./types";
 import { MediaExpiryBadge } from "@/components/MediaExpiryBadge";
 import { useTranslations } from "next-intl";
@@ -20,7 +21,7 @@ export function Model3DViewer({
 }) {
   const t = useTranslations("Plaything");
   useEffect(() => {
-    void import("@google/model-viewer");
+    void loadModelViewer();
   }, []);
 
   const succeeded = items.filter((g) => g.status === "succeeded" && g.result_urls?.length);

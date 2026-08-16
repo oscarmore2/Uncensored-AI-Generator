@@ -8,6 +8,7 @@ import {
   type PlaythingMediaKind,
 } from "@/lib/plaything-categories";
 import { useModelViewerDiagnostics } from "@/lib/model-viewer-diagnostics";
+import { loadModelViewer } from "@/lib/model-viewer-loader";
 import { useBodyScrollLock } from "@/lib/use-body-scroll-lock";
 
 /**
@@ -195,7 +196,7 @@ function Model3DStage({ url }: { url: string }) {
 /** 单条媒体的完整播放视图 */
 function MediaStage({ url, kind }: { url: string; kind: PlaythingMediaKind }) {
   useEffect(() => {
-    if (kind === "3d") void import("@google/model-viewer");
+    if (kind === "3d") void loadModelViewer();
   }, [kind]);
 
   const stageClass = "max-w-full max-h-[min(70vh,720px)] w-auto h-auto object-contain rounded-2xl";

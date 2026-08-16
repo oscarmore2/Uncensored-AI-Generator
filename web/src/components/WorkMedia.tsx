@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { useModelViewerDiagnostics } from "@/lib/model-viewer-diagnostics";
+import { loadModelViewer } from "@/lib/model-viewer-loader";
 import { splitModelResult } from "@/lib/plaything-categories";
 
 type WorkMediaKind = "image" | "video" | "3d" | "audio";
@@ -44,7 +45,7 @@ function ModelStage({
 }) {
   const { ref, error } = useModelViewerDiagnostics(src);
   useEffect(() => {
-    void import("@google/model-viewer");
+    void loadModelViewer();
   }, []);
 
   if (!VIEWABLE_MODEL_EXT.test(src)) {
