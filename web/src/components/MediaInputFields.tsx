@@ -253,7 +253,8 @@ function MediaSlot({
           {sortable && (
             <p className="mb-3 -mt-1 text-[11px] text-ink-subtle">
               <i className="fas fa-arrows-up-down-left-right mr-1" />
-              拖动可调整顺序（触屏长按后拖动）；序号就是提交给模型的次序
+              拖动可调整顺序（触屏长按后拖动）。序号既是提交给模型的次序，
+              也是 @ 引用的编号——不改提示词，光换顺序就能换引用
             </p>
           )}
         </>

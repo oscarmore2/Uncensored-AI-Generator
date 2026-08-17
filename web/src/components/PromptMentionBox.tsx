@@ -44,6 +44,13 @@ const KIND_ICON: Record<MediaInputSpec["kind"], string> = {
  *
  * 按 specs 的顺序遍历而不是按 value 的键顺序：后者是「用户先传了哪个位」
  * 决定的插入顺序，和表单上看到的排列可能对不上，用户数出来的序号就会错位。
+ *
+ * 编号是**按位置延迟绑定**的，这是有意的，别改成插入时绑死 URL：
+ * 提示词里存的是字面 token（@Image1），提交时原样上行、不做任何替换，
+ * 所以 @Image1 的含义始终是「我发给上游的第 1 张图」。
+ * 于是拖动缩略图换顺序，就等于在不动提示词的前提下换掉引用——
+ * 这是刻意保留的用法，别顺手加「排序后自动重编号提示词」那种贴心功能，
+ * 那会把这条路堵死。顺序要不要改，交给人自己判断。
  */
 export function buildMentionTargets(
   specs: MediaInputSpec[],
