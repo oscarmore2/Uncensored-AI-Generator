@@ -39,6 +39,8 @@ import {
   missingRequiredMedia,
   pruneMediaToSpecs,
   toMediaPayload,
+  newMediaId,
+  withMediaIds,
   type UploadedMedia,
 } from "@/components/MediaInputFields";
 import { PromptMentionBox, buildMentionTargets } from "@/components/PromptMentionBox";
@@ -147,7 +149,8 @@ function MakePageInner() {
       setImageBase64(d.imageBase64 ?? null);
       setImageFilename(d.imageFilename ?? null);
       setExtraParams(d.extraParams ?? {});
-      setMedia(d.media ?? {});
+      // 改动之前存下的草稿没有 id，补齐再进 state，否则拖动排序认不出元素
+      setMedia(withMediaIds(d.media));
     },
     {
       enabled: !deepLinked,
@@ -367,6 +370,7 @@ function MakePageInner() {
                 Object.entries(fields).map(([field, items]) => [
                   field,
                   items.map((it) => ({
+                    id: newMediaId(),
                     url: it.url,
                     name: it.name,
                     kind: detectMediaKindFromUrl(it.url, "image") as UploadedMedia["kind"],

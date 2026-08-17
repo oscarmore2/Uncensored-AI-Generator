@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { MediaInputSpec } from "@/lib/client";
+import { Reorderable } from "./Reorderable";
 
 /**
  * 创作中心的输入媒体上传区。
@@ -16,10 +17,41 @@ import type { MediaInputSpec } from "@/lib/client";
  */
 
 export type UploadedMedia = {
+  /**
+   * 仅存在于前端，不提交。用来在拖动排序时稳定认元素。
+   *
+   * 不能拿 url 当 key：上传做了内容寻址去重，同一个文件传两次会拿到同一个 URL；
+   * 也不能用下标，排序时下标本身就在变，React 会按位置复用 DOM，
+   * 正在拖的那件就会“换了芯子”。
+   */
+  id: string;
   url: string;
   name: string;
   kind: MediaInputSpec["kind"];
 };
+
+let mediaSeq = 0;
+
+export function newMediaId(): string {
+  // randomUUID 只在安全上下文里有；退回自增序号 + 时间戳，
+  // 后者是为了让刷新后新建的 id 不会撞上草稿里存着的老 id
+  return globalThis.crypto?.randomUUID?.() ?? `m${++mediaSeq}-${Date.now().toString(36)}`;
+}
+
+/**
+ * 从草稿、套用这类外部来源恢复回来的媒体可能没有 id
+ * （草稿是改动之前存的），在入口处补齐，别让缺 id 漏进 state。
+ */
+export function withMediaIds(
+  value: Record<string, UploadedMedia[]> | null | undefined
+): Record<string, UploadedMedia[]> {
+  const out: Record<string, UploadedMedia[]> = {};
+  for (const [field, items] of Object.entries(value ?? {})) {
+    if (!Array.isArray(items)) continue;
+    out[field] = items.map((it) => (it?.id ? it : { ...it, id: newMediaId() }));
+  }
+  return out;
+}
 
 /**
  * 字段名 → 面向用户的名字。
@@ -121,6 +153,8 @@ function MediaSlot({
   const meta = KIND_META[spec.kind];
   const full = items.length >= spec.maxItems;
   const required = spec.minItems > 0;
+  /* 这个位能装多件、且确实装了两件以上，排序才有意义 */
+  const sortable = spec.maxItems > 1 && items.length > 1;
   const inputRef = useRef<HTMLInputElement>(null);
 
   const upload = useCallback(
@@ -148,7 +182,7 @@ function MediaSlot({
           if (!resp.ok || !data?.url) {
             throw new Error(data?.error || `${file.name} 上传失败`);
           }
-          added.push({ url: data.url, name: file.name, kind: spec.kind });
+          added.push({ id: newMediaId(), url: data.url, name: file.name, kind: spec.kind });
         }
         if (added.length) onChange([...items, ...added]);
       } catch (err) {
@@ -185,30 +219,44 @@ function MediaSlot({
       )}
 
       {items.length > 0 && (
-        <div className="mb-3 flex flex-wrap gap-2">
-          {items.map((item, i) => (
-            <div
-              key={`${item.url}-${i}`}
-              className="relative h-24 w-24 overflow-hidden rounded-2xl border border-line bg-stage"
-            >
-              <MediaChip item={item} />
-              <button
-                type="button"
-                disabled={disabled}
-                onClick={() => onChange(items.filter((_, idx) => idx !== i))}
-                aria-label="移除"
-                className="absolute right-1 top-1 flex h-6 w-6 items-center justify-center rounded-full bg-black/70 text-xs text-white hover:bg-black/85"
-              >
-                <i className="fas fa-times" />
-              </button>
-              {spec.maxItems > 1 && (
-                <span className="absolute bottom-1 left-1 rounded-full bg-black/70 px-1.5 text-[10px] text-white">
-                  {i + 1}
-                </span>
-              )}
-            </div>
-          ))}
-        </div>
+        <>
+          <Reorderable
+            items={items}
+            getKey={(item) => item.id}
+            onReorder={onChange}
+            /* 只有一件时没什么可排的，别给出 grab 光标这种假暗示 */
+            disabled={disabled || !sortable}
+            describeItem={(item) => item.name}
+            className="mb-3 flex flex-wrap gap-2"
+            itemClassName="relative h-24 w-24 overflow-hidden rounded-2xl border border-line bg-stage"
+          >
+            {(item, { index }) => (
+              <>
+                <MediaChip item={item} />
+                <button
+                  type="button"
+                  disabled={disabled}
+                  onClick={() => onChange(items.filter((it) => it.id !== item.id))}
+                  aria-label="移除"
+                  className="absolute right-1 top-1 flex h-6 w-6 items-center justify-center rounded-full bg-black/70 text-xs text-white hover:bg-black/85"
+                >
+                  <i className="fas fa-times" />
+                </button>
+                {spec.maxItems > 1 && (
+                  <span className="absolute bottom-1 left-1 rounded-full bg-black/70 px-1.5 text-[10px] text-white">
+                    {index + 1}
+                  </span>
+                )}
+              </>
+            )}
+          </Reorderable>
+          {sortable && (
+            <p className="mb-3 -mt-1 text-[11px] text-ink-subtle">
+              <i className="fas fa-arrows-up-down-left-right mr-1" />
+              拖动可调整顺序（触屏长按后拖动）；序号就是提交给模型的次序
+            </p>
+          )}
+        </>
       )}
 
       {!full && (
