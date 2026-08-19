@@ -463,7 +463,13 @@
     "mentionClose": "close",
     "mentionNoMatch": "No matching material",
     "mentionHint": "Type @ in the prompt to cite uploaded material, e.g. @Image1",
-    "mentionUploadFirst": "Upload material below, then cite it with @ in the prompt"
+    "mentionUploadFirst": "Upload material below, then cite it with @ in the prompt",
+    "promptExpand": "Expand editor",
+    "promptExpandTitle": "Prompt editor",
+    "promptCollapse": "Collapse",
+    "promptMediaPreview": "Preview",
+    "promptMediaCite": "Cite",
+    "promptMediaClose": "Close"
   },
   "Profile": {
     "title": "Profile",

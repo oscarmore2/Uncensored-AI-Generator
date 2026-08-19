@@ -463,7 +463,13 @@
     "mentionClose": "关闭",
     "mentionNoMatch": "没有匹配的素材",
     "mentionHint": "提示词里输入 @ 可引用已上传的素材，例如 @Image1",
-    "mentionUploadFirst": "先在下方上传素材，就能在提示词里用 @ 引用它们"
+    "mentionUploadFirst": "先在下方上传素材，就能在提示词里用 @ 引用它们",
+    "promptExpand": "放大编辑",
+    "promptExpandTitle": "提示词编辑",
+    "promptCollapse": "收起",
+    "promptMediaPreview": "预览",
+    "promptMediaCite": "引用",
+    "promptMediaClose": "关闭"
   },
   "Profile": {
     "title": "个人中心",

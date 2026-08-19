@@ -158,13 +158,26 @@ function caretOffset(
 /** 菜单宽度，与下面的 w-64 保持一致；用来把菜单夹在输入框里 */
 const MENU_WIDTH = 256;
 
+/**
+ * 给外部（媒体列表的「引用」按钮）用的命令式入口。
+ *
+ * 为什么需要它：点那些按钮的一刹那 textarea 已经失焦，
+ * 拿不到实时的 selectionStart，所以组件内部要一直记着最后一次光标位置。
+ */
+export type PromptMentionHandle = {
+  insertToken(token: string): void;
+  focus(): void;
+};
+
 export function PromptMentionBox({
   value,
   onChange,
   targets,
   placeholder,
   className,
+  wrapperClassName = "",
   disabled,
+  handle,
   labels,
 }: {
   value: string;
@@ -173,7 +186,16 @@ export function PromptMentionBox({
   targets: MentionTarget[];
   placeholder?: string;
   className?: string;
+  /**
+   * 加在外层容器上。菜单是相对它定位的，所以它必须保持 relative，
+   * 这里只做追加。全屏编辑要让输入框撑满高度时，得让**这一层**成为
+   * 能拉伸的 flex 子项——只给 textarea 加 flex-1 是没用的，
+   * 它的父级不长高。
+   */
+  wrapperClassName?: string;
   disabled?: boolean;
+  /** 传进来就把命令式入口挂上去，供外部按钮插入引用 */
+  handle?: { current: PromptMentionHandle | null };
   labels: {
     /** 列表标题 */
     header: string;
@@ -185,6 +207,11 @@ export function PromptMentionBox({
   };
 }) {
   const ref = useRef<HTMLTextAreaElement>(null);
+  /* 最后一次已知的光标位置。失焦后 selectionStart 未必可靠，
+   * 而外部按钮插入引用时焦点必然已经不在框里。 */
+  const lastCaretRef = useRef(0);
+  /* 待落位的光标。见下面那个 useEffect 的说明。 */
+  const pendingCaretRef = useRef<number | null>(null);
   const [query, setQuery] = useState<string | null>(null);
   const [active, setActive] = useState(0);
   const [anchor, setAnchor] = useState<{ top: number; left: number } | null>(null);
@@ -208,6 +235,7 @@ export function PromptMentionBox({
     const el = ref.current;
     if (!el || disabled || targets.length === 0) return close();
     const caret = el.selectionStart ?? 0;
+    lastCaretRef.current = caret;
     // 选区不是一个点时不弹：那是在选文字，不是在打 @
     if ((el.selectionEnd ?? caret) !== caret) return close();
     const hit = MENTION_RE.exec(el.value.slice(0, caret));
@@ -245,11 +273,68 @@ export function PromptMentionBox({
     close();
     // onChange 触发的重渲染会把光标冲到末尾，等这一帧过去再摆回插入点之后
     const cursor = start + target.token.length + 2;
+    lastCaretRef.current = cursor;
     requestAnimationFrame(() => {
       el.focus();
       el.setSelectionRange(cursor, cursor);
     });
   }
+
+  /**
+   * 外部按钮走这条路插引用。与菜单里的 insert 不同：
+   * 这里没有「已经打了一半的 @xxx」要替换，是纯插入。
+   */
+  const insertToken = useCallback(
+    (token: string) => {
+      const el = ref.current;
+      // 焦点还在框里就用实时光标，否则用最后一次记下的
+      const raw =
+        el && el.ownerDocument.activeElement === el
+          ? (el.selectionStart ?? lastCaretRef.current)
+          : lastCaretRef.current;
+      const pos = Math.min(Math.max(raw, 0), value.length);
+      const before = value.slice(0, pos);
+      const after = value.slice(pos);
+      // 紧贴前一个词会粘成一个词，模型就认不出这是引用了
+      const lead = before && !/\s$/.test(before) ? " " : "";
+      const chunk = `${lead}@${token} `;
+      onChange(before + chunk + after);
+      const cursor = pos + chunk.length;
+      lastCaretRef.current = cursor;
+      pendingCaretRef.current = cursor;
+    },
+    [onChange, value]
+  );
+
+  /*
+   * 插入之后把焦点和光标放回输入框，让用户能接着往下打。
+   *
+   * 不能在 insertToken 里用 requestAnimationFrame 做这件事：那一帧跑在
+   * React 把新 value 写进 DOM 之前还是之后并不确定，实测点完「引用」
+   * 焦点根本没回来（activeElement 还是按钮，selectionStart 归 0）。
+   * 挂在 value 上的 effect 一定在提交之后跑，顺序是确定的。
+   */
+  useEffect(() => {
+    const cursor = pendingCaretRef.current;
+    if (cursor === null) return;
+    pendingCaretRef.current = null;
+    const el = ref.current;
+    if (!el) return;
+    el.focus();
+    el.setSelectionRange(cursor, cursor);
+  }, [value]);
+
+  /*
+   * 故意不写依赖数组：insertToken 闭包着 value，每次渲染都得换上新的那一份，
+   * 否则外部按钮会把引用插进旧文本里，把用户刚敲的字覆盖掉。
+   */
+  useEffect(() => {
+    if (!handle) return;
+    handle.current = { insertToken, focus: () => ref.current?.focus() };
+    return () => {
+      handle.current = null;
+    };
+  });
 
   function onKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
     if (!open) return;
@@ -276,7 +361,7 @@ export function PromptMentionBox({
   }
 
   return (
-    <div className="relative">
+    <div className={`relative ${wrapperClassName}`}>
       <textarea
         ref={ref}
         value={value}
@@ -293,6 +378,10 @@ export function PromptMentionBox({
           sync();
         }}
         onClick={sync}
+        onSelect={() => {
+          const el = ref.current;
+          if (el) lastCaretRef.current = el.selectionStart ?? 0;
+        }}
         onBlur={close}
         onKeyDown={onKeyDown}
         className={className}

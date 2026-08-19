@@ -43,7 +43,8 @@ import {
   withMediaIds,
   type UploadedMedia,
 } from "@/components/MediaInputFields";
-import { PromptMentionBox, buildMentionTargets } from "@/components/PromptMentionBox";
+import { buildMentionTargets } from "@/components/PromptMentionBox";
+import { PromptComposer } from "@/components/PromptComposer";
 import { detectMediaKindFromUrl } from "@/lib/plaything-categories";
 import { MediaExpiryBadge } from "@/components/MediaExpiryBadge";
 import { useTranslations } from "next-intl";
@@ -964,19 +965,12 @@ function MakePageInner() {
                 输入 @ 就能引用已上传的素材。参考生视频这类模型正是靠提示词里的
                 @Image1 / @Video1 认出每句话说的是哪一份素材，让用户自己数第几张必然出错。
               */}
-              <PromptMentionBox
+              <PromptComposer
                 value={prompt}
                 onChange={setPrompt}
                 targets={mentionTargets}
-                className="prompt-box w-full bg-surface border border-line focus:border-orange-500/60 rounded-2xl p-4 text-sm placeholder:text-ink-subtle outline-none min-h-[120px]"
+                className="prompt-box w-full bg-surface border border-line focus:border-orange-500/60 rounded-2xl p-4 pr-12 text-sm placeholder:text-ink-subtle outline-none min-h-[120px]"
                 placeholder={mode === "imgedit" ? t("editPlaceholder") : t("promptPlaceholder")}
-                labels={{
-                  header: t("mentionHeader"),
-                  navigate: t("mentionNavigate"),
-                  select: t("mentionSelect"),
-                  close: t("mentionClose"),
-                  empty: t("mentionNoMatch"),
-                }}
               />
               {mediaSpecs.length > 0 && (
                 <p className="mt-2 text-[11px] text-ink-subtle">
