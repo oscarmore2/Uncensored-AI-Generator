@@ -44,6 +44,7 @@ model User {
   mediaAssets             MediaAsset[]
   oauthAccounts           OAuthAccount[]
   emailVerificationTokens EmailVerificationToken[]
+  drafts                  Draft[]
 
   @@index([registrationCountryCode, createdAt])
 }
@@ -598,4 +599,45 @@ model PlaythingGeneration {
   @@index([status, createdAt])
   @@index([mediaExpiresAt, mediaDeletedAt])
   @@map("WaveSpeedGeneration")
+}
+
+/// 草稿：尚未生成的编辑状态。
+///
+/// 刻意与 Generation 分表，而不是给它加一个 status="draft"：
+/// Generation 被二十来处查询读取（/api/generations、/explore 公开画廊、
+/// 管理端统计、媒体清理与保留、成本核算），加一个状态意味着每一处都要补
+/// 排除条件，漏掉任何一处的后果是草稿泄漏进公开画廊，或者被媒体清理任务
+/// 当成过期作品、把用户正在编辑的上传件删掉。分表让这些事故structurally
+/// 不可能发生，而不是依赖「记得加过滤」。
+model Draft {
+  id     Int     @id @default(autoincrement())
+  userId Int
+  mode   String
+  tier   String  @default("low")
+  spicy  Boolean @default(false)
+
+  /// 编辑时命中的档位与上游模型，用于事后判定兼容性（模型可能已被换掉）
+  productId       Int?
+  providerModelId String?
+
+  /// 用户可命名；空则列表里取 prompt 前若干字
+  title          String?
+  prompt         String  @default("")
+  negativePrompt String?
+
+  /// 表单快照 JSON，编解码见 lib/draft-snapshot.ts，将来与模板共用
+  snapshot String @default("{}")
+
+  /// 点击生成后挂上的任务单。非空即「已提交、等着确认能不能删」，
+  /// 打开草稿页时据此对账（防止收尾没删干净）
+  generationId Int?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, updatedAt])
+  @@index([userId, mode, updatedAt])
+  @@index([generationId])
 }

@@ -10,6 +10,7 @@ const PROTECTED_PAGES = ["/make", "/history", "/profile", "/plaything"];
 const PROTECTED_API_PREFIXES = [
   "/api/me",
   "/api/generations",
+  "/api/drafts",
   "/api/payments",
   "/api/prompts",
   "/api/features",

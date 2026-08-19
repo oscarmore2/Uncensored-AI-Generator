@@ -32,6 +32,12 @@ import { ParamControlGrid } from "@/components/ParamControls";
 import type { ParamControl } from "@/lib/param-controls";
 import { useApp } from "@/components/AppContext";
 import { useDraft } from "@/lib/use-draft";
+import { useServerDraft } from "@/lib/use-server-draft";
+import {
+  decodeDraftSnapshot,
+  draftHasContent,
+  encodeDraftSnapshot,
+} from "@/lib/draft-snapshot";
 import { RetryConfirmDialog } from "@/components/InputMediaGoneDialog";
 import { AdaptiveMedia } from "@/components/WorkMedia";
 import {
@@ -131,7 +137,7 @@ function MakePageInner() {
       searchParams.get("reuse")
   );
 
-  const { save: saveDraft } = useDraft<MakeDraft>(
+  const { save: saveDraft, localSavedAt } = useDraft<MakeDraft>(
     "make",
     (d) => {
       if (isGenerationMode(d.mode)) setMode(d.mode);
@@ -159,6 +165,80 @@ function MakePageInner() {
       stripMedia: (d) => ({ ...d, imageBase64: null }),
     }
   );
+
+  /*
+   * 服务端草稿。本地那层（IndexedDB）管刷新不丢，这层管换设备还能接着写。
+   *
+   * 挂载时按「进页面时的那个模式」找活动草稿；之后这条草稿就跟着这个编辑器走，
+   * 中途换模式只更新它的 mode 字段，不会凭空多出一条——
+   * 「正在编辑的这个窗口」本身就是那条草稿。
+   */
+  const initialModeRef = useRef(mode);
+  const { save: saveServerDraft } = useServerDraft({
+    initialMode: initialModeRef.current,
+    enabled: !deepLinked,
+    localSavedAt,
+    hasContent: (payload) =>
+      draftHasContent(payload.prompt ?? "", decodeDraftSnapshot(payload.snapshot)),
+    onRestore: (d) => {
+      const snap = decodeDraftSnapshot(d.snapshot);
+      if (isGenerationMode(d.mode)) setMode(d.mode);
+      setTier(d.tier);
+      setSpicy(d.spicy);
+      setPrompt(d.prompt);
+      if (typeof d.negative_prompt === "string") setNegative(d.negative_prompt);
+      if ((UNDRESS_GENDERS as readonly string[]).includes(snap.gender)) {
+        setGender(snap.gender as UndressGender);
+      }
+      if (snap.undressOptions) setUndressOptions(normalizeUndressAdvanced(snap.undressOptions));
+      setRatio(snap.ratio);
+      if (snap.batch === 1 || snap.batch === 2 || snap.batch === 4) setBatch(snap.batch);
+      setDuration(snap.duration);
+      setAdvancedOpen(snap.advancedOpen);
+      setImageFilename(snap.imageFilename);
+      setExtraParams(snap.extraParams);
+      setMedia(withMediaIds(snap.media as Record<string, UploadedMedia[]>));
+    },
+  });
+
+  useEffect(() => {
+    saveServerDraft({
+      mode,
+      tier,
+      spicy,
+      product_id: null,
+      provider_model_id: null,
+      prompt,
+      negative_prompt: negative,
+      snapshot: encodeDraftSnapshot({
+        gender,
+        undressOptions,
+        ratio,
+        batch,
+        duration,
+        advancedOpen,
+        extraParams,
+        media,
+        imageFilename,
+      }),
+    });
+  }, [
+    saveServerDraft,
+    media,
+    mode,
+    tier,
+    spicy,
+    prompt,
+    negative,
+    gender,
+    undressOptions,
+    ratio,
+    batch,
+    duration,
+    advancedOpen,
+    imageFilename,
+    extraParams,
+  ]);
 
   useEffect(() => {
     saveDraft({

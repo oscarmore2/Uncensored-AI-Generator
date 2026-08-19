@@ -98,6 +98,21 @@ export async function loadDraft<T>(scope: DraftScope, guard: DraftGuard): Promis
 }
 
 /**
+ * 同 loadDraft，但把写入时间一并带出来。
+ *
+ * 服务端草稿接进来之后需要判断谁更新：本地写得成功、服务端那次写失败
+ * （断网）的情况下，服务端那份是旧的，直接采纳会把用户离线时的编辑抹掉。
+ */
+export async function loadDraftRecord<T>(
+  scope: DraftScope,
+  guard: DraftGuard
+): Promise<{ payload: T; updatedAt: number } | null> {
+  const rec = await runTx<DraftRecord<T> | undefined>("readonly", (store) => store.get(scope));
+  if (!rec || rec.ownerKey !== guard.ownerKey || rec.bootId !== guard.bootId) return null;
+  return { payload: rec.payload, updatedAt: rec.updatedAt };
+}
+
+/**
  * 写入草稿。配额写满时退化成「只存文本、丢掉媒体」再试一次——
  * 宁可少存参考图，也不要整条草稿写不进去。
  */

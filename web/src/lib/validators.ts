@@ -144,3 +144,23 @@ export const publicWorkPatchSchema = z
     is_adult: z.boolean().optional(),
   })
   .refine((v) => Object.keys(v).length > 0, "至少提供一个字段");
+
+/**
+ * 草稿保存。
+ *
+ * 校验刻意宽松：草稿是**半成品**，此刻填的档位/参数完全可能还不合法
+ * （模式没选完、必填媒体还没传）。真正的严格校验在提交生成那一步。
+ * 这里只挡住会撑坏存储或明显是脏数据的东西。
+ */
+export const draftSaveSchema = z.object({
+  mode: z.enum(GENERATION_MODES),
+  tier: z.enum(GENERATION_TIERS).optional(),
+  spicy: z.boolean().optional(),
+  product_id: z.number().int().positive().nullable().optional(),
+  provider_model_id: z.string().max(200).nullable().optional(),
+  title: z.string().max(120).nullable().optional(),
+  prompt: z.string().max(20_000).optional(),
+  negative_prompt: z.string().max(5_000).nullable().optional(),
+  /** 已由 lib/draft-snapshot 编码好的 JSON 字符串 */
+  snapshot: z.string().max(200_000).optional(),
+});

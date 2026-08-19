@@ -1,4 +1,4 @@
-import type { Generation, PublicWork, User, VipTier } from "@prisma/client";
+import type { Draft, Generation, PublicWork, User, VipTier } from "@prisma/client";
 import { extractInputUrls, extractResultThumbs } from "./generation-media";
 import { isVipActive } from "./pricing";
 import { hasAdultAccess } from "./adult-access";
@@ -117,4 +117,23 @@ function safeStringArray(s: string): string[] {
   } catch {
     return [];
   }
+}
+
+/** 草稿出参。snapshot 原样带走，由前端用 lib/draft-snapshot 解码。 */
+export function draftOut(draft: Draft) {
+  return {
+    id: draft.id,
+    mode: draft.mode,
+    tier: draft.tier,
+    spicy: draft.spicy,
+    product_id: draft.productId,
+    provider_model_id: draft.providerModelId,
+    title: draft.title,
+    prompt: draft.prompt,
+    negative_prompt: draft.negativePrompt,
+    snapshot: draft.snapshot,
+    generation_id: draft.generationId,
+    created_at: draft.createdAt,
+    updated_at: draft.updatedAt,
+  };
 }

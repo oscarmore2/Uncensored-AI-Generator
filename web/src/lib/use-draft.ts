@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useApp } from "@/components/AppContext";
 import {
   clearDraft,
-  loadDraft,
+  loadDraftRecord,
   saveDraft,
   type DraftGuard,
   type DraftScope,
@@ -34,6 +34,9 @@ export function useDraft<T>(
   const enabled = opts?.enabled ?? true;
 
   const [ready, setReady] = useState(false);
+  /* 本地这份最后一次写盘的时间。服务端草稿接进来后要靠它判断谁更新——
+   * 断网时本地写成功、服务端写失败，服务端那份就是旧的。 */
+  const savedAtRef = useRef(0);
   const guardRef = useRef<DraftGuard | null>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pendingRef = useRef<T | null>(null);
@@ -52,6 +55,7 @@ export function useDraft<T>(
       clearTimeout(timerRef.current);
       timerRef.current = null;
     }
+    savedAtRef.current = Date.now();
     void saveDraft(scope, guard, payload, stripRef.current);
   }, [scope]);
 
@@ -66,9 +70,12 @@ export function useDraft<T>(
     }
 
     let alive = true;
-    void loadDraft<T>(scope, guard).then((payload) => {
+    void loadDraftRecord<T>(scope, guard).then((rec) => {
       if (!alive) return;
-      if (payload) onRestoreRef.current(payload);
+      if (rec) {
+        savedAtRef.current = rec.updatedAt;
+        onRestoreRef.current(rec.payload);
+      }
       setReady(true);
     });
     return () => {
@@ -107,5 +114,8 @@ export function useDraft<T>(
     void clearDraft(scope);
   }, [scope]);
 
-  return { ready, save, discard };
+  /** 本地这份的写入时间（毫秒）；从没写过是 0 */
+  const localSavedAt = useCallback(() => savedAtRef.current, []);
+
+  return { ready, save, discard, localSavedAt };
 }
