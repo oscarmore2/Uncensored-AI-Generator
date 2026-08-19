@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
-import { draftSaveSchema } from "@/lib/validators";
+import { draftPatchSchema } from "@/lib/validators";
 import { draftOut } from "@/lib/serialize";
 import { rateLimit } from "@/lib/rate-limit";
 
@@ -34,7 +34,7 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
   if (!existing) return NextResponse.json({ error: "草稿不存在" }, { status: 404 });
 
   const body = await req.json().catch(() => null);
-  const parsed = draftSaveSchema.safeParse(body);
+  const parsed = draftPatchSchema.safeParse(body);
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error.issues[0].message }, { status: 400 });
   }
@@ -43,16 +43,25 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
   const draft = await db.draft.update({
     where: { id: existing.id },
     data: {
-      mode: d.mode,
-      tier: d.tier ?? existing.tier,
-      spicy: d.spicy ?? existing.spicy,
-      productId: d.product_id ?? null,
-      providerModelId: d.provider_model_id ?? null,
-      // title 只在显式带上时才动：自动回写不该把用户起的名字抹掉
+      /*
+       * 真正的部分更新：只动显式带上来的字段。
+       *
+       * PATCH 的调用方不止一个——自动回写只带表单内容，挂任务单只带
+       * generation_id，改名只带 title。任何一个字段若无条件覆盖，
+       * 别的调用方写的东西就会被抹掉：挂完任务单下一次自动回写把它清了，
+       * 对账就再也找不到这条草稿对应哪个任务；反过来挂任务单时也会
+       * 把用户刚写的提示词冲掉。
+       */
+      ...(d.mode !== undefined ? { mode: d.mode } : {}),
+      ...(d.tier !== undefined ? { tier: d.tier } : {}),
+      ...(d.spicy !== undefined ? { spicy: d.spicy } : {}),
+      ...(d.product_id !== undefined ? { productId: d.product_id } : {}),
+      ...(d.provider_model_id !== undefined ? { providerModelId: d.provider_model_id } : {}),
       ...(d.title !== undefined ? { title: d.title } : {}),
-      prompt: d.prompt ?? "",
-      negativePrompt: d.negative_prompt ?? null,
-      snapshot: d.snapshot ?? existing.snapshot,
+      ...(d.generation_id !== undefined ? { generationId: d.generation_id } : {}),
+      ...(d.prompt !== undefined ? { prompt: d.prompt } : {}),
+      ...(d.negative_prompt !== undefined ? { negativePrompt: d.negative_prompt } : {}),
+      ...(d.snapshot !== undefined ? { snapshot: d.snapshot } : {}),
     },
   });
   return NextResponse.json(draftOut(draft));

@@ -152,8 +152,8 @@ export const publicWorkPatchSchema = z
  * （模式没选完、必填媒体还没传）。真正的严格校验在提交生成那一步。
  * 这里只挡住会撑坏存储或明显是脏数据的东西。
  */
-export const draftSaveSchema = z.object({
-  mode: z.enum(GENERATION_MODES),
+export const draftPatchSchema = z.object({
+  mode: z.enum(GENERATION_MODES).optional(),
   tier: z.enum(GENERATION_TIERS).optional(),
   spicy: z.boolean().optional(),
   product_id: z.number().int().positive().nullable().optional(),
@@ -163,4 +163,11 @@ export const draftSaveSchema = z.object({
   negative_prompt: z.string().max(5_000).nullable().optional(),
   /** 已由 lib/draft-snapshot 编码好的 JSON 字符串 */
   snapshot: z.string().max(200_000).optional(),
+  /** 点击生成后挂上的任务单；置 null 表示解绑 */
+  generation_id: z.number().int().positive().nullable().optional(),
+});
+
+/** 新建时 mode 必填——一条草稿总得属于某个模式 */
+export const draftCreateSchema = draftPatchSchema.extend({
+  mode: z.enum(GENERATION_MODES),
 });

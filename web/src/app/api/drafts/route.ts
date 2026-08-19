@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
-import { draftSaveSchema } from "@/lib/validators";
+import { draftCreateSchema } from "@/lib/validators";
 import { draftOut } from "@/lib/serialize";
 import { rateLimit } from "@/lib/rate-limit";
 
@@ -51,7 +51,7 @@ export async function POST(req: Request) {
   }
 
   const body = await req.json().catch(() => null);
-  const parsed = draftSaveSchema.safeParse(body);
+  const parsed = draftCreateSchema.safeParse(body);
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error.issues[0].message }, { status: 400 });
   }

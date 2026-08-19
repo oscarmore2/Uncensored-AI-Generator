@@ -247,7 +247,18 @@
     "reuse": "Reuse settings",
     "retry": "Retry task",
     "reuseFailed": "Could not load the original settings",
-    "openFullPage": "Open full page"
+    "openFullPage": "Open full page",
+    "tabWorks": "My works",
+    "tabDrafts": "My drafts",
+    "draftsEmpty": "No drafts yet",
+    "draftsEmptyHint": "Start writing on the create page and it saves as a draft automatically",
+    "draftUntitled": "Untitled draft",
+    "draftContinue": "Continue editing",
+    "draftDelete": "Delete draft",
+    "draftDeleteConfirm": "Delete this draft? This cannot be undone.",
+    "draftGenerating": "Generating",
+    "draftLoadFailed": "Could not load drafts",
+    "draftDeleteFailed": "Delete failed"
   },
   "Make": {
     "title": "Create",

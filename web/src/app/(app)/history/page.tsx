@@ -7,6 +7,7 @@ import { MediaExpiryBadge } from "@/components/MediaExpiryBadge";
 import { useApp } from "@/components/AppContext";
 import { WorkReuseActions } from "@/components/WorkReuseActions";
 import { WorkDetail } from "@/components/WorkDetail";
+import { DraftsPanel } from "@/components/DraftsPanel";
 import { useLocale, useTranslations } from "next-intl";
 import { useBodyScrollLock } from "@/lib/use-body-scroll-lock";
 
@@ -18,6 +19,8 @@ export default function HistoryPage() {
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState<ApiGeneration | null>(null);
   const [loaded, setLoaded] = useState(false);
+  /* 草稿是「未完成的生成记录」，与作品分栏而不是混在一个列表里 */
+  const [tab, setTab] = useState<"works" | "drafts">("works");
   useBodyScrollLock(Boolean(selected));
 
   const load = useCallback(async () => {
@@ -46,7 +49,7 @@ export default function HistoryPage() {
       */}
       <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <h1 className="text-3xl font-bold tracking-tighter sm:text-4xl">{t("title")}</h1>
-        <div className="flex min-w-0 gap-2">
+        <div className={`flex min-w-0 gap-2 ${tab === "works" ? "" : "hidden"}`}>
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
@@ -62,7 +65,27 @@ export default function HistoryPage() {
         </div>
       </div>
 
-      {loaded && filtered.length === 0 ? (
+      <div className="mb-6 flex gap-1 border-b border-line" role="tablist">
+        {(["works", "drafts"] as const).map((key) => (
+          <button
+            key={key}
+            role="tab"
+            aria-selected={tab === key}
+            onClick={() => setTab(key)}
+            className={`-mb-px border-b-2 px-4 py-2.5 text-sm transition-colors ${
+              tab === key
+                ? "border-orange-700 font-semibold text-ink"
+                : "border-transparent text-ink-subtle hover:text-ink-muted"
+            }`}
+          >
+            {key === "works" ? t("tabWorks") : t("tabDrafts")}
+          </button>
+        ))}
+      </div>
+
+      {tab === "drafts" ? (
+        <DraftsPanel />
+      ) : loaded && filtered.length === 0 ? (
         <div className="text-center py-16">
           <i className="fas fa-images text-6xl text-ink-subtle mb-4" />
           <p className="text-ink-muted">

@@ -247,7 +247,18 @@
     "reuse": "套用参数",
     "retry": "重新生成",
     "reuseFailed": "读取原任务参数失败",
-    "openFullPage": "整页查看"
+    "openFullPage": "整页查看",
+    "tabWorks": "我的作品",
+    "tabDrafts": "我的草稿",
+    "draftsEmpty": "还没有草稿",
+    "draftsEmptyHint": "在创作页写点什么，就会自动存成草稿",
+    "draftUntitled": "未命名草稿",
+    "draftContinue": "继续编辑",
+    "draftDelete": "删除草稿",
+    "draftDeleteConfirm": "删除这条草稿？删掉之后无法恢复。",
+    "draftGenerating": "生成中",
+    "draftLoadFailed": "草稿加载失败",
+    "draftDeleteFailed": "删除失败"
   },
   "Make": {
     "title": "创作中心",

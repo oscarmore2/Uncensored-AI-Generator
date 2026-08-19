@@ -137,6 +137,10 @@ function MakePageInner() {
       searchParams.get("reuse")
   );
 
+  /* ?draft=N：从「我的草稿」点进来，打开指定那条 */
+  const draftParam = searchParams.get("draft");
+  const openDraftId = draftParam && /^\d+$/.test(draftParam) ? Number(draftParam) : null;
+
   const { save: saveDraft, localSavedAt } = useDraft<MakeDraft>(
     "make",
     (d) => {
@@ -160,7 +164,8 @@ function MakePageInner() {
       setMedia(withMediaIds(d.media));
     },
     {
-      enabled: !deepLinked,
+      // 明确点开了某条草稿时，本地那份要让路，否则会盖掉用户点开的内容
+      enabled: !deepLinked && openDraftId === null,
       // 参考图是 base64 大字符串，配额写满时先保住提示词
       stripMedia: (d) => ({ ...d, imageBase64: null }),
     }
@@ -174,8 +179,13 @@ function MakePageInner() {
    * 「正在编辑的这个窗口」本身就是那条草稿。
    */
   const initialModeRef = useRef(mode);
-  const { save: saveServerDraft } = useServerDraft({
+  const {
+    save: saveServerDraft,
+    discard: discardServerDraft,
+    attachGeneration,
+  } = useServerDraft({
     initialMode: initialModeRef.current,
+    initialDraftId: openDraftId,
     enabled: !deepLinked,
     localSavedAt,
     hasContent: (payload) =>
@@ -733,6 +743,9 @@ function MakePageInner() {
         }),
       });
       toast(t("submitted", { id: gen.id }));
+      // 把任务单挂到草稿上。成功后主路径会直接删掉它；
+      // 万一那一步没跑到（关标签页、断网），草稿列表打开时的对账兜底
+      void attachGeneration(gen.id);
       await refreshUser();
       setPhase("polling");
       void poll(gen.id);
@@ -784,6 +797,8 @@ function MakePageInner() {
               mediaExpiresAt: data.media_expires_at ?? null,
             });
             setProgress(100);
+            // 草稿的使命到此结束（需求 6）。失败不删——那正是要改了重试的场景
+            void discardServerDraft();
             await refreshUser();
             return;
           }

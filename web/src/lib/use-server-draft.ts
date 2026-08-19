@@ -50,6 +50,11 @@ export type ApiDraft = {
 export function useServerDraft(opts: {
   /** 挂载时按这个模式找活动草稿 */
   initialMode: string;
+  /**
+   * 指定要打开的草稿（URL 带 ?draft=N）。给了就取这一条，而且**无条件**恢复：
+   * 用户是明确点开这条草稿的，不该再跟本地那份比新旧。
+   */
+  initialDraftId?: number | null;
   /** 为 false 时不恢复也不保存（如 URL 带了 reuse 参数） */
   enabled: boolean;
   /** 服务端那份更新时调用 */
@@ -59,7 +64,7 @@ export function useServerDraft(opts: {
   /** 有没有值得保存的内容；空编辑器不该在列表里留下空草稿 */
   hasContent: (payload: DraftPayload) => boolean;
 }) {
-  const { initialMode, enabled, onRestore, localSavedAt, hasContent } = opts;
+  const { initialMode, initialDraftId = null, enabled, onRestore, localSavedAt, hasContent } = opts;
 
   const [ready, setReady] = useState(false);
   const [draftId, setDraftId] = useState<number | null>(null);
@@ -124,16 +129,22 @@ export function useServerDraft(opts: {
     let alive = true;
     void (async () => {
       try {
-        const { draft } = await api<{ draft: ApiDraft | null }>(
-          `/api/drafts?active=1&mode=${encodeURIComponent(initialMode)}`
-        );
+        const draft = initialDraftId
+          ? await api<ApiDraft>(`/api/drafts/${initialDraftId}`)
+          : (
+              await api<{ draft: ApiDraft | null }>(
+                `/api/drafts?active=1&mode=${encodeURIComponent(initialMode)}`
+              )
+            ).draft;
         if (!alive) return;
         if (draft) {
           draftIdRef.current = draft.id;
           setDraftId(draft.id);
-          // 本地那份更新就不要动界面，只认领 id，后续写回同一条
+          // 明确点开的那条一律恢复；自动找到的活动草稿才比新旧
           const serverAt = new Date(draft.updated_at).getTime();
-          if (serverAt > localSavedAtRef.current()) onRestoreRef.current(draft);
+          if (initialDraftId || serverAt > localSavedAtRef.current()) {
+            onRestoreRef.current(draft);
+          }
         }
       } catch (err) {
         console.warn("[draft] 读取服务端草稿失败：", err);
@@ -144,7 +155,7 @@ export function useServerDraft(opts: {
     return () => {
       alive = false;
     };
-  }, [enabled, initialMode]);
+  }, [enabled, initialMode, initialDraftId]);
 
   // 关标签页时把防抖里还没发出去的补上
   useEffect(() => {
@@ -168,6 +179,25 @@ export function useServerDraft(opts: {
     [ready, enabled, flush]
   );
 
+  /**
+   * 提交生成后把任务单挂到草稿上，供需求 8 的对账使用。
+   *
+   * 立刻发、不走防抖：紧接着用户很可能就关掉页面了，挂不上这条草稿就成了
+   * 没人认领的孤儿——列表里永远躺着，而作品其实已经生成好。
+   */
+  const attachGeneration = useCallback(async (generationId: number) => {
+    const id = draftIdRef.current;
+    if (id === null) return;
+    try {
+      await api(`/api/drafts/${id}`, {
+        method: "PATCH",
+        body: JSON.stringify({ generation_id: generationId }),
+      });
+    } catch (err) {
+      console.warn("[draft] 挂任务单失败：", err);
+    }
+  }, []);
+
   /** 生成成功后调用：这条草稿的使命结束了 */
   const discard = useCallback(async () => {
     pendingRef.current = null;
@@ -186,5 +216,5 @@ export function useServerDraft(opts: {
     }
   }, []);
 
-  return { ready, draftId, save, discard };
+  return { ready, draftId, save, discard, attachGeneration };
 }
