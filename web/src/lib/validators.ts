@@ -171,3 +171,30 @@ export const draftPatchSchema = z.object({
 export const draftCreateSchema = draftPatchSchema.extend({
   mode: z.enum(GENERATION_MODES),
 });
+
+/**
+ * 存为模板。两个来源：
+ * - 正在编辑的内容：直接带 mode/prompt/snapshot
+ * - 已完成的作品：只带 from_generation_id，服务端去把参数翻出来
+ */
+export const templateCreateSchema = z
+  .object({
+    name: z.string().trim().min(1, "请给模板起个名字").max(60),
+    from_generation_id: z.number().int().positive().optional(),
+    from_draft_id: z.number().int().positive().optional(),
+    mode: z.enum(GENERATION_MODES).optional(),
+    tier: z.enum(GENERATION_TIERS).nullable().optional(),
+    spicy: z.boolean().optional(),
+    product_id: z.number().int().positive().nullable().optional(),
+    provider_model_id: z.string().max(200).nullable().optional(),
+    prompt: z.string().max(20_000).optional(),
+    negative_prompt: z.string().max(5_000).nullable().optional(),
+    snapshot: z.string().max(200_000).optional(),
+  })
+  .refine((v) => v.from_generation_id || v.from_draft_id || v.mode, {
+    message: "缺少模板内容",
+  });
+
+export const templatePatchSchema = z.object({
+  name: z.string().trim().min(1).max(60),
+});

@@ -11,6 +11,7 @@ const PROTECTED_API_PREFIXES = [
   "/api/me",
   "/api/generations",
   "/api/drafts",
+  "/api/templates",
   "/api/payments",
   "/api/prompts",
   "/api/features",

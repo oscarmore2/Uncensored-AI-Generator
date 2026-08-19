@@ -258,7 +258,11 @@
     "draftDeleteConfirm": "删除这条草稿？删掉之后无法恢复。",
     "draftGenerating": "生成中",
     "draftLoadFailed": "草稿加载失败",
-    "draftDeleteFailed": "删除失败"
+    "draftDeleteFailed": "删除失败",
+    "saveTemplate": "存为模板",
+    "saveTemplatePrompt": "给这个模板起个名字",
+    "saveTemplateOk": "已存为模板",
+    "saveTemplateFailed": "保存模板失败"
   },
   "Make": {
     "title": "创作中心",
@@ -480,7 +484,28 @@
     "promptCollapse": "收起",
     "promptMediaPreview": "预览",
     "promptMediaCite": "引用",
-    "promptMediaClose": "关闭"
+    "promptMediaClose": "关闭",
+    "templates": "模板",
+    "templateSave": "存为模板",
+    "templateSavePrompt": "给这个模板起个名字",
+    "templateSaved": "已存为模板",
+    "templateSaveFailed": "保存模板失败",
+    "templateEmpty": "这个模式下还没有模板",
+    "templateApplyTitle": "套用模板",
+    "templateApplyConfirm": "套用",
+    "templateCancel": "取消",
+    "templateDelete": "删除模板",
+    "templateDeleteConfirm": "删除这个模板？",
+    "templateApplied": "已套用模板",
+    "templateWillReplace": "套用后会覆盖当前的提示词与参数。",
+    "templateCompatOk": "完全兼容",
+    "templateCompatDegraded": "部分内容会被丢弃",
+    "templateCompatBroken": "缺少必需素材",
+    "templateIssueUnknownField": "「{field}」这个位当前模型没有，{dropped} 个文件会被丢弃",
+    "templateIssueOverCapacity": "「{field}」最多 {max} 个，多出的 {dropped} 个会被丢弃",
+    "templateIssueKindMismatch": "「{field}」需要{expected}，{dropped} 个类型不符的会被丢弃",
+    "templateIssueMissingRequired": "「{field}」至少需要 {need} 个，套用后只有 {have} 个，需要自己补上",
+    "templateLoadFailed": "模板加载失败"
   },
   "Profile": {
     "title": "个人中心",

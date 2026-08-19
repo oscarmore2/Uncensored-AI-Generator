@@ -45,6 +45,7 @@ model User {
   oauthAccounts           OAuthAccount[]
   emailVerificationTokens EmailVerificationToken[]
   drafts                  Draft[]
+  promptTemplates         PromptTemplate[]
 
   @@index([registrationCountryCode, createdAt])
 }
@@ -640,4 +641,39 @@ model Draft {
   @@index([userId, updatedAt])
   @@index([userId, mode, updatedAt])
   @@index([generationId])
+}
+
+/// 模板：命名保存、可重复套用。
+///
+/// 与 Draft 分表而不是加一个 isTemplate 标志位：草稿有「生成成功即自动删除」
+/// 的规则，共表就等于把「记得跳过模板」放进删除逻辑里，踩雷的代价是用户
+/// 攒了几个月的模板一次性消失。两张表共用同一套快照编解码。
+model PromptTemplate {
+  id     Int     @id @default(autoincrement())
+  userId Int
+  mode   String
+  tier   String?
+  spicy  Boolean @default(false)
+
+  /// 存下来时命中的档位与上游模型，仅作留痕；兼容性一律按当前 specs 现算
+  productId       Int?
+  providerModelId String?
+
+  name           String
+  prompt         String  @default("")
+  negativePrompt String?
+  snapshot       String  @default("{}")
+
+  /// 来源留痕：从哪条草稿或哪件作品存下来的
+  sourceDraftId      Int?
+  sourceGenerationId Int?
+  useCount           Int  @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, mode, updatedAt])
+  @@index([userId, updatedAt])
 }

@@ -29,6 +29,7 @@ export function WorkReuseActions({
   const { toast } = useApp();
   const router = useRouter();
   const [checking, setChecking] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [gone, setGone] = useState<{
     items: ReuseMediaItem[];
     unrecorded: boolean;
@@ -69,6 +70,29 @@ export function WorkReuseActions({
     [checking, generationId, onNavigate, router, t, toast]
   );
 
+  /*
+   * 存为模板的第二个入口（需求 10）：已完成的作品也能存。
+   * 只把作品 id 发上去，参数由服务端从这条生成记录里翻出来——
+   * 前端手上只有展示用的字段，凑不出完整的表单快照。
+   */
+  const saveAsTemplate = useCallback(async () => {
+    if (saving) return;
+    const name = window.prompt(t("saveTemplatePrompt"))?.trim();
+    if (!name) return;
+    setSaving(true);
+    try {
+      await api("/api/templates", {
+        method: "POST",
+        body: JSON.stringify({ name, from_generation_id: generationId }),
+      });
+      toast(t("saveTemplateOk"));
+    } catch (err) {
+      toast(err instanceof ApiError && err.message ? err.message : t("saveTemplateFailed"), true);
+    } finally {
+      setSaving(false);
+    }
+  }, [generationId, saving, t, toast]);
+
   return (
     <>
       <div className={`flex gap-3 ${className}`}>
@@ -85,6 +109,15 @@ export function WorkReuseActions({
           className="flex-1 py-3 bg-orange-700 hover:bg-orange-600 rounded-2xl font-semibold flex items-center justify-center gap-x-2 disabled:opacity-40 text-white"
         >
           <i className="fas fa-rotate-right" /> {t("retry")}
+        </button>
+        <button
+          onClick={() => void saveAsTemplate()}
+          disabled={saving}
+          aria-label={t("saveTemplate")}
+          title={t("saveTemplate")}
+          className="flex w-12 shrink-0 items-center justify-center rounded-2xl border border-line bg-black/[0.03] disabled:opacity-40"
+        >
+          <i className={`fas ${saving ? "fa-spinner fa-spin" : "fa-bookmark"}`} />
         </button>
       </div>
       {gone && (

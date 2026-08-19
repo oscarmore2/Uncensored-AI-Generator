@@ -51,6 +51,7 @@ import {
 } from "@/components/MediaInputFields";
 import { buildMentionTargets } from "@/components/PromptMentionBox";
 import { PromptComposer } from "@/components/PromptComposer";
+import { TemplatePanel, type TemplateApplyPayload } from "@/components/TemplatePanel";
 import { detectMediaKindFromUrl } from "@/lib/plaything-categories";
 import { MediaExpiryBadge } from "@/components/MediaExpiryBadge";
 import { useTranslations } from "next-intl";
@@ -210,6 +211,28 @@ function MakePageInner() {
       setMedia(withMediaIds(snap.media as Record<string, UploadedMedia[]>));
     },
   });
+
+  /*
+   * 套用模板。media 进来时已经按当前 specs 过滤过了——
+   * 弹窗里说会丢什么，这里就真的只留下那些，两边出自同一个函数。
+   */
+  const applyTemplate = useCallback((payload: TemplateApplyPayload) => {
+    const { template, snapshot, media } = payload;
+    setPrompt(template.prompt);
+    if (typeof template.negative_prompt === "string") setNegative(template.negative_prompt);
+    if (template.tier) setTier(template.tier);
+    setSpicy(template.spicy);
+    if ((UNDRESS_GENDERS as readonly string[]).includes(snapshot.gender)) {
+      setGender(snapshot.gender as UndressGender);
+    }
+    if (snapshot.undressOptions) setUndressOptions(normalizeUndressAdvanced(snapshot.undressOptions));
+    setRatio(snapshot.ratio);
+    if (snapshot.batch === 1 || snapshot.batch === 2 || snapshot.batch === 4) setBatch(snapshot.batch);
+    setDuration(snapshot.duration);
+    setAdvancedOpen(snapshot.advancedOpen);
+    setExtraParams(snapshot.extraParams);
+    setMedia(withMediaIds(media as Record<string, UploadedMedia[]>));
+  }, []);
 
   useEffect(() => {
     saveServerDraft({
@@ -1056,6 +1079,28 @@ function MakePageInner() {
                   </button>
                 </div>
               </div>
+              <TemplatePanel
+                mode={mode}
+                specs={mediaSpecs}
+                onApply={applyTemplate}
+                currentPayload={() => ({
+                  tier,
+                  spicy,
+                  prompt,
+                  negative_prompt: negative,
+                  snapshot: encodeDraftSnapshot({
+                    gender,
+                    undressOptions,
+                    ratio,
+                    batch,
+                    duration,
+                    advancedOpen,
+                    extraParams,
+                    media,
+                    imageFilename,
+                  }),
+                })}
+              />
               {/*
                 输入 @ 就能引用已上传的素材。参考生视频这类模型正是靠提示词里的
                 @Image1 / @Video1 认出每句话说的是哪一份素材，让用户自己数第几张必然出错。

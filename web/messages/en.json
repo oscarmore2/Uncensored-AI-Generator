@@ -258,7 +258,11 @@
     "draftDeleteConfirm": "Delete this draft? This cannot be undone.",
     "draftGenerating": "Generating",
     "draftLoadFailed": "Could not load drafts",
-    "draftDeleteFailed": "Delete failed"
+    "draftDeleteFailed": "Delete failed",
+    "saveTemplate": "Save as template",
+    "saveTemplatePrompt": "Name this template",
+    "saveTemplateOk": "Saved as template",
+    "saveTemplateFailed": "Could not save template"
   },
   "Make": {
     "title": "Create",
@@ -480,7 +484,28 @@
     "promptCollapse": "Collapse",
     "promptMediaPreview": "Preview",
     "promptMediaCite": "Cite",
-    "promptMediaClose": "Close"
+    "promptMediaClose": "Close",
+    "templates": "Templates",
+    "templateSave": "Save as template",
+    "templateSavePrompt": "Name this template",
+    "templateSaved": "Saved as template",
+    "templateSaveFailed": "Could not save template",
+    "templateEmpty": "No templates for this mode yet",
+    "templateApplyTitle": "Apply template",
+    "templateApplyConfirm": "Apply",
+    "templateCancel": "Cancel",
+    "templateDelete": "Delete template",
+    "templateDeleteConfirm": "Delete this template?",
+    "templateApplied": "Template applied",
+    "templateWillReplace": "Applying replaces your current prompt and settings.",
+    "templateCompatOk": "Fully compatible",
+    "templateCompatDegraded": "Some content will be dropped",
+    "templateCompatBroken": "Missing required media",
+    "templateIssueUnknownField": "No slot for {field} in this model — {dropped} file(s) will be dropped",
+    "templateIssueOverCapacity": "{field} takes at most {max} — {dropped} extra will be dropped",
+    "templateIssueKindMismatch": "{field} expects {expected} — {dropped} mismatched file(s) will be dropped",
+    "templateIssueMissingRequired": "{field} needs at least {need}; only {have} after applying — add the rest yourself",
+    "templateLoadFailed": "Could not load templates"
   },
   "Profile": {
     "title": "Profile",
