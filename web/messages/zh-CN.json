@@ -505,7 +505,10 @@
     "templateIssueOverCapacity": "「{field}」最多 {max} 个，多出的 {dropped} 个会被丢弃",
     "templateIssueKindMismatch": "「{field}」需要{expected}，{dropped} 个类型不符的会被丢弃",
     "templateIssueMissingRequired": "「{field}」至少需要 {need} 个，套用后只有 {have} 个，需要自己补上",
-    "templateLoadFailed": "模板加载失败"
+    "templateLoadFailed": "模板加载失败",
+    "promptPreview": "预览",
+    "promptEditMode": "编辑",
+    "promptRawNote": "预览只是排版辅助，提交给模型的是原始文本，一字不差"
   },
   "Profile": {
     "title": "个人中心",

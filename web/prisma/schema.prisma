@@ -677,3 +677,36 @@ model PromptTemplate {
   @@index([userId, mode, updatedAt])
   @@index([userId, updatedAt])
 }
+
+/// 各家模型的媒体引用语法。
+///
+/// 提示词里存的是规范形式（@Image1 / @Video1 / @Audio1），提交上游前按目标
+/// 模型改写。两家已确认的写法差得很远：
+///   Seedance   @image1     （schema 原话：Cite reference inputs with @-syntax）
+///   Wan 2.7    character1  （不带 @，语义是把参考素材映射到角色）
+/// 所以不能写死在代码里，也不能靠猜——做成表，管理端可编辑，接新模型时补一行。
+///
+/// 匹配不到任何一行时**原样透传**，等于接入前的行为，不会造成回归。
+model ModelRefSyntax {
+  id           Int     @id @default(autoincrement())
+  label        String
+  /// 与上游 modelId 做不区分大小写的子串匹配；留空表示兜底（匹配一切）
+  matchModelId String  @default("")
+  /// 限定渠道（wavespeed / atlas…），留空则不限
+  provider     String?
+
+  /// 写法模板，{n} 是该类型内的序号（从 1 开始）。
+  /// 留空表示「把这个引用整个删掉」——有些模型只认数组顺序，
+  /// 提示词里出现它不认识的记号反而会被当成正文读进去。
+  imageFormat String @default("@image{n}")
+  videoFormat String @default("@video{n}")
+  audioFormat String @default("@audio{n}")
+
+  enabled   Boolean  @default(true)
+  /// 越小越先匹配；兜底行放大值
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([enabled, sortOrder])
+}

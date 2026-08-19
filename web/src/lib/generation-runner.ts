@@ -13,6 +13,7 @@ import {
   toProviderId,
 } from "./providers";
 import { buildProviderInputs, inputsForPricing, parseRequestSchema } from "./generation-bridge";
+import { pickRefSyntax, renderPromptRefs } from "./model-ref-syntax";
 import { modeNeedsMedia } from "./generation-modes";
 import { isAdultContent, reviewImages, safetyAudit } from "./content-safety";
 import {
@@ -184,7 +185,7 @@ export async function processGeneration(genId: number): Promise<void> {
       }
     }
 
-    const [catalogModel, mappings] = await Promise.all([
+    const [catalogModel, mappings, refRules] = await Promise.all([
       db.providerCatalogModel.findUnique({
         where: { provider_modelId: { provider, modelId: product.providerModelId } },
         select: { apiSchema: true, type: true },
@@ -193,12 +194,37 @@ export async function processGeneration(genId: number): Promise<void> {
         where: { mode: gen.mode, enabled: true },
         orderBy: [{ sortOrder: "asc" }, { id: "asc" }],
       }),
+      db.modelRefSyntax.findMany({
+        where: { enabled: true },
+        orderBy: [{ sortOrder: "asc" }, { id: "asc" }],
+        select: {
+          matchModelId: true,
+          provider: true,
+          imageFormat: true,
+          videoFormat: true,
+          audioFormat: true,
+        },
+      }),
     ]);
+
+    /*
+     * 媒体引用改写。库里存的一直是规范形式（@Image1），只有交给上游的
+     * 这一份按目标模型改写——换模型重跑同一条提示词才不用改文案。
+     * 匹配不到规则就原样透传。
+     */
+    const refRule = pickRefSyntax(refRules, provider, product.providerModelId);
+    const outboundPrompt = renderPromptRefs(gen.prompt, refRule);
+    if (outboundPrompt !== gen.prompt) {
+      console.info(
+        `[generation] ${genId} 引用改写 ${product.providerModelId}：` +
+          `${JSON.stringify(gen.prompt.slice(0, 60))} → ${JSON.stringify(outboundPrompt.slice(0, 60))}`
+      );
+    }
 
     const { inputs, snapped } = buildProviderInputs({
       product,
       apiSchema: catalogModel?.apiSchema ?? null,
-      prompt: gen.prompt,
+      prompt: outboundPrompt,
       negativePrompt: gen.negativePrompt ?? "",
       imageUrl,
       mediaFields,

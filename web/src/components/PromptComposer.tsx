@@ -8,6 +8,7 @@ import {
   type PromptMentionHandle,
 } from "./PromptMentionBox";
 import { useBodyScrollLock } from "@/lib/use-body-scroll-lock";
+import { renderMiniMarkdown } from "@/lib/mini-markdown";
 
 /**
  * 提示词输入区：常态是一个输入框，点放大进全屏弹窗。
@@ -37,6 +38,8 @@ export function PromptComposer({
   const t = useTranslations("Make");
   const [expanded, setExpanded] = useState(false);
   const [preview, setPreview] = useState<MentionTarget | null>(null);
+  /* 预览只是**排版辅助**：上行的始终是原始文本，与编辑器逐字节一致 */
+  const [previewing, setPreviewing] = useState(false);
 
   const inlineHandle = useRef<PromptMentionHandle | null>(null);
   const modalHandle = useRef<PromptMentionHandle | null>(null);
@@ -123,6 +126,14 @@ export function PromptComposer({
               </div>
               <button
                 type="button"
+                onClick={() => setPreviewing((v) => !v)}
+                className="shrink-0 rounded-xl border border-line bg-surface px-3 py-2 text-xs text-ink-muted hover:text-ink"
+              >
+                <i className={`fas ${previewing ? "fa-pen" : "fa-eye"} mr-1.5`} />
+                {previewing ? t("promptEditMode") : t("promptPreview")}
+              </button>
+              <button
+                type="button"
                 onClick={() => setExpanded(false)}
                 aria-label={t("promptCollapse")}
                 className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-line bg-surface text-ink-subtle hover:text-ink"
@@ -132,6 +143,20 @@ export function PromptComposer({
             </div>
 
             <div className="flex min-h-0 flex-1 flex-col p-4 sm:p-5">
+              {previewing ? (
+                <div className="flex min-h-0 flex-1 flex-col">
+                  <div
+                    className="prompt-preview min-h-0 flex-1 overflow-y-auto rounded-2xl border border-line bg-surface p-4 text-sm"
+                    /* 内容已在 renderMiniMarkdown 里先转义后变换，插入的标签
+                     * 只可能是那里写死的几个 */
+                    dangerouslySetInnerHTML={{ __html: renderMiniMarkdown(value) }}
+                  />
+                  <p className="mt-2 shrink-0 text-[11px] text-ink-subtle">
+                    <i className="fas fa-circle-info mr-1" />
+                    {t("promptRawNote")}
+                  </p>
+                </div>
+              ) : (
               <PromptMentionBox
                 value={value}
                 onChange={onChange}
@@ -145,6 +170,7 @@ export function PromptComposer({
                  * 与这里的撑满冲突，而且同 specificity 下它靠源序赢 */
                 className="w-full flex-1 resize-none rounded-2xl border border-line bg-surface p-4 text-sm outline-none placeholder:text-ink-subtle focus:border-orange-500/60"
               />
+              )}
             </div>
 
             {targets.length > 0 && (
@@ -158,7 +184,11 @@ export function PromptComposer({
                       key={`${target.token}-${target.url}`}
                       target={target}
                       onPreview={() => setPreview(target)}
-                      onInsert={() => insert(target)}
+                      /* 预览态下没有光标可插，先切回编辑再插 */
+                      onInsert={() => {
+                        setPreviewing(false);
+                        requestAnimationFrame(() => insert(target));
+                      }}
                       previewLabel={t("promptMediaPreview")}
                       insertLabel={t("promptMediaCite")}
                     />

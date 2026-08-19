@@ -159,6 +159,44 @@ body {
   min-height: 120px;
 }
 
+/* 提示词预览。Tailwind 的 preflight 把标题/列表的默认样式清空了，
+   这里只补回够看清结构的最小一套——它是排版辅助，不是正文排版。 */
+.prompt-preview h1,
+.prompt-preview h2,
+.prompt-preview h3 {
+  font-weight: 700;
+  margin: 0.9em 0 0.4em;
+  line-height: 1.35;
+}
+.prompt-preview h1 { font-size: 1.3em; }
+.prompt-preview h2 { font-size: 1.15em; }
+.prompt-preview h3 { font-size: 1.05em; }
+.prompt-preview > *:first-child { margin-top: 0; }
+.prompt-preview p { margin: 0 0 0.7em; }
+.prompt-preview ul,
+.prompt-preview ol { margin: 0 0 0.7em; padding-left: 1.4em; }
+.prompt-preview ul { list-style: disc; }
+.prompt-preview ol { list-style: decimal; }
+.prompt-preview li { margin-bottom: 0.25em; }
+.prompt-preview blockquote {
+  margin: 0 0 0.7em;
+  padding-left: 0.9em;
+  border-left: 3px solid var(--line);
+  color: var(--fg-muted);
+}
+.prompt-preview hr {
+  margin: 1em 0;
+  border: 0;
+  border-top: 1px solid var(--line);
+}
+.prompt-preview code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.9em;
+  background: rgba(0, 0, 0, 0.05);
+  padding: 0.1em 0.35em;
+  border-radius: 4px;
+}
+
 /* 魔法指令：暖金胶囊按钮（原为紫色，与新品牌色系不符） */
 .magic-prompt-btn {
   background: #e8a33d;

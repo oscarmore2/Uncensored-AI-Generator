@@ -505,7 +505,10 @@
     "templateIssueOverCapacity": "{field} takes at most {max} — {dropped} extra will be dropped",
     "templateIssueKindMismatch": "{field} expects {expected} — {dropped} mismatched file(s) will be dropped",
     "templateIssueMissingRequired": "{field} needs at least {need}; only {have} after applying — add the rest yourself",
-    "templateLoadFailed": "Could not load templates"
+    "templateLoadFailed": "Could not load templates",
+    "promptPreview": "Preview",
+    "promptEditMode": "Edit",
+    "promptRawNote": "Preview is a reading aid — the model receives your raw text, unchanged"
   },
   "Profile": {
     "title": "Profile",
