@@ -508,7 +508,22 @@
     "templateLoadFailed": "模板加载失败",
     "promptPreview": "预览",
     "promptEditMode": "编辑",
-    "promptRawNote": "预览只是排版辅助，提交给模型的是原始文本，一字不差"
+    "promptRawNote": "预览只是排版辅助，提交给模型的是原始文本，一字不差",
+    "draftSave": "保存草稿",
+    "draftSaveAs": "另存为",
+    "draftRestore": "恢复上次编辑",
+    "draftAuto": "自动保存",
+    "draftVipOnly": "自动保存与另存为是 VIP 功能",
+    "draftSaved": "已保存",
+    "draftUnsaved": "有未保存的更改",
+    "draftSaving": "保存中…",
+    "draftPausedByRun": "生成中，已暂停保存",
+    "draftSaveAsPrompt": "给这份草稿起个名字",
+    "draftSaveOk": "草稿已保存",
+    "draftSaveFailed": "草稿保存失败",
+    "draftNothingToSave": "还没有可保存的内容",
+    "draftAutoHint": "每分钟自动保存一次，离开页面时再补一次",
+    "draftManualHint": "编辑只存在本机，按保存才会同步到账号"
   },
   "Profile": {
     "title": "个人中心",

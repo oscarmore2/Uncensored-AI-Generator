@@ -33,6 +33,9 @@ model User {
   birthDate                 DateTime?
   ageVerifiedAt             DateTime?
   adultModeEnabled          Boolean   @default(false)
+  /// 草稿自动保存（VIP 功能）。关闭时草稿只在用户按保存时才写进数据库，
+  /// 本地 IndexedDB 缓存照旧工作。
+  draftAutoSave             Boolean   @default(false)
   createdAt                 DateTime  @default(now())
 
   generations             Generation[]

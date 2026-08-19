@@ -52,6 +52,7 @@ import {
 import { buildMentionTargets } from "@/components/PromptMentionBox";
 import { PromptComposer } from "@/components/PromptComposer";
 import { TemplatePanel, type TemplateApplyPayload } from "@/components/TemplatePanel";
+import { DraftBar } from "@/components/DraftBar";
 import { detectMediaKindFromUrl } from "@/lib/plaything-categories";
 import { MediaExpiryBadge } from "@/components/MediaExpiryBadge";
 import { useTranslations } from "next-intl";
@@ -180,14 +181,30 @@ function MakePageInner() {
    * 「正在编辑的这个窗口」本身就是那条草稿。
    */
   const initialModeRef = useRef(mode);
+  /*
+   * 生成执行期间完全停写。那一刻的内容已经交给上游，再写草稿会让
+   * 「这条草稿对应哪次生成」说不清。失败后 phase 回到 idle，保存自然回来。
+   */
+  const draftPaused = phase !== "idle";
+  const autoSaveOn = Boolean(user?.draft_auto_save);
+
   const {
-    save: saveServerDraft,
+    track: trackServerDraft,
+    saveNow: saveDraftNow,
+    saveAs: saveDraftAs,
+    restore: restoreServerDraft,
+    restorable,
+    dirty: draftDirty,
+    saving: draftSaving,
+    lastSavedAt: draftSavedAt,
     discard: discardServerDraft,
     attachGeneration,
   } = useServerDraft({
     initialMode: initialModeRef.current,
     initialDraftId: openDraftId,
     enabled: !deepLinked,
+    autoSave: autoSaveOn,
+    paused: draftPaused,
     localSavedAt,
     hasContent: (payload) =>
       draftHasContent(payload.prompt ?? "", decodeDraftSnapshot(payload.snapshot)),
@@ -212,6 +229,41 @@ function MakePageInner() {
     },
   });
 
+  const handleSaveDraft = useCallback(async () => {
+    try {
+      const ok = await saveDraftNow();
+      toast(ok ? t("draftSaveOk") : t("draftNothingToSave"), !ok);
+    } catch (e) {
+      toast(e instanceof Error ? e.message : t("draftSaveFailed"), true);
+    }
+  }, [saveDraftNow, t, toast]);
+
+  const handleSaveDraftAs = useCallback(async () => {
+    const name = window.prompt(t("draftSaveAsPrompt"))?.trim();
+    if (!name) return;
+    try {
+      const ok = await saveDraftAs(name);
+      toast(ok ? t("draftSaveOk") : t("draftNothingToSave"), !ok);
+    } catch (e) {
+      toast(e instanceof Error ? e.message : t("draftSaveFailed"), true);
+    }
+  }, [saveDraftAs, t, toast]);
+
+  const handleToggleAutoSave = useCallback(
+    async (next: boolean) => {
+      try {
+        await api("/api/me/draft-autosave", {
+          method: "PATCH",
+          body: JSON.stringify({ enabled: next }),
+        });
+        await refreshUser();
+      } catch (e) {
+        toast(e instanceof Error ? e.message : t("draftSaveFailed"), true);
+      }
+    },
+    [refreshUser, t, toast]
+  );
+
   /*
    * 套用模板。media 进来时已经按当前 specs 过滤过了——
    * 弹窗里说会丢什么，这里就真的只留下那些，两边出自同一个函数。
@@ -235,7 +287,7 @@ function MakePageInner() {
   }, []);
 
   useEffect(() => {
-    saveServerDraft({
+    trackServerDraft({
       mode,
       tier,
       spicy,
@@ -256,7 +308,7 @@ function MakePageInner() {
       }),
     });
   }, [
-    saveServerDraft,
+    trackServerDraft,
     media,
     mode,
     tier,
@@ -1079,6 +1131,19 @@ function MakePageInner() {
                   </button>
                 </div>
               </div>
+              <DraftBar
+                isVip={Boolean(user?.is_vip)}
+                autoSave={autoSaveOn}
+                onToggleAutoSave={(v) => void handleToggleAutoSave(v)}
+                dirty={draftDirty}
+                saving={draftSaving}
+                lastSavedAt={draftSavedAt}
+                paused={draftPaused}
+                canRestore={restorable !== null}
+                onSave={() => void handleSaveDraft()}
+                onSaveAs={() => void handleSaveDraftAs()}
+                onRestore={restoreServerDraft}
+              />
               <TemplatePanel
                 mode={mode}
                 specs={mediaSpecs}

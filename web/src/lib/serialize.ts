@@ -21,6 +21,7 @@ export function userOut(
     is_vip: vipActive,
     adult_mode_enabled: hasAdultAccess(user),
     adult_mode_requested: user.adultModeEnabled,
+    draft_auto_save: user.draftAutoSave,
     age_verified: Boolean(user.ageVerifiedAt && user.birthDate),
     vip_expires_at: user.vipExpiresAt,
     vip_tier: user.vipTier

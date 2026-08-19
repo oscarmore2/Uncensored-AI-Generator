@@ -4,6 +4,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { draftCreateSchema } from "@/lib/validators";
 import { draftOut } from "@/lib/serialize";
 import { rateLimit } from "@/lib/rate-limit";
+import { isVipActive } from "@/lib/pricing";
 
 /**
  * 草稿列表 / 活动草稿 / 新建。
@@ -56,6 +57,14 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: parsed.error.issues[0].message }, { status: 400 });
   }
   const d = parsed.data;
+
+  /*
+   * 「另存为」是 VIP 功能。不能只靠前端藏按钮——接口是公开的，
+   * 前端的判断只是不给入口，真正的门在这里。
+   */
+  if (d.save_as && !isVipActive(user)) {
+    return NextResponse.json({ error: "另存为草稿仅对 VIP 开放" }, { status: 403 });
+  }
 
   const count = await db.draft.count({ where: { userId: user.id } });
   if (count >= MAX_DRAFTS_PER_USER) {

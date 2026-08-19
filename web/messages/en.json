@@ -508,7 +508,22 @@
     "templateLoadFailed": "Could not load templates",
     "promptPreview": "Preview",
     "promptEditMode": "Edit",
-    "promptRawNote": "Preview is a reading aid — the model receives your raw text, unchanged"
+    "promptRawNote": "Preview is a reading aid — the model receives your raw text, unchanged",
+    "draftSave": "Save draft",
+    "draftSaveAs": "Save as",
+    "draftRestore": "Restore last edit",
+    "draftAuto": "Auto-save",
+    "draftVipOnly": "Auto-save and Save as are VIP features",
+    "draftSaved": "Saved",
+    "draftUnsaved": "Unsaved changes",
+    "draftSaving": "Saving...",
+    "draftPausedByRun": "Paused while generating",
+    "draftSaveAsPrompt": "Name this draft",
+    "draftSaveOk": "Draft saved",
+    "draftSaveFailed": "Could not save draft",
+    "draftNothingToSave": "Nothing to save yet",
+    "draftAutoHint": "Saves every minute, and again when you leave the page",
+    "draftManualHint": "Edits stay on this device until you save"
   },
   "Profile": {
     "title": "Profile",

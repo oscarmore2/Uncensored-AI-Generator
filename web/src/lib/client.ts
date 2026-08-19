@@ -13,6 +13,8 @@ export interface ApiUser {
   role: string;
   balance: number;
   is_vip: boolean;
+  /** 草稿自动保存开关（VIP 功能） */
+  draft_auto_save: boolean;
   adult_mode_enabled: boolean;
   adult_mode_requested: boolean;
   age_verified: boolean;

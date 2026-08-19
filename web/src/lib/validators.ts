@@ -170,6 +170,8 @@ export const draftPatchSchema = z.object({
 /** 新建时 mode 必填——一条草稿总得属于某个模式 */
 export const draftCreateSchema = draftPatchSchema.extend({
   mode: z.enum(GENERATION_MODES),
+  /** 「另存为」而不是新建活动草稿；这条路是 VIP 功能，服务端要再判一次 */
+  save_as: z.boolean().optional(),
 });
 
 /**
