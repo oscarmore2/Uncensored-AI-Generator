@@ -11,15 +11,37 @@ import { useBodyScrollLock } from "@/lib/use-body-scroll-lock";
 import { renderMiniMarkdown } from "@/lib/mini-markdown";
 
 /**
- * 提示词输入区：常态是一个输入框，点放大进全屏弹窗。
+ * 提示词输入区：常态是一个输入框，点放大进弹窗。
  *
- * 弹窗里多出一条素材轨。参考生视频这类模式常常要在一长段描述里反复点名
+ * 弹窗里多出一条素材栏。参考生视频这类模式常常要在一长段描述里反复点名
  * 「这句说的是哪一份素材」，而素材缩略图在页面下方——写着写着就得往下翻，
  * 数第几张，翻回来接着写。把素材摆在编辑区旁边，一点就插进光标处。
+ *
+ * 版式随屏幕方向变，因为两种方向的瓶颈不同：
+ * - **横屏**：宽度富余、高度紧张。左右分栏，编辑区和素材栏各自滚动——
+ *   素材翻到底不该把正在写的段落顶走。
+ * - **竖屏**：宽度紧张。上下堆叠，并且**只保留一条统一的纵向滚动**。
+ *   窄屏上嵌套滚动区是灾难：手指往下划，到底命中哪一层要靠猜。
  *
  * 桌面端悬停素材出两个按钮：眼睛看大图、箭头直接引用。
  * 触屏没有 hover，所以两个按钮常显。
  */
+
+/* 站点顶栏是 sticky z-50。弹窗必须压过它——否则被盖住的正好是弹窗自己的
+ * 标题栏，预览和关闭两个按钮都在那一行，用户会以为功能不存在。
+ * 120 这一档与模板弹窗同层，素材大图再高一档盖住它。 */
+const Z_MODAL = "z-[120]";
+const Z_MEDIA_DIALOG = "z-[130]";
+
+/** 素材分区的固定顺序，与提交顺序一致 */
+const KIND_ORDER = ["image", "video", "audio"] as const;
+
+const KIND_ICON: Record<MentionTarget["kind"], string> = {
+  image: "fa-image",
+  video: "fa-film",
+  audio: "fa-music",
+};
+
 export function PromptComposer({
   value,
   onChange,
@@ -54,6 +76,19 @@ export function PromptComposer({
     empty: t("mentionNoMatch"),
   };
 
+  const kindLabel: Record<MentionTarget["kind"], string> = {
+    image: t("mentionKindImage"),
+    video: t("mentionKindVideo"),
+    audio: t("mentionKindAudio"),
+  };
+
+  /* 按类型分组。只列出真有素材的那几类——模型能收什么素材各不相同，
+   * 空着的分区留在那里只会让人以为该传却传不了。 */
+  const groups = KIND_ORDER.map((kind) => ({
+    kind,
+    items: targets.filter((target) => target.kind === kind),
+  })).filter((group) => group.items.length > 0);
+
   /* 引用落到当前可见的那个输入框上：弹窗开着就是弹窗里那个 */
   const insert = useCallback(
     (target: MentionTarget) => {
@@ -79,6 +114,15 @@ export function PromptComposer({
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
   }, [expanded, preview]);
+
+  const citeMedia = useCallback(
+    (target: MentionTarget) => {
+      /* 窄屏预览态下编辑器是藏起来的，没有光标可插，先切回编辑 */
+      setPreviewing((on) => (window.innerWidth < 1024 ? false : on));
+      requestAnimationFrame(() => insert(target));
+    },
+    [insert]
+  );
 
   return (
     <>
@@ -107,18 +151,35 @@ export function PromptComposer({
 
       {expanded && (
         <div
-          className="fixed inset-0 z-40 flex flex-col bg-black/45 p-0 sm:p-6"
+          className={`fixed inset-0 ${Z_MODAL} overflow-auto bg-black/45`}
           role="dialog"
           aria-modal="true"
           aria-label={t("promptExpand")}
-          onMouseDown={(e) => {
-            // 只有点在背板上才关；点内部拖选到框外松手不该把弹窗关掉
-            if (e.target === e.currentTarget) setExpanded(false);
-          }}
         >
-          <div className="mx-auto flex min-h-0 w-full max-w-4xl flex-1 flex-col overflow-hidden rounded-none border-line bg-stage shadow-2xl sm:rounded-3xl sm:border">
-            <div className="flex shrink-0 items-center justify-between gap-3 border-b border-line px-4 py-3 sm:px-5">
-              <div className="min-w-0">
+          {/*
+           * 外层可滚 + 这一层 min-h-full 居中：放得下就居中，放不下就整块弹窗
+           * 跟着背板一起滚。纯 flex 居中在溢出时会把顶部裁掉且滚不到，
+           * 而高度是 vh 算出来的，移动端地址栏收放、软键盘弹出都会让它算错——
+           * 留这条退路比赌视口高度稳。
+           */}
+          <div
+            className="flex min-h-full items-center justify-center p-0 sm:p-4 lg:p-6"
+            onMouseDown={(e) => {
+              // 只有点在背板上才关；点内部拖选到框外松手不该把弹窗关掉
+              if (e.target === e.currentTarget) setExpanded(false);
+            }}
+          >
+          {/*
+           * 高度留一截余量、不满打满算：贴边的弹窗看不出是浮层，
+           * 横屏手机上顶到边还会与系统手势区打架。
+           *
+           * min-h / min-w 是下限：窗口再小也不跟着缩了。缩到一定程度，
+           * 标题栏、编辑区、素材栏会一起挤成谁都用不了的样子，
+           * 不如让它溢出、交给背板滚——横屏手机（高 ~390）就属于这种。
+           */}
+          <div className="flex h-dvh min-h-[480px] w-full min-w-[320px] max-w-3xl flex-col overflow-hidden rounded-none border-line bg-stage shadow-2xl sm:h-[88dvh] sm:rounded-3xl sm:border lg:landscape:max-w-6xl">
+            <div className="flex shrink-0 items-center gap-3 border-b border-line px-4 py-3 sm:px-5">
+              <div className="min-w-0 flex-1">
                 <div className="text-sm font-semibold">{t("promptExpandTitle")}</div>
                 <div className="truncate text-[11px] text-ink-subtle">
                   {targets.length ? t("mentionHint") : t("mentionUploadFirst")}
@@ -127,7 +188,12 @@ export function PromptComposer({
               <button
                 type="button"
                 onClick={() => setPreviewing((v) => !v)}
-                className="shrink-0 rounded-xl border border-line bg-surface px-3 py-2 text-xs text-ink-muted hover:text-ink"
+                aria-pressed={previewing}
+                className={`shrink-0 rounded-xl border px-3 py-2 text-xs transition-colors ${
+                  previewing
+                    ? "border-orange-500/50 bg-orange-500/10 text-ink"
+                    : "border-line bg-surface text-ink-muted hover:text-ink"
+                }`}
               >
                 <i className={`fas ${previewing ? "fa-pen" : "fa-eye"} mr-1.5`} />
                 {previewing ? t("promptEditMode") : t("promptPreview")}
@@ -142,60 +208,81 @@ export function PromptComposer({
               </button>
             </div>
 
-            <div className="flex min-h-0 flex-1 flex-col p-4 sm:p-5">
-              {previewing ? (
-                <div className="flex min-h-0 flex-1 flex-col">
-                  <div
-                    className="prompt-preview min-h-0 flex-1 overflow-y-auto rounded-2xl border border-line bg-surface p-4 text-sm"
-                    /* 内容已在 renderMiniMarkdown 里先转义后变换，插入的标签
-                     * 只可能是那里写死的几个 */
-                    dangerouslySetInnerHTML={{ __html: renderMiniMarkdown(value) }}
+            {/* 竖屏：整块一条纵向滚动。横屏：不滚，交给左右两栏各自滚 */}
+            <div className="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain md:landscape:flex-row md:landscape:overflow-hidden">
+              <div className="flex shrink-0 flex-col gap-3 p-4 sm:p-5 md:landscape:min-h-0 md:landscape:flex-1 md:landscape:shrink md:landscape:overflow-hidden lg:landscape:flex-row">
+                {/* 预览开着且屏幕够宽时两栏并排、实时联动；窄屏没地方并排，
+                    就让预览顶掉编辑器（编辑器只是藏起来，选区和滚动位置都还在） */}
+                <div
+                  className={`flex min-h-0 flex-col md:landscape:flex-1 lg:landscape:flex-1 ${
+                    previewing ? "max-lg:hidden" : ""
+                  }`}
+                >
+                  <PromptMentionBox
+                    value={value}
+                    onChange={onChange}
+                    targets={targets}
+                    handle={modalHandle}
+                    placeholder={placeholder}
+                    disabled={disabled}
+                    labels={labels}
+                    wrapperClassName="flex min-h-0 flex-1 flex-col"
+                    /* 不带 prompt-box：那条类是给常态输入框的，它的 min-height:120px
+                     * 与这里的撑满冲突，而且同 specificity 下它靠源序赢 */
+                    className="h-[46vh] w-full resize-none overscroll-contain rounded-2xl border border-line bg-surface p-4 text-sm outline-none placeholder:text-ink-subtle focus:border-orange-500/60 md:landscape:h-auto md:landscape:flex-1"
                   />
-                  <p className="mt-2 shrink-0 text-[11px] text-ink-subtle">
-                    <i className="fas fa-circle-info mr-1" />
-                    {t("promptRawNote")}
-                  </p>
                 </div>
-              ) : (
-              <PromptMentionBox
-                value={value}
-                onChange={onChange}
-                targets={targets}
-                handle={modalHandle}
-                placeholder={placeholder}
-                disabled={disabled}
-                labels={labels}
-                wrapperClassName="flex min-h-0 flex-1 flex-col"
-                /* 不带 prompt-box：那条类是给常态输入框的，它的 min-height:120px
-                 * 与这里的撑满冲突，而且同 specificity 下它靠源序赢 */
-                className="w-full flex-1 resize-none rounded-2xl border border-line bg-surface p-4 text-sm outline-none placeholder:text-ink-subtle focus:border-orange-500/60"
-              />
+
+                {previewing && (
+                  <div className="flex min-h-0 flex-col md:landscape:flex-1">
+                    <div
+                      className="prompt-preview h-[46vh] overflow-y-auto overscroll-contain rounded-2xl border border-line bg-surface p-4 text-sm md:landscape:h-auto md:landscape:min-h-0 md:landscape:flex-1"
+                      /* 内容已在 renderMiniMarkdown 里先转义后变换，插入的标签
+                       * 只可能是那里写死的几个 */
+                      dangerouslySetInnerHTML={{ __html: renderMiniMarkdown(value) }}
+                    />
+                    <p className="mt-2 shrink-0 text-[11px] text-ink-subtle">
+                      <i className="fas fa-circle-info mr-1" />
+                      {t("promptRawNote")}
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              {groups.length > 0 && (
+                <div className="shrink-0 border-t border-line bg-surface/50 p-4 sm:p-5 md:landscape:w-[268px] md:landscape:overflow-y-auto md:landscape:overscroll-contain md:landscape:border-l md:landscape:border-t-0">
+                  <div className="mb-3 text-[10px] font-semibold uppercase tracking-wider text-ink-subtle">
+                    {t("mentionHeader")}
+                  </div>
+                  <div className="flex flex-col gap-4">
+                    {groups.map((group) => (
+                      <section key={group.kind}>
+                        <div className="mb-2 flex items-center gap-2 border-b border-line pb-1.5 text-[11px] font-semibold text-ink-muted">
+                          <i className={`fas ${KIND_ICON[group.kind]} text-[10px]`} />
+                          <span>{kindLabel[group.kind]}</span>
+                          <span className="ml-auto font-mono text-[10px] text-ink-subtle">
+                            {group.items.length}
+                          </span>
+                        </div>
+                        <div className="grid grid-cols-4 gap-2 sm:grid-cols-6 md:landscape:grid-cols-3">
+                          {group.items.map((target) => (
+                            <MediaTile
+                              key={`${target.token}-${target.url}`}
+                              target={target}
+                              onPreview={() => setPreview(target)}
+                              onInsert={() => citeMedia(target)}
+                              previewLabel={t("promptMediaPreview")}
+                              insertLabel={t("promptMediaCite")}
+                            />
+                          ))}
+                        </div>
+                      </section>
+                    ))}
+                  </div>
+                </div>
               )}
             </div>
-
-            {targets.length > 0 && (
-              <div className="shrink-0 border-t border-line bg-surface/60 px-4 py-3 sm:px-5">
-                <div className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-ink-subtle">
-                  {t("mentionHeader")}
-                </div>
-                <div className="flex gap-2 overflow-x-auto pb-1">
-                  {targets.map((target) => (
-                    <MediaTile
-                      key={`${target.token}-${target.url}`}
-                      target={target}
-                      onPreview={() => setPreview(target)}
-                      /* 预览态下没有光标可插，先切回编辑再插 */
-                      onInsert={() => {
-                        setPreviewing(false);
-                        requestAnimationFrame(() => insert(target));
-                      }}
-                      previewLabel={t("promptMediaPreview")}
-                      insertLabel={t("promptMediaCite")}
-                    />
-                  ))}
-                </div>
-              </div>
-            )}
+          </div>
           </div>
         </div>
       )}
@@ -205,7 +292,7 @@ export function PromptComposer({
           target={preview}
           onClose={() => setPreview(null)}
           onInsert={() => {
-            insert(preview);
+            citeMedia(preview);
             setPreview(null);
           }}
         />
@@ -228,7 +315,7 @@ function MediaTile({
   insertLabel: string;
 }) {
   return (
-    <div className="group relative h-20 w-20 shrink-0 overflow-hidden rounded-2xl border border-line bg-stage">
+    <div className="group relative aspect-square overflow-hidden rounded-2xl border border-line bg-stage">
       <Thumb target={target} />
 
       <span className="absolute left-1 top-1 rounded-full bg-black/70 px-1.5 font-mono text-[9px] font-semibold text-white">
@@ -272,7 +359,7 @@ function MediaPreviewDialog({
   const t = useTranslations("Make");
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
+      className={`fixed inset-0 ${Z_MEDIA_DIALOG} flex items-center justify-center bg-black/70 p-4`}
       role="dialog"
       aria-modal="true"
       aria-label={target.name}

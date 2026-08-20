@@ -2,6 +2,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useState } from "react";
 import { api, type ApiUser } from "@/lib/client";
+import { SessionKeepAlive } from "./SessionKeepAlive";
 
 interface ToastState {
   message: string;
@@ -49,6 +50,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   return (
     <AppContext.Provider value={{ user, refreshUser, toast, rechargeOpen, setRechargeOpen }}>
       {children}
+      <SessionKeepAlive active={user !== null} />
       {toastState && (
         <div
           className={`fixed bottom-6 left-1/2 -translate-x-1/2 border text-sm px-6 py-3 rounded-3xl flex items-center gap-x-3 shadow-2xl z-[200] ${

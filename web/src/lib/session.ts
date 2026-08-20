@@ -1,51 +1,26 @@
 import "server-only";
 import { cookies } from "next/headers";
-import { SignJWT, jwtVerify } from "jose";
-import { env } from "./env";
+import {
+  SESSION_COOKIE,
+  sessionCookieOptions,
+  signSession,
+  verifySession,
+  type SessionPayload,
+} from "./session-token";
 
-export const SESSION_COOKIE = "avclubs_session";
-export const SESSION_TTL_SECONDS = 2 * 60 * 60; // 2h
-
-export function sessionCookieOptions() {
-  return {
-    httpOnly: true,
-    sameSite: "lax" as const,
-    secure: process.env.NODE_ENV === "production",
-    path: "/",
-    maxAge: SESSION_TTL_SECONDS,
-  };
-}
-
-const secret = new TextEncoder().encode(env.AUTH_SECRET);
-
-export interface SessionPayload {
-  sub: string; // user id
-  username: string;
-  role: string;
-}
-
-export async function signSession(payload: SessionPayload): Promise<string> {
-  return new SignJWT({ username: payload.username, role: payload.role })
-    .setProtectedHeader({ alg: "HS256" })
-    .setSubject(payload.sub)
-    .setIssuedAt()
-    .setExpirationTime(`${SESSION_TTL_SECONDS}s`)
-    .sign(secret);
-}
-
-export async function verifySession(token: string): Promise<SessionPayload | null> {
-  try {
-    const { payload } = await jwtVerify(token, secret, { algorithms: ["HS256"] });
-    if (!payload.sub) return null;
-    return {
-      sub: payload.sub,
-      username: String(payload.username ?? ""),
-      role: String(payload.role ?? "user"),
-    };
-  } catch {
-    return null;
-  }
-}
+/* 签发/校验逻辑在 session-token.ts——middleware 跑在 Edge 上，引不了 server-only。
+ * 这里只负责跟 cookie store 打交道。 */
+export {
+  SESSION_COOKIE,
+  SESSION_TTL_SECONDS,
+  SESSION_ABSOLUTE_MAX_SECONDS,
+  sessionCookieOptions,
+  signSession,
+  verifySession,
+  renewSessionToken,
+  type SessionPayload,
+  type SessionClaims,
+} from "./session-token";
 
 export async function createSessionCookie(userId: number, username: string, role = "user") {
   const token = await signSession({ sub: String(userId), username, role });
@@ -55,13 +30,7 @@ export async function createSessionCookie(userId: number, username: string, role
 
 export async function clearSessionCookie() {
   const store = await cookies();
-  store.set(SESSION_COOKIE, "", {
-    httpOnly: true,
-    sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
-    path: "/",
-    maxAge: 0,
-  });
+  store.set(SESSION_COOKIE, "", { ...sessionCookieOptions(), maxAge: 0 });
 }
 
 export async function getSession(): Promise<SessionPayload | null> {

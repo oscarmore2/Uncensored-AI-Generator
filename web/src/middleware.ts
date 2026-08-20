@@ -1,10 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
-import { jwtVerify } from "jose";
+import {
+  SESSION_COOKIE,
+  renewSessionToken,
+  sessionCookieOptions,
+  verifySession,
+  type SessionPayload,
+} from "@/lib/session-token";
 
-const SESSION_COOKIE = "avclubs_session";
-
-// middleware 运行在 Edge Runtime，不能引用 server-only 模块，密钥直接从环境读取
-const secret = new TextEncoder().encode(process.env.AUTH_SECRET ?? "");
+/* middleware 跑在 Edge Runtime，引不了 server-only 模块——
+ * 令牌那套逻辑单独放在 lib/session-token.ts，两边共用。 */
 
 const PROTECTED_PAGES = ["/make", "/history", "/profile", "/plaything"];
 const PROTECTED_API_PREFIXES = [
@@ -32,19 +36,26 @@ const PUBLIC_API = [
   "/api/auth/turnstile",
 ];
 
-interface SessionInfo {
-  role: string;
-}
-
-async function getSessionInfo(req: NextRequest): Promise<SessionInfo | null> {
+async function getSessionInfo(req: NextRequest): Promise<SessionPayload | null> {
   const token = req.cookies.get(SESSION_COOKIE)?.value;
   if (!token) return null;
-  try {
-    const { payload } = await jwtVerify(token, secret, { algorithms: ["HS256"] });
-    return { role: String(payload.role ?? "user") };
-  } catch {
-    return null;
+  return verifySession(token);
+}
+
+/**
+ * 放行，顺带把登录态的倒计时往后推。
+ *
+ * 过期时间是「最后一次操作起算」而不是「登录起算」，所以只要还在用就不会掉线；
+ * 人真的走开了，两小时后照常过期。绝对上限由 renewSessionToken 把关。
+ */
+async function pass(session: SessionPayload | null): Promise<NextResponse> {
+  const res = NextResponse.next();
+  if (!session) return res;
+  const renewed = await renewSessionToken(session);
+  if (renewed) {
+    res.cookies.set(SESSION_COOKIE, renewed.token, sessionCookieOptions(renewed.maxAge));
   }
+  return res;
 }
 
 function redirectToLogin(req: NextRequest, pathname: string) {
@@ -64,9 +75,12 @@ export async function middleware(req: NextRequest) {
   }
 
   const { pathname } = req.nextUrl;
+  // 只解一次令牌，后面的鉴权和续签都复用。放在最前面是为了让浏览公开页面
+  // 也算「有操作」——用户在逛画廊，没道理把他判成闲置。
+  const session = await getSessionInfo(req);
 
   if (PUBLIC_API.some((p) => pathname === p) || pathname.startsWith("/api/public/")) {
-    return NextResponse.next();
+    return pass(session);
   }
 
   const isModPage = pathname === MOD_PAGE_PREFIX || pathname.startsWith(`${MOD_PAGE_PREFIX}/`);
@@ -77,7 +91,6 @@ export async function middleware(req: NextRequest) {
   if (isModPage || isModApi || isAdminPage || isAdminApi) {
     const isApi = isModApi || isAdminApi;
     const allowedRoles = isAdminPage || isAdminApi ? ["admin"] : ["moderator", "admin"];
-    const session = await getSessionInfo(req);
     if (!session) {
       return isApi ? NextResponse.json({ error: "Unauthorized" }, { status: 401 }) : redirectToLogin(req, pathname);
     }
@@ -86,18 +99,18 @@ export async function middleware(req: NextRequest) {
         ? NextResponse.json({ error: "Forbidden" }, { status: 403 })
         : NextResponse.redirect(new URL("/", req.url));
     }
-    return NextResponse.next();
+    return pass(session);
   }
 
   const isProtectedPage = PROTECTED_PAGES.some((p) => pathname === p || pathname.startsWith(`${p}/`));
   const isProtectedApi = PROTECTED_API_PREFIXES.some((p) => pathname === p || pathname.startsWith(`${p}/`));
 
   if (!isProtectedPage && !isProtectedApi) {
-    return NextResponse.next();
+    return pass(session);
   }
 
-  if (await getSessionInfo(req)) {
-    return NextResponse.next();
+  if (session) {
+    return pass(session);
   }
 
   if (isProtectedApi) {
