@@ -203,12 +203,20 @@ const VIDEO_TIERS: VideoTierSpec[] = [
   {
     /*
      * 终极档：留给单价明显高出一截的旗舰模型。
-     * 对标 Seedance 2.5 的 $0.134/5s，按现有换算口径（对标点数 ≈ 上游单价 × 100，
+     * 对标 Seedance 2.5 的 $0.134/秒，按现有换算口径（对标点数 ≈ 上游单价 × 100，
      * 这个口径正好复现低档的 6 分和高档的 10 分）得 14 分。
      *
-     * 分辨率仍是 720p——Seedance 2.5 本身只支持 480p/720p，它比高级档强在
-     * 运镜、光影与音画同步，不在像素数。description 是要给用户看的，
-     * 所以只说体感差别，不提模型名（上游模型信息一律不出现在生成端）。
+     * ⚠ 这 14 分是按 **Atlas** 的价算的，两家差得很远（2026-08 实测，720p）：
+     *     Atlas      seedance-2.5  $0.134/秒  → 5 秒 $0.67
+     *     WaveSpeed  seedance-2.5  $0.36/秒   → 5 秒 $1.80
+     *   14 分 → creditCost 182 → 售价 ≈ $1.82。绑 Atlas 时毛利约 2.7 倍；
+     *   一旦落到 WaveSpeed 的同名模型，毛利只剩 1% 左右。
+     *   所以终极档的候选**只列 Atlas 独有的 reference-to-video 端点**，
+     *   换绑或加兜底之前先回来看这段。
+     *
+     * 分辨率仍是 720p。Seedance 2.5 实际支持到 1080p/4k、时长 4~30 秒
+     * （早先注释写的「只支持 480p/720p」不对），选 720p 是价格与观感的取舍。
+     * description 是要给用户看的，所以只说体感差别，不提模型名。
      *
      * 开哪些变体按模式走，见 ULTRA_FLAVORS。
      */
@@ -216,7 +224,7 @@ const VIDEO_TIERS: VideoTierSpec[] = [
     label: "终极模式",
     description: "720p · 5 秒起 · 旗舰模型，运镜、光影与音画同步最强",
     refCredits: 14,
-    refLabel: "Seedance 2.5 720p/5s = $0.134",
+    refLabel: "Seedance 2.5 = $0.134/秒（Atlas），720p/5s ≈ $0.67",
     sortOrder: 30,
     resolution: "720p",
   },
@@ -304,7 +312,17 @@ const VIDEO_MODEL_CANDIDATES: Record<
        * 并把 refCredits 调回 10。
        */
       ultra: {
-        ids: ["bytedance/seedance-2.5/image-to-video", "bytedance/seedance-2.0/image-to-video"],
+        /*
+         * seedance-2.5 的 spicy 变体上游已经有了（WaveSpeed，2026-08 实测），
+         * 终极档优先绑它；非 spicy 的 2.5 留作兜底——这一档的 spicy 首先是
+         * 产品标记，绑不到 uncensored 变体也不该让整档空着。
+         * 注意 Atlas 没有这个变体，只有 WaveSpeed 有。
+         */
+        ids: [
+          "bytedance/seedance-2.5/image-to-video-spicy",
+          "bytedance/seedance-2.5/image-to-video",
+          "bytedance/seedance-2.0/image-to-video",
+        ],
       },
     },
   },
@@ -313,7 +331,11 @@ const VIDEO_MODEL_CANDIDATES: Record<
    * 与单价都差得很远，这里按各档位的对标单价挑，其余交给管理端手工换绑：
    *   低档 $0.06 一线 —— seedance-2.0-mini $0.039 / vidu-q3 $0.042
    *   高档 $0.10 一线 —— wan-2.7 $0.10 / seedance-2.0-fast $0.072
-   *   终极 $0.134    —— seedance-2.5，这一族里最强也最贵的
+   *   终极 $0.134/秒 —— seedance-2.5，这一族里最强也最贵的
+   *
+   * 注：seedance 全系的 reference-to-video 端点**只有 Atlas 有**，WaveSpeed 没有
+   * （2026-08 实测两家的 schema 文件）。这些候选 id 别按「WaveSpeed 上搜不到」
+   * 就删掉——播种是跨上游查的，provider 会跟着一起写回产品行。
    */
   ref2vid: {
     normal: {
