@@ -313,15 +313,26 @@ const VIDEO_MODEL_CANDIDATES: Record<
        */
       ultra: {
         /*
-         * seedance-2.5 的 spicy 变体上游已经有了（WaveSpeed，2026-08 实测），
-         * 终极档优先绑它；非 spicy 的 2.5 留作兜底——这一档的 spicy 首先是
-         * 产品标记，绑不到 uncensored 变体也不该让整档空着。
-         * 注意 Atlas 没有这个变体，只有 WaveSpeed 有。
+         * ⚠ 顺序不能随手调，它直接决定这一档赚不赚钱。
+         *
+         * seedance-2.5 的 spicy 变体**只有 WaveSpeed 有**（Atlas 没有）。
+         * 而两家同款模型的单价差 2.7 倍（2026-08 实测，720p）：
+         *     Atlas      $0.134/秒 → 5 秒 $0.67
+         *     WaveSpeed  $0.36/秒  → 5 秒 $1.80
+         * 本档 refCredits=14 是按 Atlas 推的，售价约 $1.82。
+         * 绑 Atlas 毛利 2.7 倍；一旦绑到 WaveSpeed 只剩 1%，等于按成本价卖。
+         *
+         * 所以首选放非 spicy 的 2.5（会命中 Atlas），uncensored 变体留在后面
+         * 只作兜底——这一档的 spicy 首先是「会员专属 + 1.5 倍率」的产品标记，
+         * 不是非绑 uncensored 模型不可（沿用本文件既有口径）。
+         *
+         * 真想让终极档用上 uncensored 变体：把 image-to-video-spicy 提到首位，
+         * **同时**把 VIDEO_TIERS 里的 refCredits 从 14 调到约 180，两件事一起做。
          */
         ids: [
-          "bytedance/seedance-2.5/image-to-video-spicy",
           "bytedance/seedance-2.5/image-to-video",
           "bytedance/seedance-2.0/image-to-video",
+          "bytedance/seedance-2.5/image-to-video-spicy",
         ],
       },
     },
