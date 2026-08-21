@@ -81,10 +81,28 @@ async function assertNoDuplicates(table) {
 }
 
 try {
-  for (const t of ["WaveSpeedCatalogModel", "WaveSpeedProduct", "WaveSpeedAccount", "WaveSpeedGeneration", "Generation"]) {
-    if (!(await tableExists(t))) {
-      throw new Error(`表 ${t} 不存在 —— 这个库还没跑过基础结构迁移，先执行 npm run db:deploy`);
-    }
+  /*
+   * 全新库直接放行：表都还不存在，本来就没有「存量结构」要迁移，
+   * 后面的 prisma db push 会按 schema 一次性建好（含 provider 列与复合唯一）。
+   *
+   * 原先这里是抛错，而且提示写的是「先执行 npm run db:deploy」——
+   * 可这个脚本本身就在 db:deploy 链里，`&&` 一断 push 永远跑不到，
+   * 结果是任何新环境（staging / 本地 / 灾备重建）都开不起来。
+   */
+  const REQUIRED = ["WaveSpeedCatalogModel", "WaveSpeedProduct", "WaveSpeedAccount", "WaveSpeedGeneration", "Generation"];
+  const present = [];
+  for (const t of REQUIRED) if (await tableExists(t)) present.push(t);
+
+  if (present.length === 0) {
+    console.log("[migration] 全新数据库，交给 prisma db push 建表。");
+    process.exit(0);
+  }
+  // 部分存在＝结构处于中间态，那才是真的要人工看一眼
+  if (present.length !== REQUIRED.length) {
+    throw new Error(
+      `结构不完整：${REQUIRED.filter((t) => !present.includes(t)).join("、")} 不存在，` +
+        `但 ${present.join("、")} 已存在。这个库处于中间态，请人工核查后再部署。`
+    );
   }
 
   // 建唯一索引前先确认不会撞：旧库上 modelId 本就是全局唯一，正常必然为 0

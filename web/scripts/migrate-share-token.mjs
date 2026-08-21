@@ -64,8 +64,10 @@ async function assertNoDuplicateTokens() {
 }
 
 try {
+  // 全新库交给 prisma db push 建表（含 shareToken 与它的唯一索引），不要卡住链条
   if (!(await tableExists("Generation"))) {
-    throw new Error("表 Generation 不存在 —— 这个库还没跑过基础结构迁移");
+    console.log("[migration] 全新数据库，交给 prisma db push 建表。");
+    process.exit(0);
   }
 
   const before = await db.generation.count();
