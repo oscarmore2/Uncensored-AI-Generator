@@ -148,7 +148,18 @@ export function resolveMediaInputs(schema: RequestSchema | null): MediaInput[] {
       field: name,
       kind,
       isArray,
-      minItems: declaredMin ?? (required ? 1 : 0),
+      /*
+       * 必填与否**只看 required 列表**，不看 minItems。
+       *
+       * JSON Schema 里 minItems 的含义是「这个数组如果出现，至少几个元素」，
+       * 跟「这个字段必须出现」无关。原先写的是 `declaredMin ?? (required ? 1 : 0)`，
+       * 等于让 minItems 盖过 required——seedance 的 reference-to-video 把每个
+       * 参考位都声明成 minItems:1 却一个都没列进 required，结果参考图/视频/音频
+       * 三个位在站内全被标成必填，用户非得三样都传才让提交。
+       *
+       * 在 required 里时才用它声明的下限（没声明就按 1）。
+       */
+      minItems: required ? (declaredMin ?? 1) : 0,
       maxItems: declaredMax ?? (isArray ? MEDIA_ARRAY_FALLBACK_MAX : 1),
       description: typeof spec.description === "string" ? spec.description.slice(0, 400) : "",
     });
