@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
 import { draftCreateSchema } from "@/lib/validators";
 import { draftOut } from "@/lib/serialize";
+import { draftMediaStatuses } from "@/lib/draft-media-status";
 import { rateLimit } from "@/lib/rate-limit";
 import { isVipActive } from "@/lib/pricing";
 
@@ -31,7 +32,9 @@ export async function GET(req: Request) {
       where: { userId: user.id, mode, generationId: null },
       orderBy: { updatedAt: "desc" },
     });
-    return NextResponse.json({ draft: draft ? draftOut(draft) : null });
+    if (!draft) return NextResponse.json({ draft: null });
+    const status = (await draftMediaStatuses(user.id, [draft])).get(draft.id);
+    return NextResponse.json({ draft: { ...draftOut(draft), media: status } });
   }
 
   const drafts = await db.draft.findMany({
@@ -39,7 +42,11 @@ export async function GET(req: Request) {
     orderBy: { updatedAt: "desc" },
     take: MAX_DRAFTS_PER_USER,
   });
-  return NextResponse.json(drafts.map(draftOut));
+  // 一次查完整批，别在卡片列表里逐条打库
+  const statuses = await draftMediaStatuses(user.id, drafts);
+  return NextResponse.json(
+    drafts.map((draft) => ({ ...draftOut(draft), media: statuses.get(draft.id) }))
+  );
 }
 
 export async function POST(req: Request) {

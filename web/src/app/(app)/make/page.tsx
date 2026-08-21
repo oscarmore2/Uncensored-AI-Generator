@@ -225,7 +225,18 @@ function MakePageInner() {
       setAdvancedOpen(snap.advancedOpen);
       setImageFilename(snap.imageFilename);
       setExtraParams(snap.extraParams);
-      setMedia(withMediaIds(snap.media as Record<string, UploadedMedia[]>));
+
+      /* 已被清理的素材不往回填。留着看似"内容还在"，实则是死链——
+         用户会带着它直接点生成，扣了点数才发现上游取不到图。 */
+      const gone = new Set((d.media?.gone ?? []).map((g) => g.url));
+      const restored = Object.fromEntries(
+        Object.entries(snap.media).map(([slot, items]) => [
+          slot,
+          items.filter((m) => !gone.has(m.url)),
+        ])
+      );
+      setMedia(withMediaIds(restored as Record<string, UploadedMedia[]>));
+      if (gone.size > 0) toast(t("draftMediaGoneEditor", { count: gone.size }), true);
     },
   });
 
@@ -1056,6 +1067,27 @@ function MakePageInner() {
             )}
           </div>
 
+          {/*
+            草稿工具条对所有模式一视同仁。
+            别再把它塞回提示词区块里——草稿记的是整个编辑会话（模式、档位、
+            素材、参数），不是只有提示词。之前嵌在里面，导致褪衣和几个
+            不收 prompt 的模式（超分 / 对口型 / 换脸 / 图生 3D）连保存和
+            恢复都没有，而这些模式恰恰要传素材、更需要草稿。
+          */}
+          <DraftBar
+            isVip={Boolean(user?.is_vip)}
+            autoSave={autoSaveOn}
+            onToggleAutoSave={(v) => void handleToggleAutoSave(v)}
+            dirty={draftDirty}
+            saving={draftSaving}
+            lastSavedAt={draftSavedAt}
+            paused={draftPaused}
+            canRestore={restorable !== null}
+            onSave={() => void handleSaveDraft()}
+            onSaveAs={() => void handleSaveDraftAs()}
+            onRestore={restoreServerDraft}
+          />
+
           {isUndress ? (
             <div className="mb-5">
               <label className="text-sm font-semibold text-ink-muted mb-2 block">{t("genderLabel")}</label>
@@ -1131,19 +1163,6 @@ function MakePageInner() {
                   </button>
                 </div>
               </div>
-              <DraftBar
-                isVip={Boolean(user?.is_vip)}
-                autoSave={autoSaveOn}
-                onToggleAutoSave={(v) => void handleToggleAutoSave(v)}
-                dirty={draftDirty}
-                saving={draftSaving}
-                lastSavedAt={draftSavedAt}
-                paused={draftPaused}
-                canRestore={restorable !== null}
-                onSave={() => void handleSaveDraft()}
-                onSaveAs={() => void handleSaveDraftAs()}
-                onRestore={restoreServerDraft}
-              />
               <TemplatePanel
                 mode={mode}
                 specs={mediaSpecs}

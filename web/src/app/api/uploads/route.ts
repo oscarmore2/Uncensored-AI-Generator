@@ -8,6 +8,7 @@ import { extForMime, validateUploadedMedia } from "@/lib/plaything-media-validat
 import { createMediaAssetCompat } from "@/lib/media-asset-compat";
 import { sanitizeFilename } from "@/lib/media-delete-reason";
 import { uploadMediaExpiry } from "@/lib/media-retention";
+import { isVip2OrAbove } from "@/lib/pricing";
 import { rateLimit } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
@@ -96,7 +97,7 @@ export async function POST(req: Request) {
     let asset;
     let expiresAt;
     try {
-      expiresAt = await uploadMediaExpiry();
+      expiresAt = await uploadMediaExpiry(isVip2OrAbove(user));
       asset = await createMediaAssetCompat({
         userId: user.id,
         kind: "upload",

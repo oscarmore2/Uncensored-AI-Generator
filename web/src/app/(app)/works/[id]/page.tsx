@@ -5,6 +5,7 @@ import { db } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
 import { WorkReuseActions } from "@/components/WorkReuseActions";
 import { WorkDetail } from "@/components/WorkDetail";
+import { ShareButton } from "@/components/ShareButton";
 import { getTranslations } from "next-intl/server";
 
 export const dynamic = "force-dynamic";
@@ -72,7 +73,15 @@ export default async function WorkDetailPage({
           expiresAt={gen.mediaExpiresAt?.toISOString() ?? null}
           deletedAt={gen.mediaDeletedAt?.toISOString() ?? null}
           emptyHint={gen.mediaDeletedAt ? t("mediaDeleted") : t("processingOrFailed")}
-          actions={<WorkReuseActions generationId={gen.id} />}
+          actions={
+            <>
+              <WorkReuseActions generationId={gen.id} />
+              {/* 成人作品不出分享入口。服务端也会拒，这里只是别给一个注定报错的按钮 */}
+              {!gen.isAdult && gen.status === "succeeded" && !gen.mediaDeletedAt && (
+                <ShareButton kind="generation" id={gen.id} className="flex w-full items-center justify-center gap-2 rounded-2xl border border-line py-3 text-sm hover:bg-black/[0.04]" />
+              )}
+            </>
+          }
         />
       </div>
     </div>

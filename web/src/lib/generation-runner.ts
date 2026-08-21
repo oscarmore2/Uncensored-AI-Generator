@@ -23,7 +23,7 @@ import {
 import { sanitizeFilename } from "./media-delete-reason";
 import { createMediaAssetCompat } from "./media-asset-compat";
 import { contentAddressedPath, findReusableUpload, sha256OfBuffer } from "./media-dedup";
-import { uploadMediaExpiry } from "./media-retention";
+import { uploadMediaExpiryForUser } from "./media-retention";
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
@@ -77,7 +77,7 @@ async function materializeReferenceImage(
       sha256,
       sourceId: genId,
       retentionAssigned: true,
-      expiresAt: await uploadMediaExpiry(),
+      expiresAt: await uploadMediaExpiryForUser(userId),
     });
   } catch (err) {
     // 登记失败不该让已经付过费的生成任务挂掉，退化成旧行为（图还能用，只是没进清理台账）

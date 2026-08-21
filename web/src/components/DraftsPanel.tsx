@@ -79,6 +79,9 @@ export function DraftsPanel() {
       {items.map((draft) => {
         const snap = decodeDraftSnapshot(draft.snapshot);
         const media = Object.values(snap.media).flat();
+        /* 上传件默认只留 7 天（VIP2 及以上永久）。放几天的草稿很可能引用着
+           已经被清理的图——不在卡片上说清楚，用户要到点生成才发现白等一次。 */
+        const goneUrls = new Set((draft.media?.gone ?? []).map((g) => g.url));
         return (
           <div
             key={draft.id}
@@ -102,6 +105,12 @@ export function DraftsPanel() {
                     {t("draftGenerating")}
                   </span>
                 )}
+                {goneUrls.size > 0 && (
+                  <span className="rounded-full bg-red-500/15 px-2 py-px text-[10px] text-red-700">
+                    <i className="fas fa-triangle-exclamation mr-1" />
+                    {t("draftMediaGone", { count: goneUrls.size })}
+                  </span>
+                )}
               </div>
 
               <div className="mb-1 text-xs text-ink-muted">
@@ -115,7 +124,7 @@ export function DraftsPanel() {
               {media.length > 0 && (
                 <div className="mt-3 flex gap-1.5">
                   {media.slice(0, 4).map((m, i) => (
-                    <DraftThumb key={`${m.id}-${i}`} media={m} />
+                    <DraftThumb key={`${m.id}-${i}`} media={m} gone={goneUrls.has(m.url)} />
                   ))}
                   {media.length > 4 && (
                     <span className="flex h-10 w-10 items-center justify-center rounded-lg border border-line text-[10px] text-ink-subtle">
@@ -123,6 +132,12 @@ export function DraftsPanel() {
                     </span>
                   )}
                 </div>
+              )}
+
+              {goneUrls.size > 0 && (
+                <p className="mt-2 text-[11px] leading-relaxed text-red-700">
+                  {t("draftMediaGoneHint")}
+                </p>
               )}
             </button>
 
@@ -151,14 +166,32 @@ export function DraftsPanel() {
   );
 }
 
-function DraftThumb({ media }: { media: SnapshotMedia }) {
-  const box = "h-10 w-10 shrink-0 overflow-hidden rounded-lg border border-line bg-stage";
+function DraftThumb({ media, gone = false }: { media: SnapshotMedia; gone?: boolean }) {
+  const box = "h-10 w-10 shrink-0 overflow-hidden rounded-lg border bg-stage";
+  const border = gone ? "border-red-400/50" : "border-line";
+
+  // 已失效的那张单独标出来：只说「有素材没了」用户还得自己猜是哪一份
+  if (gone) {
+    return (
+      <span
+        className={`${box} ${border} relative flex items-center justify-center text-red-700`}
+        title={media.name}
+      >
+        {media.kind === "image" && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={media.url} alt="" className="absolute inset-0 h-full w-full object-cover opacity-25 grayscale" />
+        )}
+        <i className="fas fa-link-slash relative text-xs" />
+      </span>
+    );
+  }
+
   if (media.kind === "image") {
     // eslint-disable-next-line @next/next/no-img-element
-    return <img src={media.url} alt="" className={`${box} object-cover`} />;
+    return <img src={media.url} alt="" className={`${box} ${border} object-cover`} />;
   }
   return (
-    <span className={`${box} flex items-center justify-center text-ink-subtle`}>
+    <span className={`${box} ${border} flex items-center justify-center text-ink-subtle`}>
       <i className={`fas ${media.kind === "video" ? "fa-film" : "fa-music"} text-xs`} />
     </span>
   );

@@ -34,6 +34,14 @@ export type DraftPayload = {
   snapshot?: string;
 };
 
+/** 草稿引用的素材现状，服务端算好一起下发（见 lib/draft-media-status） */
+export type DraftMediaStatus = {
+  total: number;
+  gone: Array<{ url: string; name: string; deleted_at: string | null; delete_reason: string | null }>;
+  /** 仍存活素材里最早的到期时间，全永久保留时为 null */
+  expires_at: string | null;
+};
+
 export type ApiDraft = {
   id: number;
   mode: string;
@@ -48,6 +56,7 @@ export type ApiDraft = {
   generation_id: number | null;
   created_at: string;
   updated_at: string;
+  media?: DraftMediaStatus;
 };
 
 export function useServerDraft(opts: {

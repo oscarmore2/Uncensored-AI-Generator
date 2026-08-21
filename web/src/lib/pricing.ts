@@ -99,6 +99,20 @@ export function isVipActive(
   return user.vipExpiresAt.getTime() > Date.now();
 }
 
+/**
+ * VIP2 及以上。按 rank 判而不是按 code 字符串：档位是后台可配的，
+ * 将来加 vip3 也不用回来改这里。
+ */
+export function isVip2OrAbove(
+  user:
+    | (Pick<User, "isVip" | "vipExpiresAt"> & { vipTier?: { rank: number } | null })
+    | null
+    | undefined
+): boolean {
+  if (!isVipActive(user)) return false;
+  return meetsVipRank(2, user?.vipTier?.rank);
+}
+
 /** 该模式下默认档位：优先 isDefault，其次最低档 */
 function fallbackTier(mode: string): GenerationTier {
   const meta = isGenerationMode(mode) ? MODE_META[mode] : null;

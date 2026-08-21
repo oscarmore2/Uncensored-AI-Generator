@@ -6,6 +6,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { hasAdultAccess } from "@/lib/adult-access";
 import { GuestHeader } from "@/components/GuestHeader";
 import { AdaptiveMedia } from "@/components/WorkMedia";
+import { ShareButton } from "@/components/ShareButton";
 import { getTranslations } from "next-intl/server";
 import { GENERATION_MODES } from "@/lib/generation-modes";
 
@@ -115,6 +116,12 @@ export default async function WorkDetailPage({ params }: { params: Promise<{ id:
                 <span className="ml-2 rounded-full bg-red-700 px-2 py-0.5 text-[10px] font-bold text-white">18+</span>
               )}
               <h1 className="text-2xl font-bold tracking-tight mt-3">{work.title ?? t("communityWork")}</h1>
+              {/* 成人作品不给分享入口：分享页是公开地址，没有登录也没有年龄验证 */}
+              {!work.isAdult && (
+                <div className="mt-4">
+                  <ShareButton kind="work" id={work.id} />
+                </div>
+              )}
             </div>
 
             {/* 3D、超分这些模式的模型不收提示词，空着只会留一张空卡 */}

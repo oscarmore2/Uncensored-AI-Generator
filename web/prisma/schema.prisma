@@ -161,6 +161,9 @@ model Generation {
   retentionAssigned  Boolean   @default(false)
   mediaExpiresAt     DateTime?
   mediaDeletedAt     DateTime?
+  /// 分享页令牌。生成记录默认私有，公开链接必须不可枚举——用 id 会让任何人
+  /// 遍历出别人的作品。为空表示从未分享过；撤销分享就置回 null。
+  shareToken         String?   @unique
   createdAt          DateTime  @default(now())
   updatedAt          DateTime  @default(now()) @updatedAt
 
