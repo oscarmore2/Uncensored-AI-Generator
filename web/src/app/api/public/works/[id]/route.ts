@@ -23,5 +23,5 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
   });
   if (!work) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  return NextResponse.json(publicWorkOut(work));
+  return NextResponse.json(publicWorkOut(work, { forGuest: !user }));
 }

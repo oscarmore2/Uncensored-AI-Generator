@@ -33,7 +33,8 @@ export async function GET(req: Request) {
     total,
     page,
     limit,
-    works: works.map(publicWorkOut),
+    // 游客只拿两行摘要，完整提示词是注册后的东西
+    works: works.map((w) => publicWorkOut(w, { forGuest: !user })),
     adult_access: adultAccess,
   });
 }

@@ -733,6 +733,7 @@
     "negativePrompt": "Negative",
     "files": "Files",
     "fileCount": "{count}",
-    "parameters": "Parameters"
+    "parameters": "Parameters",
+    "promptUnlock": "Sign up to see the full prompt"
   }
 }

@@ -7,12 +7,15 @@ import { useTranslations } from "next-intl";
 import { useBodyScrollLock } from "@/lib/use-body-scroll-lock";
 import { GENERATION_MODES } from "@/lib/generation-modes";
 import { WorkDetail } from "./WorkDetail";
+import { ShareButton } from "./ShareButton";
 
 export type ExploreWork = {
   id: number;
   title: string | null;
   mode: string;
   prompt: string;
+  /** 游客只拿到两行摘要（服务端截的），前端据此画渐变遮罩 */
+  prompt_truncated?: boolean;
   negative_prompt: string | null;
   params: Record<string, unknown>;
   media_url: string;
@@ -148,20 +151,33 @@ export function ExploreGallery({
               title={selected.title ?? t("communityWork")}
               timestamp={new Date(selected.created_at).toISOString().slice(0, 19).replace("T", " ")}
               prompt={selected.prompt}
+              promptTruncated={Boolean(selected.prompt_truncated)}
+              promptCtaHref={`/login?mode=register&next=${encodeURIComponent(`/explore/${selected.id}`)}`}
               negativePrompt={selected.negative_prompt}
               params={selected.params}
               adult={selected.is_adult}
               onClose={() => setSelected(null)}
               fullPageHref={`/explore/${selected.id}`}
               actions={
-                <button
-                  type="button"
-                  onClick={() => remix(selected)}
-                  className="flex w-full items-center justify-center gap-2 rounded-2xl border border-line bg-black/[0.03] py-3 font-semibold hover:bg-black/[0.06]"
-                >
-                  <i className="fas fa-copy" />
-                  {signedIn ? t("copyToGenerator") : t("registerToCopy")}
-                </button>
+                <>
+                  <button
+                    type="button"
+                    onClick={() => remix(selected)}
+                    className="flex w-full items-center justify-center gap-2 rounded-2xl border border-line bg-black/[0.03] py-3 font-semibold hover:bg-black/[0.06]"
+                  >
+                    <i className="fas fa-copy" />
+                    {signedIn ? t("copyToGenerator") : t("registerToCopy")}
+                  </button>
+                  {/* 公共作品的分享链接由 id 直接拼出来，不走接口——
+                      游客也能分享，这正是这条链路的价值所在 */}
+                  {!selected.is_adult && (
+                    <ShareButton
+                      kind="work"
+                      id={selected.id}
+                      className="flex w-full items-center justify-center gap-2 rounded-2xl border border-line py-3 text-sm hover:bg-black/[0.04]"
+                    />
+                  )}
+                </>
               }
               extra={
                 refs.length > 0 ? (

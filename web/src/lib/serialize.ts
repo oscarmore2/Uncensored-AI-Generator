@@ -75,12 +75,35 @@ export function generationModOut(gen: Generation & { user?: { username: string }
   };
 }
 
-export function publicWorkOut(work: PublicWork) {
+/**
+ * 游客看到的提示词摘要：最多两行，并且**总长有上限**。
+ *
+ * 单行超长的提示词按行截断等于没截，所以再压一道字符上限；
+ * 前端配渐变遮罩，视觉上提示「后面还有」。
+ */
+export function promptExcerpt(prompt: string, maxLines = 2, maxChars = 120): string {
+  const lines = prompt
+    .trim()
+    .split(/\r?\n/)
+    .filter((l) => l.trim())
+    .slice(0, maxLines);
+  const text = lines.join("\n");
+  return text.length > maxChars ? `${text.slice(0, maxChars)}…` : text;
+}
+
+/**
+ * @param forGuest 未登录访客。提示词只给摘要——**必须在服务端截**：
+ *   只用 CSS 遮罩的话完整文本仍在 HTML 里，查看源码就全拿到了，等于没藏。
+ */
+export function publicWorkOut(work: PublicWork, opts?: { forGuest?: boolean }) {
+  const forGuest = Boolean(opts?.forGuest);
+  const prompt = forGuest ? promptExcerpt(work.prompt) : work.prompt;
   return {
     id: work.id,
     title: work.title,
     mode: work.mode,
-    prompt: work.prompt,
+    prompt,
+    prompt_truncated: forGuest && prompt !== work.prompt,
     negative_prompt: work.negativePrompt,
     params: safeJson(work.params),
     media_url: work.mediaUrl,

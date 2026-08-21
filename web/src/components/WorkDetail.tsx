@@ -35,6 +35,8 @@ export function WorkDetail({
   actions,
   emptyHint,
   extra,
+  promptTruncated = false,
+  promptCtaHref,
   layout = "dialog",
 }: {
   source: DownloadSource;
@@ -43,6 +45,10 @@ export function WorkDetail({
   title?: string | null;
   timestamp?: string | null;
   prompt?: string | null;
+  /** 提示词只给了摘要（游客）。真正的截断在服务端，这里只负责把「还有更多」画出来 */
+  promptTruncated?: boolean;
+  /** 截断时给一个去注册的入口 */
+  promptCtaHref?: string;
   negativePrompt?: string | null;
   params?: Record<string, unknown>;
   spicy?: boolean;
@@ -343,7 +349,26 @@ export function WorkDetail({
             <div className="mb-2 font-mono text-[10px] uppercase tracking-widest text-ink-subtle">
               {t("prompt")}
             </div>
-            <p className="whitespace-pre-wrap text-sm leading-relaxed text-ink">{prompt}</p>
+            {/* 用 mask-image 让文字本身淡出，而不是盖一层背景色渐变——
+                卡片背景是半透明的 glass，盖色块会露出一道边 */}
+            <p
+              className={`whitespace-pre-wrap text-sm leading-relaxed text-ink${
+                promptTruncated
+                  ? " line-clamp-2 [mask-image:linear-gradient(to_bottom,black_45%,transparent)]"
+                  : ""
+              }`}
+            >
+              {prompt}
+            </p>
+            {promptTruncated && promptCtaHref && (
+              <Link
+                href={promptCtaHref}
+                className="mt-1 inline-flex items-center gap-x-1.5 text-xs font-semibold text-orange-700 hover:text-orange-800"
+              >
+                <i className="fas fa-lock-open text-[10px]" />
+                {t("promptUnlock")}
+              </Link>
+            )}
           </div>
         )}
 

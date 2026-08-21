@@ -5,6 +5,7 @@ import { db } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
 import { hasAdultAccess } from "@/lib/adult-access";
 import { GuestHeader } from "@/components/GuestHeader";
+import { promptExcerpt } from "@/lib/serialize";
 import { AdaptiveMedia } from "@/components/WorkMedia";
 import { ShareButton } from "@/components/ShareButton";
 import { getTranslations } from "next-intl/server";
@@ -43,7 +44,10 @@ export async function generateMetadata({
 
   const t = await getTranslations("Explore");
   const title = work.title?.trim() || `${t("communityWork")} #${workId}`;
-  const description = work.prompt.replace(/\s+/g, " ").trim().slice(0, 160);
+  /* meta 描述也只放摘要。这里原先塞的是完整提示词前 160 字——
+     meta 是给所有人看的（查看源码、搜索结果摘要都能读到），
+     页面上把提示词遮起来、却从 meta 里发出去，等于没遮。 */
+  const description = promptExcerpt(work.prompt).replace(/\s+/g, " ").trim();
   const image = work.thumbUrl ?? work.mediaUrl;
   return {
     title,
@@ -68,6 +72,7 @@ export async function generateMetadata({
 export default async function WorkDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const t = await getTranslations("Explore");
+  const tw = await getTranslations("WorkDetail");
   const workId = Number(id);
   if (!Number.isInteger(workId)) notFound();
 
@@ -88,6 +93,11 @@ export default async function WorkDetailPage({ params }: { params: Promise<{ id:
   } catch {
     // params 非法 JSON 时不展示
   }
+
+  /* 游客只给两行摘要。**在这里截**而不是只用 CSS 遮罩——
+     后者完整文本仍在 HTML 里，查看源码就全拿到了，等于没藏。 */
+  const shownPrompt = user ? work.prompt : promptExcerpt(work.prompt);
+  const promptTruncated = shownPrompt !== work.prompt;
 
   // 同款参数创作：把 prompt/negative/mode 带进创作中心；未登录先走登录并回跳
   const makeUrl = `/make?remix_work=${work.id}`;
@@ -128,7 +138,24 @@ export default async function WorkDetailPage({ params }: { params: Promise<{ id:
             {work.prompt.trim() && (
               <div className="glass rounded-3xl p-5">
                 <div className="text-xs font-semibold text-ink-muted mb-2">{t("prompt")}</div>
-                <p className="text-sm leading-relaxed whitespace-pre-wrap">{work.prompt}</p>
+                <p
+                  className={`text-sm leading-relaxed whitespace-pre-wrap${
+                    promptTruncated
+                      ? " line-clamp-2 [mask-image:linear-gradient(to_bottom,black_45%,transparent)]"
+                      : ""
+                  }`}
+                >
+                  {shownPrompt}
+                </p>
+                {promptTruncated && (
+                  <Link
+                    href={ctaHref}
+                    className="mt-1 inline-flex items-center gap-x-1.5 text-xs font-semibold text-orange-700 hover:text-orange-800"
+                  >
+                    <i className="fas fa-lock-open text-[10px]" />
+                    {tw("promptUnlock")}
+                  </Link>
+                )}
               </div>
             )}
 

@@ -733,6 +733,7 @@
     "negativePrompt": "Negative",
     "files": "文件",
     "fileCount": "{count} 个",
-    "parameters": "参数"
+    "parameters": "参数",
+    "promptUnlock": "注册后查看完整提示词"
   }
 }

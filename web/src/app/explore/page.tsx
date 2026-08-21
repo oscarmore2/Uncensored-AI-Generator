@@ -102,8 +102,10 @@ export default async function ExplorePage({
         ) : (
           <ExploreGallery
             signedIn={Boolean(user)}
+            /* forGuest 不能漏：首屏这批是服务端直接发的 props，
+               不走 /api/public/works，漏了就等于只给翻页之后的作品做了限制 */
             works={works.map((work) => ({
-              ...publicWorkOut(work),
+              ...publicWorkOut(work, { forGuest: !user }),
               created_at: work.createdAt.toISOString(),
             })) as ExploreWork[]}
           />

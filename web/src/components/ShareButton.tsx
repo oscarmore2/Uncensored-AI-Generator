@@ -102,7 +102,9 @@ export function ShareButton({
 
       {open && (
         <div
-          className="fixed inset-0 z-[140] flex items-center justify-center bg-black/60 p-4"
+          /* 230 要压过 explore 画廊那层弹窗（z-220）——分享按钮就摆在它里面，
+             层级低了点开只会看到一片黑，按钮像是没反应 */
+          className="fixed inset-0 z-[230] flex items-center justify-center bg-black/60 p-4"
           role="dialog"
           aria-modal="true"
           aria-label={t("shareTitle")}

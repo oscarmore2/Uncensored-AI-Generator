@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { db } from "@/lib/db";
+import { promptExcerpt } from "@/lib/serialize";
 import { getSession } from "@/lib/session";
 import { GuestHeader } from "@/components/GuestHeader";
 import { WorkMedia } from "@/components/WorkMedia";
@@ -193,7 +194,10 @@ export default async function LandingPage() {
                   className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                 />
                 <div className="pointer-events-none absolute inset-x-0 bottom-0 px-4 pb-4 pt-10 bg-gradient-to-t from-black/95 via-black/55 to-transparent">
-                  <p className="text-on-media text-xs font-medium line-clamp-2">{w.title ?? w.prompt}</p>
+                  {/* 卡片说明最多也就两行，这里发完整提示词只是白白泄露给游客 */}
+                  <p className="text-on-media text-xs font-medium line-clamp-2">
+                    {w.title ?? promptExcerpt(w.prompt)}
+                  </p>
                 </div>
               </Link>
             ))}
