@@ -17,6 +17,7 @@ const NAV = [
   { href: "/admin/providers", label: "生成渠道", icon: "fa-puzzle-piece" },
   { href: "/admin/models", label: "模型库", icon: "fa-store" },
   { href: "/admin/ref-syntax", label: "引用语法", icon: "fa-at" },
+  { href: "/admin/model-capabilities", label: "能力档案", icon: "fa-diagram-project" },
   { href: "/admin/pricing", label: "价格体系", icon: "fa-tags" },
   { href: "/admin/oss", label: "对象存储", icon: "fa-cloud" },
   { href: "/admin/media-cleanup", label: "媒体清理", icon: "fa-clock-rotate-left" },

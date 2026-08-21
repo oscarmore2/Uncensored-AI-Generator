@@ -1,4 +1,5 @@
 import "server-only";
+import { refreshCapabilities } from "../model-capability-store";
 import { db } from "../db";
 import { env } from "../env";
 import { decryptSecret } from "../secret-crypto";
@@ -261,6 +262,21 @@ export async function syncProviderCatalog(providerRaw: unknown): Promise<Catalog
       },
     });
     upserted += 1;
+  }
+
+  /*
+   * 目录落库之后顺手把能力档案刷一遍。
+   * 放在这里而不是运行期：同一份 schema 现在每组一次 catalog 响应就要解析一遍，
+   * 而它一天也变不了几次。人工覆盖过的记录只会被标记待复核，不会被冲掉。
+   */
+  try {
+    const caps = await refreshCapabilities(provider);
+    console.log(
+      `[sync:${provider}] 能力档案：新派生 ${caps.derived} · 跳过 ${caps.skipped} · 标记待复核 ${caps.markedStale}`
+    );
+  } catch (err) {
+    // 能力派生失败不该让整轮目录同步作废——目录本身已经落库了
+    console.error(`[sync:${provider}] 能力档案刷新失败：`, err);
   }
 
   return {

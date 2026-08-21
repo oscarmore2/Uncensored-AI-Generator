@@ -204,6 +204,42 @@ model PublicWork {
 /**
  * 自动清理策略：按媒体类型、生成渠道和创建时会员状态区分
  */
+/**
+ * 模型能力档案：把上游 schema 归一成站内固定的输入角色与产出类型。
+ * 按 (provider, modelId) 建键而不是只按 modelId —— 同一个 model id 在两家的能力
+ * 可能不同（实测：seedance-2.5/text-to-video 在 WaveSpeed 收 reference_*，
+ * 在 Atlas 是纯文生视频）。
+ * 派生逻辑见 lib/model-capability.ts。
+ */
+model ModelCapability {
+  id       Int    @id @default(autoincrement())
+  provider String
+  modelId  String
+
+  /// 归一化输入位，CapabilityInput[] 的 JSON
+  inputs  String @default("[]")
+  /// 产出声明，CapabilityOutput[] 的 JSON
+  outputs String @default("[]")
+  /// 派生依据，人工复核时用来理解「为什么这么判」
+  notes   String @default("[]")
+
+  /// derived = 自动派生；manual = 人工覆盖过，重新派生不覆盖它
+  source     String    @default("derived")
+  /// 派生时所用 schema 的指纹；变了就重新派生（manual 的只标待复核）
+  schemaHash String?
+  /// 人工复核通过的时间。为空 = 在待复核队列里
+  reviewedAt DateTime?
+  /// schema 变过但因为 source=manual 没有自动改，等人来看
+  staleSince DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([provider, modelId])
+  @@index([source, reviewedAt])
+  @@index([staleSince])
+}
+
 model MediaCleanupPolicy {
   id            Int      @id @default(autoincrement())
   mediaType     String // upload | generated
