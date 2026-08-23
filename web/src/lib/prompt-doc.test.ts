@@ -147,6 +147,15 @@ describe("素材引用", () => {
     expect(refTokensInText("@Image1@Image2")).toEqual(["Image1"]);
   });
 
+  it("引用后面紧跟汉字仍然认得出（中文写作的常态）", () => {
+    // @Image1弹窗… 中间没有空格。\b 在数字与汉字之间成立，所以引用照样成立。
+    // 这条很容易在收紧识别式时被误伤，钉住。
+    expect(refTokensInText("参考 @Image1弹窗里加的一句")).toEqual(["Image1"]);
+    expect(refTokensInText("参考 @Image1的光线")).toEqual(["Image1"]);
+    // 但后面紧跟字母数字就不是引用了，那是别的词
+    expect(refTokensInText("参考 @Image1x")).toEqual([]);
+  });
+
   it("token 解析", () => {
     expect(parseRefToken("Image1")).toEqual({ kind: "image", index: 1 });
     expect(parseRefToken("Image0")).toBeNull();

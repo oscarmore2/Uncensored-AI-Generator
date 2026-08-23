@@ -65,7 +65,13 @@ function $ensureSelection(): BaseSelection | null {
   return $getSelection();
 }
 
-export function Toolbar({ disabled }: { disabled?: boolean }) {
+export function Toolbar({
+  disabled,
+  labels,
+}: {
+  disabled?: boolean;
+  labels: { heading: string; bullet: string; ordered: string };
+}) {
   const [editor] = useLexicalComposerContext();
   const [block, setBlock] = useState<BlockType>("paragraph");
 
@@ -114,21 +120,21 @@ export function Toolbar({ disabled }: { disabled?: boolean }) {
         active={block === "heading"}
         disabled={disabled}
         onClick={toggleHeading}
-        label="分节标题"
+        label={labels.heading}
         icon="fa-heading"
       />
       <Button
         active={block === "ul"}
         disabled={disabled}
         onClick={() => toggleList("ul")}
-        label="无序列表"
+        label={labels.bullet}
         icon="fa-list-ul"
       />
       <Button
         active={block === "ol"}
         disabled={disabled}
         onClick={() => toggleList("ol")}
-        label="有序列表"
+        label={labels.ordered}
         icon="fa-list-ol"
       />
     </div>

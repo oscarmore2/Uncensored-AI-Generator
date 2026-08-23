@@ -46,6 +46,7 @@ import {
 } from "./MediaRefNode";
 import { PROMPT_TRANSFORMERS } from "./transformers";
 import { Toolbar } from "./Toolbar";
+import { MentionPlugin, type RefTarget } from "./MentionPlugin";
 
 /**
  * 真 WYSIWYG 提示词编辑器。
@@ -86,6 +87,9 @@ export function PromptEditor({
   ariaLabel,
   handle,
   structure = true,
+  disabled,
+  targets = [],
+  labels,
 }: {
   initialText: string;
   /** 变了就把 initialText 重新灌进去。不变时外部改 initialText 无效——这是有意的 */
@@ -104,6 +108,19 @@ export function PromptEditor({
    * 关掉时快捷输入也一并停用，否则敲 `- ` 照样变列表，按钮藏了也没用。
    */
   structure?: boolean;
+  disabled?: boolean;
+  /** 可 @ 引用的素材 */
+  targets?: RefTarget[];
+  labels: {
+    heading: string;
+    bullet: string;
+    ordered: string;
+    mentionHeader: string;
+    mentionEmpty: string;
+    mentionNavigate: string;
+    mentionSelect: string;
+    mentionClose: string;
+  };
 }) {
   const initialConfig = useMemo(
     () => ({
@@ -127,8 +144,11 @@ export function PromptEditor({
     <LexicalComposer initialConfig={initialConfig}>
       <MediaRefProvider value={refContext}>
         {structure && (
-          <div className="mb-2 border-b border-line pb-2">
-            <Toolbar disabled={false} />
+          <div className="mb-2 shrink-0 border-b border-line pb-2">
+            <Toolbar
+              disabled={disabled}
+              labels={{ heading: labels.heading, bullet: labels.bullet, ordered: labels.ordered }}
+            />
           </div>
         )}
         <div className={`relative ${className}`}>
@@ -162,6 +182,17 @@ export function PromptEditor({
             }}
           />
           {structure && <MarkdownShortcutPlugin transformers={PROMPT_TRANSFORMERS} />}
+          <MentionPlugin
+            targets={targets}
+            labels={{
+              header: labels.mentionHeader,
+              empty: labels.mentionEmpty,
+              navigate: labels.mentionNavigate,
+              select: labels.mentionSelect,
+              close: labels.mentionClose,
+            }}
+          />
+          <EditablePlugin disabled={disabled} />
           <PastePlugin />
           <ReloadPlugin text={initialText} reloadKey={reloadKey} />
           <HandlePlugin handle={handle} />
@@ -208,6 +239,15 @@ function PastePlugin() {
     [editor]
   );
 
+  return null;
+}
+
+/** disabled 时把编辑器切成只读。Lexical 没有 disabled 属性，只有 editable */
+function EditablePlugin({ disabled }: { disabled?: boolean }) {
+  const [editor] = useLexicalComposerContext();
+  useEffect(() => {
+    editor.setEditable(!disabled);
+  }, [editor, disabled]);
   return null;
 }
 

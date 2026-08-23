@@ -50,6 +50,7 @@ import {
   type UploadedMedia,
 } from "@/components/MediaInputFields";
 import { buildMentionTargets } from "@/components/PromptMentionBox";
+import { normalizePrompt, refTokensInText } from "@/lib/prompt-doc";
 import { PromptComposer } from "@/components/PromptComposer";
 import { TemplatePanel, type TemplateApplyPayload } from "@/components/TemplatePanel";
 import { DraftBar } from "@/components/DraftBar";
@@ -92,7 +93,7 @@ function MakePageInner() {
   });
   const [tier, setTier] = useState<string>("low");
   const [spicy, setSpicy] = useState(false);
-  const [prompt, setPrompt] = useState(() => searchParams.get("prompt") ?? "");
+  const [prompt, setPrompt] = useState(() => normalizePrompt(searchParams.get("prompt") ?? ""));
   const [negative, setNegative] = useState(
     () => searchParams.get("negative") ?? t("defaultNegative")
   );
@@ -120,7 +121,31 @@ function MakePageInner() {
     isAdult: boolean;
     mediaExpiresAt: string | null;
   } | null>(null);
+  /*
+   * 提示词编辑器是非受控的（受控会打断中文输入法的 composition），
+   * 所以外部换文本时得显式敲一下这个 key，编辑器才会重新读 prompt。
+   */
+  const [promptReloadKey, setPromptReloadKey] = useState(0);
   const [magicBusy, setMagicBusy] = useState(false);
+
+  /**
+   * **所有从外部进来的提示词都必须走这里。**
+   *
+   * 两件事一起做，缺一不可：
+   *  1. normalizePrompt —— 别处来的文本（模板、他人作品、URL、AI 改写）
+   *     空白和列表编号五花八门，不归一的话编辑器一进一出内容就变了，
+   *     用户会以为自己的东西被改了。顺带把零宽字符、NBSP 这类
+   *     肉眼看不见、模型却看得见的脏字符洗掉。
+   *  2. 敲 reload key —— 编辑器是非受控的，光 setPrompt 它收不到。
+   *
+   * 用户自己打字**不走**这里：编辑器吐出来的已经是 canonical，
+   * 再归一一次没意义，而敲 key 会每敲一个字就重灌一次编辑器，
+   * 中文输入法的拼音会被打断。
+   */
+  const setPromptFromExternal = useCallback((text: string) => {
+    setPrompt(normalizePrompt(text ?? ""));
+    setPromptReloadKey((k) => k + 1);
+  }, []);
   const [magicEnabled, setMagicEnabled] = useState(false);
   const [catalog, setCatalog] = useState<CatalogResponse | null>(null);
   const [extraParams, setExtraParams] = useState<Record<string, string>>({});
@@ -149,7 +174,7 @@ function MakePageInner() {
       if (isGenerationMode(d.mode)) setMode(d.mode);
       if (typeof d.tier === "string") setTier(d.tier);
       setSpicy(Boolean(d.spicy));
-      setPrompt(d.prompt ?? "");
+      setPromptFromExternal(d.prompt ?? "");
       if (typeof d.negative === "string") setNegative(d.negative);
       if ((UNDRESS_GENDERS as readonly string[]).includes(d.gender)) {
         setGender(d.gender as UndressGender);
@@ -213,7 +238,7 @@ function MakePageInner() {
       if (isGenerationMode(d.mode)) setMode(d.mode);
       setTier(d.tier);
       setSpicy(d.spicy);
-      setPrompt(d.prompt);
+      setPromptFromExternal(d.prompt);
       if (typeof d.negative_prompt === "string") setNegative(d.negative_prompt);
       if ((UNDRESS_GENDERS as readonly string[]).includes(snap.gender)) {
         setGender(snap.gender as UndressGender);
@@ -281,7 +306,7 @@ function MakePageInner() {
    */
   const applyTemplate = useCallback((payload: TemplateApplyPayload) => {
     const { template, snapshot, media } = payload;
-    setPrompt(template.prompt);
+    setPromptFromExternal(template.prompt);
     if (typeof template.negative_prompt === "string") setNegative(template.negative_prompt);
     if (template.tier) setTier(template.tier);
     setSpicy(template.spicy);
@@ -444,7 +469,7 @@ function MakePageInner() {
             setMode(work.mode);
           }
         }
-        setPrompt(work.prompt);
+        setPromptFromExternal(work.prompt);
         if (work.negative_prompt) setNegative(work.negative_prompt);
         const p = work.params ?? {};
         if (typeof p.ratio === "string") setRatio(p.ratio);
@@ -517,7 +542,7 @@ function MakePageInner() {
         }
         setTier(d.tier);
         setSpicy(Boolean(d.spicy));
-        setPrompt(d.prompt);
+        setPromptFromExternal(d.prompt);
         setNegative(d.negative_prompt ?? "");
         if (d.gender && (UNDRESS_GENDERS as readonly string[]).includes(d.gender)) {
           setGender(d.gender as UndressGender);
@@ -650,6 +675,19 @@ function MakePageInner() {
     [mediaSpecs, media]
   );
 
+  /**
+   * 提示词里指不到任何素材的引用。
+   *
+   * 换模式/换档位时 pruneMediaToSpecs 会把新模型不认的媒体丢掉，
+   * 而提示词里的 @Image3 一直无人处理——提示词一字未改、含义已经变了，
+   * 出片不对且无从排查。编辑器里那颗胶囊会标红，这里再给一句总结，
+   * 因为常态下编辑框只有几行高，出问题的那句可能根本不在视野里。
+   */
+  const orphanRefs = useMemo(() => {
+    const have = new Set(mentionTargets.map((x) => x.token));
+    return [...new Set(refTokensInText(prompt))].filter((token) => !have.has(token));
+  }, [prompt, mentionTargets]);
+
   // 换档位/换模式后，把新模型不认的媒体字段丢掉，别带着它去提交
   useEffect(() => {
     setMedia((prev) => {
@@ -753,7 +791,7 @@ function MakePageInner() {
           }),
         }
       );
-      setPrompt(data.prompt);
+      setPromptFromExternal(data.prompt);
       if (data.negative_prompt) setNegative(data.negative_prompt);
       toast(data.source === "dolphin" ? t("magicDoneDolphin", { model: "" }) : t("magicDone", { model: "" }));
     } catch (e) {
@@ -1156,7 +1194,7 @@ function MakePageInner() {
                   )}
                   <button
                     type="button"
-                    onClick={() => setPrompt(examplePrompts[Math.floor(Math.random() * examplePrompts.length)])}
+                    onClick={() => setPromptFromExternal(examplePrompts[Math.floor(Math.random() * examplePrompts.length)])}
                     className="text-xs flex items-center gap-x-1 text-orange-700 hover:text-orange-800"
                   >
                     <i className="fas fa-dice" /> <span>{t("random")}</span>
@@ -1191,15 +1229,31 @@ function MakePageInner() {
               */}
               <PromptComposer
                 value={prompt}
+                /* 用户自己打字直接落 state：编辑器吐的已经是 canonical，
+                 * 而且这条路绝不能敲 reload key */
                 onChange={setPrompt}
+                reloadKey={promptReloadKey}
+                /* 文生图那套规则明写「避免长段落叙事」，
+                 * 给标题和列表等于鼓励用户写出会让出图变差的东西 */
+                structure={activeGroup !== "image"}
                 targets={mentionTargets}
                 className="prompt-box w-full bg-surface border border-line focus:border-orange-500/60 rounded-2xl p-4 pr-12 text-sm placeholder:text-ink-subtle outline-none min-h-[120px]"
                 placeholder={mode === "imgedit" ? t("editPlaceholder") : t("promptPlaceholder")}
               />
-              {mediaSpecs.length > 0 && (
-                <p className="mt-2 text-[11px] text-ink-subtle">
-                  {mentionTargets.length ? t("mentionHint") : t("mentionUploadFirst")}
+              {orphanRefs.length > 0 ? (
+                <p className="mt-2 flex items-start gap-1.5 text-[11px] text-red-700">
+                  <i className="fas fa-link-slash mt-0.5" />
+                  <span>
+                    {t("refOrphanWarn", { count: orphanRefs.length })}
+                    <span className="ml-1 font-mono">{orphanRefs.join("、")}</span>
+                  </span>
                 </p>
+              ) : (
+                mediaSpecs.length > 0 && (
+                  <p className="mt-2 text-[11px] text-ink-subtle">
+                    {mentionTargets.length ? t("mentionHint") : t("mentionUploadFirst")}
+                  </p>
+                )
               )}
             </div>
           )}

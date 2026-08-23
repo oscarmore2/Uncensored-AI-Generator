@@ -538,7 +538,7 @@
     "templateLoadFailed": "Could not load templates",
     "promptPreview": "Preview",
     "promptEditMode": "Edit",
-    "promptRawNote": "Preview is a reading aid — the model receives your raw text, unchanged",
+    "promptRawNote": "The editor shows chips; what gets submitted is the raw text on the right.",
     "draftSave": "Save draft",
     "draftSaveAs": "Save as",
     "draftRestore": "Restore last edit",
@@ -553,7 +553,16 @@
     "draftSaveFailed": "Could not save draft",
     "draftNothingToSave": "Nothing to save yet",
     "draftAutoHint": "Saves every minute, and again when you leave the page",
-    "draftManualHint": "Edits stay on this device until you save"
+    "draftManualHint": "Edits stay on this device until you save",
+    "structHeading": "Section heading",
+    "structBullet": "Bulleted list",
+    "structOrdered": "Numbered list",
+    "refOrphan": "This material is gone — the model will not understand this reference",
+    "refDrifted": "Still valid, but it now points to a different file than the one you picked",
+    "refRebind": "Point at another material",
+    "promptCanonical": "Raw text",
+    "promptCanonicalNote": "This is exactly what gets submitted. Chips are written as @Image1.",
+    "refOrphanWarn": "{count} reference(s) point at material that no longer exists"
   },
   "Profile": {
     "title": "Profile",

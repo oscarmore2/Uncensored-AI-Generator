@@ -9,7 +9,10 @@ import {
   type SerializedLexicalNode,
   type Spread,
 } from "lexical";
-import { createContext, useContext } from "react";
+import { createContext, useContext, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
+import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
+import { $getNodeByKey } from "lexical";
 import type { RefKind } from "@/lib/prompt-doc";
 
 /**
@@ -47,13 +50,17 @@ export type ResolvedRef = { url: string; kind: RefKind; name: string };
 
 export type MediaRefState = "ok" | "drifted" | "orphan";
 
+export type RebindOption = { token: string; kind: RefKind; url: string; name: string };
+
 export type MediaRefContextValue = {
   /** 当前 token 实际指向哪份素材；指不到（孤儿）返回 null */
   resolve(token: string): ResolvedRef | null;
-  /** 点胶囊：正常态滚到素材栏对应项，孤儿态跳到上传位 */
+  /** 换绑候选：当前可引用的全部素材 */
+  options(): RebindOption[];
+  /** 点胶囊主体：正常态滚到素材栏对应项，孤儿态跳到上传位 */
   onActivate?(token: string, state: MediaRefState): void;
   /** 文案由外面给，本文件不碰 i18n */
-  labels: { orphan: string; drifted: string };
+  labels: { orphan: string; drifted: string; rebind: string };
 };
 
 /**
@@ -91,6 +98,19 @@ export class MediaRefNode extends DecoratorNode<React.ReactNode> {
 
   getHint(): string | null {
     return this.__hint;
+  }
+
+  /**
+   * 换绑到别的素材。
+   *
+   * hint 跟着一起换：换完这颗胶囊指向的就是用户**刚刚亲自选的**那份，
+   * 再报「所指已变」就成了误报。
+   */
+  setToken(token: string, hint: string | null): this {
+    const self = this.getWritable();
+    self.__token = token;
+    self.__hint = hint;
+    return self;
   }
 
   /**
@@ -139,7 +159,8 @@ export class MediaRefNode extends DecoratorNode<React.ReactNode> {
   }
 
   decorate(): React.ReactNode {
-    return <MediaRefChip token={this.__token} hint={this.__hint} />;
+    // 把 key 传下去，胶囊才改得动自己（换绑）
+    return <MediaRefChip nodeKey={this.getKey()} token={this.__token} hint={this.__hint} />;
   }
 }
 
@@ -163,8 +184,20 @@ const STATE_STYLE: Record<MediaRefState, string> = {
   orphan: "border-red-500/50 bg-red-500/15 text-red-900 line-through decoration-red-500/70",
 };
 
-function MediaRefChip({ token, hint }: { token: string; hint: string | null }) {
+function MediaRefChip({
+  nodeKey,
+  token,
+  hint,
+}: {
+  nodeKey: string;
+  token: string;
+  hint: string | null;
+}) {
+  const [editor] = useLexicalComposerContext();
   const ctx = useContext(MediaRefContext);
+  const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
+  const ref = useRef<HTMLSpanElement>(null);
+
   const target = ctx?.resolve(token) ?? null;
 
   const state: MediaRefState = !target
@@ -176,29 +209,117 @@ function MediaRefChip({ token, hint }: { token: string; hint: string | null }) {
   const title =
     state === "orphan" ? ctx?.labels.orphan : state === "drifted" ? ctx?.labels.drifted : target?.name;
 
+  const rebind = (option: RebindOption) => {
+    editor.update(() => {
+      const node = $getNodeByKey(nodeKey);
+      if ($isMediaRefNode(node)) node.setToken(option.token, option.url);
+    });
+    setMenu(null);
+  };
+
+  /* 菜单走 portal 挂到 body 上、用 fixed 定位。
+   * 编辑区是 overflow-y-auto 的滚动容器，菜单要是留在胶囊里面，
+   * 一旦胶囊靠近容器边缘，菜单就会被裁掉半截。 */
+  const openMenu = () => {
+    const rect = ref.current?.getBoundingClientRect();
+    if (rect) setMenu({ x: rect.left, y: rect.bottom + 4 });
+  };
+
+  useEffect(() => {
+    if (!menu) return;
+    const close = () => setMenu(null);
+    // 捕获阶段关掉：菜单项自己的 mousedown 会 stopPropagation，不受影响
+    document.addEventListener("mousedown", close);
+    document.addEventListener("scroll", close, true);
+    return () => {
+      document.removeEventListener("mousedown", close);
+      document.removeEventListener("scroll", close, true);
+    };
+  }, [menu]);
+
   return (
     <span
-      role="button"
-      tabIndex={-1}
-      title={title}
-      onClick={() => ctx?.onActivate?.(token, state)}
+      ref={ref}
       /* contentEditable=false 是原子性的关键：少了它光标能走进胶囊内部，
        * 退格就又能把它删成半截了 */
       contentEditable={false}
       className={`mx-px inline-flex select-none items-center gap-1 rounded-full border px-1.5 py-px align-baseline text-[0.9em] leading-snug ${STATE_STYLE[state]}`}
     >
-      {target?.kind === "image" ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={target.url} alt="" className="h-[1.1em] w-[1.1em] rounded-full object-cover" />
-      ) : target?.kind === "video" ? (
-        <i className="fas fa-film text-[0.8em] opacity-70" />
-      ) : target?.kind === "audio" ? (
-        <i className="fas fa-music text-[0.8em] opacity-70" />
-      ) : (
-        <i className="fas fa-link-slash text-[0.8em] opacity-70" />
-      )}
-      <span className="font-mono text-[0.85em] font-semibold">{token}</span>
-      {state === "drifted" && <i className="fas fa-circle-question text-[0.75em]" />}
+      <span
+        role="button"
+        tabIndex={-1}
+        title={title}
+        onClick={() => ctx?.onActivate?.(token, state)}
+        className="inline-flex items-center gap-1"
+      >
+        {target?.kind === "image" ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={target.url} alt="" className="h-[1.1em] w-[1.1em] rounded-full object-cover" />
+        ) : target?.kind === "video" ? (
+          <i className="fas fa-film text-[0.8em] opacity-70" />
+        ) : target?.kind === "audio" ? (
+          <i className="fas fa-music text-[0.8em] opacity-70" />
+        ) : (
+          <i className="fas fa-link-slash text-[0.8em] opacity-70" />
+        )}
+        <span className="font-mono text-[0.85em] font-semibold">{token}</span>
+      </span>
+
+      <button
+        type="button"
+        aria-label={ctx?.labels.rebind}
+        title={ctx?.labels.rebind}
+        /* 不能让点击把编辑器的选区抢走，否则关掉菜单后光标不知道去哪了 */
+        onMouseDown={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          menu ? setMenu(null) : openMenu();
+        }}
+        className="-mr-0.5 flex items-center opacity-60 hover:opacity-100"
+      >
+        <i className="fas fa-chevron-down text-[0.62em]" />
+      </button>
+
+      {menu &&
+        createPortal(
+          <div
+            role="listbox"
+            aria-label={ctx?.labels.rebind}
+            onMouseDown={(e) => e.stopPropagation()}
+            style={{ left: menu.x, top: menu.y }}
+            className="fixed z-[240] max-h-56 w-52 overflow-y-auto overscroll-contain rounded-xl border border-line bg-surface py-1 shadow-xl"
+          >
+            {(ctx?.options() ?? []).map((option) => (
+              <button
+                key={option.token}
+                type="button"
+                role="option"
+                aria-selected={option.token === token}
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  rebind(option);
+                }}
+                className={`flex w-full items-center gap-2 px-2 py-1.5 text-left ${
+                  option.token === token ? "bg-orange-600/15" : "hover:bg-black/[0.04]"
+                }`}
+              >
+                {option.kind === "image" ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={option.url} alt="" className="h-6 w-6 shrink-0 rounded object-cover" />
+                ) : (
+                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded bg-stage text-ink-subtle">
+                    <i className={`fas ${option.kind === "video" ? "fa-film" : "fa-music"} text-[10px]`} />
+                  </span>
+                )}
+                <span className="min-w-0 flex-1">
+                  <span className="block font-mono text-[11px] font-semibold">{option.token}</span>
+                  <span className="block truncate text-[10px] text-ink-subtle">{option.name}</span>
+                </span>
+              </button>
+            ))}
+          </div>,
+          document.body
+        )}
     </span>
   );
 }

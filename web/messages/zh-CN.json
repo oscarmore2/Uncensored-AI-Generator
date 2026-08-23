@@ -538,7 +538,7 @@
     "templateLoadFailed": "模板加载失败",
     "promptPreview": "预览",
     "promptEditMode": "编辑",
-    "promptRawNote": "预览只是排版辅助，提交给模型的是原始文本，一字不差",
+    "promptRawNote": "编辑器里看到的是胶囊，真正提交的是右边这段原文。",
     "draftSave": "保存草稿",
     "draftSaveAs": "另存为",
     "draftRestore": "恢复上次编辑",
@@ -553,7 +553,16 @@
     "draftSaveFailed": "草稿保存失败",
     "draftNothingToSave": "还没有可保存的内容",
     "draftAutoHint": "每分钟自动保存一次，离开页面时再补一次",
-    "draftManualHint": "编辑只存在本机，按保存才会同步到账号"
+    "draftManualHint": "编辑只存在本机，按保存才会同步到账号",
+    "structHeading": "分节标题",
+    "structBullet": "无序列表",
+    "structOrdered": "有序列表",
+    "refOrphan": "这份素材已经不在了，提交上去模型读不懂这个记号",
+    "refDrifted": "编号还在，但现在指向的不是你当初选的那份",
+    "refRebind": "改指到别的素材",
+    "promptCanonical": "原文",
+    "promptCanonicalNote": "这就是会提交上去的原文。胶囊写成 @Image1。",
+    "refOrphanWarn": "有 {count} 处引用指向已不存在的素材"
   },
   "Profile": {
     "title": "个人中心",

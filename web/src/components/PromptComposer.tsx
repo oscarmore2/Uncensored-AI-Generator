@@ -1,14 +1,30 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
-import {
-  PromptMentionBox,
-  type MentionTarget,
-  type PromptMentionHandle,
-} from "./PromptMentionBox";
+import { type MentionTarget } from "./PromptMentionBox";
 import { useBodyScrollLock } from "@/lib/use-body-scroll-lock";
-import { renderMiniMarkdown } from "@/lib/mini-markdown";
+import dynamic from "next/dynamic";
+import type { PromptEditorHandle } from "./prompt-editor/PromptEditor";
+import type { MediaRefContextValue } from "./prompt-editor/MediaRefNode";
+
+/*
+ * 编辑器必须 ssr:false 且按需加载，两个理由都硬：
+ *
+ * 1. contenteditable 在服务端渲染出来是个空壳，hydrate 时才填内容，首屏会跳一下。
+ * 2. Lexical 一整套（core + list + rich-text + markdown + selection）约 100KB。
+ *    静态引入会把它塞进 /make 的首屏包——而 /make 是本站最主要的落地页，
+ *    实测首屏 JS 从 147KB 涨到 248KB。提示词框在首屏之下、且要等用户点进去才用，
+ *    没有理由让它挡住首屏。
+ */
+const PromptEditor = dynamic(
+  () => import("./prompt-editor/PromptEditor").then((m) => m.PromptEditor),
+  {
+    ssr: false,
+    // 骨架的高度与最终一致，避免加载完成时布局跳动
+    loading: () => <div className="min-h-[88px] animate-pulse rounded-xl bg-black/[0.04]" />,
+  }
+);
 
 /**
  * 提示词输入区：常态是一个输入框，点放大进弹窗。
@@ -49,6 +65,8 @@ export function PromptComposer({
   placeholder,
   className,
   disabled,
+  structure = true,
+  reloadKey,
 }: {
   value: string;
   onChange: (next: string) => void;
@@ -56,6 +74,19 @@ export function PromptComposer({
   placeholder?: string;
   className?: string;
   disabled?: boolean;
+  /**
+   * 是否给结构编辑（标题 / 列表）。文生图关掉——那套规则明写「避免长段落叙事」，
+   * 给了按钮等于鼓励用户写出会让出图变差的东西。
+   */
+  structure?: boolean;
+  /**
+   * 外部把 value 换掉时（套模板、恢复草稿、复用作品、魔法指令）必须把它加一。
+   *
+   * 编辑器是**非受控**的——不这样它收不到外部的改动。反过来，用户自己打字
+   * 引起的 value 变化绝不能动它，否则每敲一个字就重灌一次编辑器，
+   * 中文输入法的候选还没上屏就被打断。
+   */
+  reloadKey?: string | number;
 }) {
   const t = useTranslations("Make");
   const [expanded, setExpanded] = useState(false);
@@ -63,18 +94,20 @@ export function PromptComposer({
   /* 预览只是**排版辅助**：上行的始终是原始文本，与编辑器逐字节一致 */
   const [previewing, setPreviewing] = useState(false);
 
-  const inlineHandle = useRef<PromptMentionHandle | null>(null);
-  const modalHandle = useRef<PromptMentionHandle | null>(null);
+  const inlineHandle = useRef<PromptEditorHandle | null>(null);
+  const modalHandle = useRef<PromptEditorHandle | null>(null);
+
+  /*
+   * 常态和弹窗里是**两个独立的编辑器实例**，各自持有自己的 editorState。
+   * 关掉弹窗时要把常态那个重新灌一遍，否则它还停在打开弹窗之前的内容上。
+   *
+   * 为什么不做成一个受控组件两处共用：受控（每次 onChange 把外部字符串写回
+   * 编辑器）在中文输入法下会打断 composition，拼音打一半会消失。
+   * 见 PromptEditor 顶上的说明。
+   */
+  const [syncKey, setSyncKey] = useState(0);
 
   useBodyScrollLock(expanded);
-
-  const labels = {
-    header: t("mentionHeader"),
-    navigate: t("mentionNavigate"),
-    select: t("mentionSelect"),
-    close: t("mentionClose"),
-    empty: t("mentionNoMatch"),
-  };
 
   const kindLabel: Record<MentionTarget["kind"], string> = {
     image: t("mentionKindImage"),
@@ -89,13 +122,55 @@ export function PromptComposer({
     items: targets.filter((target) => target.kind === kind),
   })).filter((group) => group.items.length > 0);
 
-  /* 引用落到当前可见的那个输入框上：弹窗开着就是弹窗里那个 */
+  /** 关弹窗。必须走这里，好把常态编辑器同步成弹窗里的最新内容 */
+  const collapse = useCallback(() => {
+    setExpanded(false);
+    setSyncKey((k) => k + 1);
+  }, []);
+
+  /* 引用落到当前可见的那个编辑器上：弹窗开着就是弹窗里那个 */
   const insert = useCallback(
     (target: MentionTarget) => {
       const h = expanded ? modalHandle.current : inlineHandle.current;
-      h?.insertToken(target.token);
+      // 带上 url 作为 hint：日后素材顺序变了才报得出「所指已变」
+      h?.insertRef(target.token, target.url);
     },
     [expanded]
+  );
+
+  /**
+   * 胶囊要展示什么、能换绑到哪儿，全从当前 targets 现算。
+   * targets 变了（换模式丢了媒体、拖动排序）胶囊自己就会重画，
+   * editorState 一个字节都不用动。
+   */
+  const refContext: MediaRefContextValue = useMemo(
+    () => ({
+      resolve: (token) => {
+        const hit = targets.find((x) => x.token === token);
+        return hit ? { url: hit.url, kind: hit.kind, name: hit.name } : null;
+      },
+      options: () => targets.map((x) => ({ token: x.token, kind: x.kind, url: x.url, name: x.name })),
+      labels: {
+        orphan: t("refOrphan"),
+        drifted: t("refDrifted"),
+        rebind: t("refRebind"),
+      },
+    }),
+    [targets, t]
+  );
+
+  const editorLabels = useMemo(
+    () => ({
+      heading: t("structHeading"),
+      bullet: t("structBullet"),
+      ordered: t("structOrdered"),
+      mentionHeader: t("mentionHeader"),
+      mentionEmpty: t("mentionNoMatch"),
+      mentionNavigate: t("mentionNavigate"),
+      mentionSelect: t("mentionSelect"),
+      mentionClose: t("mentionClose"),
+    }),
+    [t]
   );
 
   /*
@@ -109,11 +184,11 @@ export function PromptComposer({
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== "Escape" || e.defaultPrevented) return;
       if (preview) setPreview(null);
-      else setExpanded(false);
+      else collapse();
     };
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
-  }, [expanded, preview]);
+  }, [expanded, preview, collapse]);
 
   const citeMedia = useCallback(
     (target: MentionTarget) => {
@@ -127,16 +202,23 @@ export function PromptComposer({
   return (
     <>
       <div className="relative">
-        <PromptMentionBox
-          value={value}
-          onChange={onChange}
-          targets={targets}
-          handle={inlineHandle}
-          className={className}
-          placeholder={placeholder}
-          disabled={disabled}
-          labels={labels}
-        />
+        <div className={className}>
+          <PromptEditor
+            initialText={value}
+            /* 两个来源都要能触发重灌：外部换文本，以及弹窗关闭时的回灌 */
+            reloadKey={`${reloadKey ?? 0}:${syncKey}`}
+            onChangeText={onChange}
+            refContext={refContext}
+            targets={targets}
+            labels={editorLabels}
+            handle={inlineHandle}
+            structure={structure}
+            disabled={disabled}
+            placeholder={placeholder}
+            ariaLabel={t("prompt")}
+            className="min-h-[88px]"
+          />
+        </div>
         <button
           type="button"
           onClick={() => setExpanded(true)}
@@ -166,7 +248,7 @@ export function PromptComposer({
             className="flex min-h-full items-center justify-center p-0 sm:p-4 lg:p-6"
             onMouseDown={(e) => {
               // 只有点在背板上才关；点内部拖选到框外松手不该把弹窗关掉
-              if (e.target === e.currentTarget) setExpanded(false);
+              if (e.target === e.currentTarget) collapse();
             }}
           >
           {/*
@@ -196,11 +278,11 @@ export function PromptComposer({
                 }`}
               >
                 <i className={`fas ${previewing ? "fa-pen" : "fa-eye"} mr-1.5`} />
-                {previewing ? t("promptEditMode") : t("promptPreview")}
+                {previewing ? t("promptEditMode") : t("promptCanonical")}
               </button>
               <button
                 type="button"
-                onClick={() => setExpanded(false)}
+                onClick={collapse}
                 aria-label={t("promptCollapse")}
                 className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-line bg-surface text-ink-subtle hover:text-ink"
               >
@@ -218,29 +300,37 @@ export function PromptComposer({
                     previewing ? "max-lg:hidden" : ""
                   }`}
                 >
-                  <PromptMentionBox
-                    value={value}
-                    onChange={onChange}
-                    targets={targets}
-                    handle={modalHandle}
-                    placeholder={placeholder}
-                    disabled={disabled}
-                    labels={labels}
-                    wrapperClassName="flex min-h-0 flex-1 flex-col"
-                    /* 不带 prompt-box：那条类是给常态输入框的，它的 min-height:120px
-                     * 与这里的撑满冲突，而且同 specificity 下它靠源序赢 */
-                    className="h-[46vh] w-full resize-none overscroll-contain rounded-2xl border border-line bg-surface p-4 text-sm outline-none placeholder:text-ink-subtle focus:border-orange-500/60 md:landscape:h-auto md:landscape:flex-1"
-                  />
+                  <div className="flex h-[46vh] min-h-0 flex-col overflow-hidden rounded-2xl border border-line bg-surface p-4 text-sm focus-within:border-orange-500/60 md:landscape:h-auto md:landscape:flex-1">
+                    <PromptEditor
+                      /* 每次开弹窗都是新实例，挂载时读到的就是最新的 value。
+                       * reloadKey 管的是弹窗**开着的时候**外部换了文本（魔法指令）。 */
+                      initialText={value}
+                      reloadKey={reloadKey}
+                      onChangeText={onChange}
+                      refContext={refContext}
+                      targets={targets}
+                      labels={editorLabels}
+                      handle={modalHandle}
+                      structure={structure}
+                      disabled={disabled}
+                      placeholder={placeholder}
+                      ariaLabel={t("prompt")}
+                      className="min-h-0 flex-1 overflow-y-auto overscroll-contain"
+                    />
+                  </div>
                 </div>
 
                 {previewing && (
                   <div className="flex min-h-0 flex-col md:landscape:flex-1">
-                    <div
-                      className="prompt-preview h-[46vh] overflow-y-auto overscroll-contain rounded-2xl border border-line bg-surface p-4 text-sm md:landscape:h-auto md:landscape:min-h-0 md:landscape:flex-1"
-                      /* 内容已在 renderMiniMarkdown 里先转义后变换，插入的标签
-                       * 只可能是那里写死的几个 */
-                      dangerouslySetInnerHTML={{ __html: renderMiniMarkdown(value) }}
-                    />
+                    {/*
+                      原文视图。真 WYSIWYG 之后这里**不能再是排版预览**了——
+                      编辑器本身就是排版，再放一份渲染结果没有任何信息量。
+                      用户真正看不到的是「胶囊到底会写成什么」，所以这里显示
+                      canonical：离开编辑器的就是这一字不差的字符串。
+                    */}
+                    <pre className="h-[46vh] overflow-auto overscroll-contain whitespace-pre-wrap break-words rounded-2xl border border-line bg-surface p-4 font-mono text-[12px] leading-relaxed md:landscape:h-auto md:landscape:min-h-0 md:landscape:flex-1">
+                      {value}
+                    </pre>
                     <p className="mt-2 shrink-0 text-[11px] text-ink-subtle">
                       <i className="fas fa-circle-info mr-1" />
                       {t("promptRawNote")}

@@ -174,6 +174,7 @@ export function Spike() {
   const refContext: MediaRefContextValue = useMemo(
     () => ({
       resolve: (token) => byToken.get(token) ?? null,
+      options: () => [...byToken.entries()].map(([token, r]) => ({ token, ...r })),
       /* 点击日志单独存。原来它往 notes 里追加，而 notes 正是要给测试的人
        * 手写观察的那个框——两个 textarea 叠着，会自己长东西的偏偏是该写字的
        * 那个，实测直接导致报告被复制错。 */
@@ -183,6 +184,7 @@ export function Spike() {
       labels: {
         orphan: "这份素材已经不在了，提交上去模型读不懂这个记号",
         drifted: "编号还在，但现在指向的不是你当初选的那份",
+        rebind: "改指到别的素材",
       },
     }),
     [byToken]
@@ -313,6 +315,17 @@ export function Spike() {
             onChangeText={setText}
             refContext={refContext}
             handle={handle}
+            targets={[...byToken.entries()].map(([token, r]) => ({ token, ...r }))}
+            labels={{
+              heading: "分节标题",
+              bullet: "无序列表",
+              ordered: "有序列表",
+              mentionHeader: "可引用素材",
+              mentionEmpty: "没有匹配的素材",
+              mentionNavigate: "移动",
+              mentionSelect: "选中",
+              mentionClose: "关闭",
+            }}
             ariaLabel="提示词"
             placeholder="在这里打字…"
             className="min-h-[9rem] text-[15px] leading-relaxed"
