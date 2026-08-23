@@ -8,6 +8,7 @@ import { HistoryPlugin } from "@lexical/react/LexicalHistoryPlugin";
 import { OnChangePlugin } from "@lexical/react/LexicalOnChangePlugin";
 import { ListPlugin } from "@lexical/react/LexicalListPlugin";
 import { LexicalErrorBoundary } from "@lexical/react/LexicalErrorBoundary";
+import { MarkdownShortcutPlugin } from "@lexical/react/LexicalMarkdownShortcutPlugin";
 import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
 import { ListItemNode, ListNode } from "@lexical/list";
 import { HeadingNode } from "@lexical/rich-text";
@@ -43,6 +44,8 @@ import {
   MediaRefProvider,
   type MediaRefContextValue,
 } from "./MediaRefNode";
+import { PROMPT_TRANSFORMERS } from "./transformers";
+import { Toolbar } from "./Toolbar";
 
 /**
  * 真 WYSIWYG 提示词编辑器。
@@ -82,6 +85,7 @@ export function PromptEditor({
   className = "",
   ariaLabel,
   handle,
+  structure = true,
 }: {
   initialText: string;
   /** 变了就把 initialText 重新灌进去。不变时外部改 initialText 无效——这是有意的 */
@@ -92,6 +96,14 @@ export function PromptEditor({
   className?: string;
   ariaLabel?: string;
   handle?: { current: PromptEditorHandle | null };
+  /**
+   * 是否提供结构编辑（标题 / 列表）。
+   *
+   * 按 formatId 关掉：文生图规则原话是「避免长段落叙事」，
+   * 那个模式下给标题和列表按钮，等于鼓励用户写出会让出图变差的东西。
+   * 关掉时快捷输入也一并停用，否则敲 `- ` 照样变列表，按钮藏了也没用。
+   */
+  structure?: boolean;
 }) {
   const initialConfig = useMemo(
     () => ({
@@ -114,6 +126,11 @@ export function PromptEditor({
   return (
     <LexicalComposer initialConfig={initialConfig}>
       <MediaRefProvider value={refContext}>
+        {structure && (
+          <div className="mb-2 border-b border-line pb-2">
+            <Toolbar disabled={false} />
+          </div>
+        )}
         <div className={`relative ${className}`}>
           <RichTextPlugin
             contentEditable={
@@ -144,6 +161,7 @@ export function PromptEditor({
               onChangeText(canonical);
             }}
           />
+          {structure && <MarkdownShortcutPlugin transformers={PROMPT_TRANSFORMERS} />}
           <PastePlugin />
           <ReloadPlugin text={initialText} reloadKey={reloadKey} />
           <HandlePlugin handle={handle} />

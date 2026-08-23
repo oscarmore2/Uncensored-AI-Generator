@@ -148,6 +148,8 @@ export function Spike() {
   const [metrics, setMetrics] = useState<Metrics>(ZERO);
   const [verdicts, setVerdicts] = useState<Record<string, Verdict>>({});
   const [notes, setNotes] = useState("");
+  const [log, setLog] = useState<string[]>([]);
+  const [copied, setCopied] = useState(false);
 
   const handle = useRef<PromptEditorHandle | null>(null);
   const hostRef = useRef<HTMLDivElement>(null);
@@ -172,8 +174,11 @@ export function Spike() {
   const refContext: MediaRefContextValue = useMemo(
     () => ({
       resolve: (token) => byToken.get(token) ?? null,
+      /* 点击日志单独存。原来它往 notes 里追加，而 notes 正是要给测试的人
+       * 手写观察的那个框——两个 textarea 叠着，会自己长东西的偏偏是该写字的
+       * 那个，实测直接导致报告被复制错。 */
       onActivate: (token, state) => {
-        setNotes((n) => `${n}${n ? "\n" : ""}[点击] ${token} 状态=${state}`);
+        setLog((l) => [...l.slice(-19), `${token} 状态=${state}`]);
       },
       labels: {
         orphan: "这份素材已经不在了，提交上去模型读不懂这个记号",
@@ -281,9 +286,12 @@ export function Spike() {
       "",
       "## 备注",
       notes || "(无)",
+      "",
+      "## 胶囊点击日志",
+      ...(log.length ? log.map((l) => `- ${l}`) : ["(无)"]),
     ];
-    return lines.join("\n");
-  }, [metrics, verdicts, notes, text.length]);
+    return lines.filter((l) => l !== "").join("\n");
+  }, [metrics, verdicts, notes, log, text.length]);
 
   return (
     <div className="mx-auto min-h-screen w-full max-w-3xl px-4 py-6 text-ink">
