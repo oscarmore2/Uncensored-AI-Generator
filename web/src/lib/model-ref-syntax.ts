@@ -27,6 +27,22 @@ export type RefSyntaxRule = {
  */
 const CANONICAL_RE = /(^|[\s([{（【「，,。.:：;；!！?？、])@(image|video|audio)(\d+)\b/gi;
 
+/**
+ * 同一条识别式的**独立副本**，给需要自己 exec 的调用方用（prompt-doc 的
+ * 胶囊解析）。
+ *
+ * 必须发新对象而不是把上面那个 const 直接导出：带 g 标志的正则身上挂着
+ * 可变的 lastIndex，两个模块交替 exec 会互相把对方的游标搅乱，
+ * 表现是「有时候少认出一个引用」这种偶发到没法复现的 bug。
+ *
+ * 而分成两条正则字面量各写一遍更糟——两边总有一天会差一个字符，
+ * 那时编辑器里的胶囊序列化成 @Image1、提交时却匹配不上、原样上行，
+ * 用户只看得到出片不对。所以从这一份 source 派生。
+ */
+export function canonicalRefRegex(): RegExp {
+  return new RegExp(CANONICAL_RE.source, CANONICAL_RE.flags);
+}
+
 /** 从若干条规则里挑出适用于该模型的那一条；挑不到返回 null（= 透传） */
 export function pickRefSyntax(
   rules: RefSyntaxRule[],
