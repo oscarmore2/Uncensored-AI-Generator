@@ -7,6 +7,7 @@ import {
   $isParagraphNode,
   $isTextNode,
   type ElementNode,
+  type LexicalNode,
 } from "lexical";
 import {
   $createListItemNode,
@@ -16,7 +17,7 @@ import {
 } from "@lexical/list";
 import { $createHeadingNode, $isHeadingNode } from "@lexical/rich-text";
 import { $createMediaRefNode, $isMediaRefNode } from "./MediaRefNode";
-import type { BlockNode, InlineNode, PromptDoc } from "@/lib/prompt-doc";
+import { parsePrompt, type BlockNode, type InlineNode, type PromptDoc } from "@/lib/prompt-doc";
 
 /**
  * Lexical 的节点树与 prompt-doc 的 doc 之间的翻译。
@@ -97,6 +98,27 @@ function appendInline(parent: ElementNode, nodes: InlineNode[]) {
         break;
     }
   }
+}
+
+/**
+ * 一段纯文本 -> 可直接插进当前段落的**行内**节点。
+ *
+ * 选区级 AI 的替换要用它：模型回来的文本里可能含 @Image1，
+ * 直接 insertText 会让它留成普通文字——用户眼看着一颗胶囊变成灰字，
+ * 而提交时那个引用不会被改写。必须重新解析成胶囊节点。
+ *
+ * 结果跨了段落时退回块级节点，由调用方决定怎么插。
+ */
+export function $nodesFromText(text: string): { inline: boolean; nodes: LexicalNode[] } {
+  const doc = parsePrompt(text);
+  const only = doc.blocks.length === 1 ? doc.blocks[0] : null;
+  if (only && only.type === "paragraph") {
+    const holder = $createParagraphNode();
+    appendInline(holder, only.children);
+    // 摘下来给调用方，别把这个临时段落本身插进去——那会把用户的段落切开
+    return { inline: true, nodes: holder.getChildren() };
+  }
+  return { inline: false, nodes: $blockNodesFromDoc(doc) };
 }
 
 /**

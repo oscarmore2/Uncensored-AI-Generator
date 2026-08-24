@@ -47,6 +47,11 @@ import {
 import { PROMPT_TRANSFORMERS } from "./transformers";
 import { Toolbar } from "./Toolbar";
 import { MentionPlugin, type RefTarget } from "./MentionPlugin";
+import {
+  SelectionAiPlugin,
+  type RewriteAction,
+  type SelectionAiLabels,
+} from "./SelectionAiPlugin";
 
 /**
  * 真 WYSIWYG 提示词编辑器。
@@ -90,6 +95,7 @@ export function PromptEditor({
   disabled,
   targets = [],
   labels,
+  ai,
 }: {
   initialText: string;
   /** 变了就把 initialText 重新灌进去。不变时外部改 initialText 无效——这是有意的 */
@@ -120,6 +126,19 @@ export function PromptEditor({
     mentionNavigate: string;
     mentionSelect: string;
     mentionClose: string;
+  };
+  /**
+   * 选区级 AI。不传就不挂——插件本身不认识 API，也不认识模式与档位，
+   * 那些由外层注入。这样编辑器组件不必知道生成业务的任何事。
+   */
+  ai?: {
+    labels: SelectionAiLabels;
+    request(args: {
+      action: RewriteAction;
+      selection: string;
+      contextBefore: string;
+      contextAfter: string;
+    }): Promise<{ text: string; dropped: string[] }>;
   };
 }) {
   const initialConfig = useMemo(
@@ -192,6 +211,7 @@ export function PromptEditor({
               close: labels.mentionClose,
             }}
           />
+          {ai && <SelectionAiPlugin enabled={!disabled} labels={ai.labels} request={ai.request} />}
           <EditablePlugin disabled={disabled} />
           <PastePlugin />
           <ReloadPlugin text={initialText} reloadKey={reloadKey} />

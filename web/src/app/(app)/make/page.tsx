@@ -772,6 +772,36 @@ function MakePageInner() {
     setSpicy(product.spicy);
   }
 
+  /**
+   * 选区级 AI 的实际请求。
+   *
+   * 刻意**不碰任何编辑器状态**：拿到什么就回什么，替换与否由用户在预览卡上决定。
+   * 这正是它与魔法指令的根本差别——那个是直接把整段覆盖掉的。
+   */
+  const rewriteSelection = useCallback(
+    async (args: {
+      action: string;
+      selection: string;
+      contextBefore: string;
+      contextAfter: string;
+    }) => {
+      const data = await api<{ text: string; dropped_refs?: string[] }>("/api/prompts/rewrite", {
+        method: "POST",
+        body: JSON.stringify({
+          action: args.action,
+          selection: args.selection,
+          context_before: args.contextBefore,
+          context_after: args.contextAfter,
+          mode,
+          tier,
+          spicy,
+        }),
+      });
+      return { text: data.text, dropped: data.dropped_refs ?? [] };
+    },
+    [mode, tier, spicy]
+  );
+
   async function runMagicPrompt() {
     if (magicBusy) return;
     if (!prompt.trim()) return toast(t("promptFirst"), true);
@@ -1249,6 +1279,8 @@ function MakePageInner() {
                  * 而且这条路绝不能敲 reload key */
                 onChange={setPrompt}
                 reloadKey={promptReloadKey}
+                /* 魔法指令未启用时选区级 AI 也不给：它们共用同一套上游凭据 */
+                onRewrite={magicEnabled ? rewriteSelection : undefined}
                 /* 文生图那套规则明写「避免长段落叙事」，
                  * 给标题和列表等于鼓励用户写出会让出图变差的东西 */
                 structure={activeGroup !== "image"}

@@ -7,6 +7,7 @@ import { useBodyScrollLock } from "@/lib/use-body-scroll-lock";
 import dynamic from "next/dynamic";
 import type { PromptEditorHandle } from "./prompt-editor/PromptEditor";
 import type { MediaRefContextValue } from "./prompt-editor/MediaRefNode";
+import type { RewriteAction } from "./prompt-editor/SelectionAiPlugin";
 
 /*
  * 编辑器必须 ssr:false 且按需加载，两个理由都硬：
@@ -67,6 +68,7 @@ export function PromptComposer({
   disabled,
   structure = true,
   reloadKey,
+  onRewrite,
 }: {
   value: string;
   onChange: (next: string) => void;
@@ -87,6 +89,16 @@ export function PromptComposer({
    * 中文输入法的候选还没上屏就被打断。
    */
   reloadKey?: string | number;
+  /**
+   * 选区级 AI 的实际请求。由 make 页注入——它才知道当前模式、档位、spicy。
+   * 不传就不显示动作条。
+   */
+  onRewrite?(args: {
+    action: RewriteAction;
+    selection: string;
+    contextBefore: string;
+    contextAfter: string;
+  }): Promise<{ text: string; dropped: string[] }>;
 }) {
   const t = useTranslations("Make");
   const [expanded, setExpanded] = useState(false);
@@ -159,6 +171,29 @@ export function PromptComposer({
     [targets, t]
   );
 
+  const ai = useMemo(
+    () =>
+      onRewrite
+        ? {
+            request: onRewrite,
+            labels: {
+              polish: t("aiPolish"),
+              localize: t("aiLocalize"),
+              expand: t("aiExpand"),
+              shorten: t("aiShorten"),
+              emphasize: t("aiEmphasize"),
+              working: t("aiWorking"),
+              replace: t("aiReplace"),
+              insertBelow: t("aiInsertBelow"),
+              retry: t("aiRetry"),
+              discard: t("aiDiscard"),
+              droppedRefs: t("aiDroppedRefs"),
+            },
+          }
+        : undefined,
+    [onRewrite, t]
+  );
+
   const editorLabels = useMemo(
     () => ({
       heading: t("structHeading"),
@@ -214,6 +249,7 @@ export function PromptComposer({
             handle={inlineHandle}
             structure={structure}
             disabled={disabled}
+            ai={ai}
             placeholder={placeholder}
             ariaLabel={t("prompt")}
             className="min-h-[88px]"
@@ -313,6 +349,7 @@ export function PromptComposer({
                       handle={modalHandle}
                       structure={structure}
                       disabled={disabled}
+                      ai={ai}
                       placeholder={placeholder}
                       ariaLabel={t("prompt")}
                       className="min-h-0 flex-1 overflow-y-auto overscroll-contain"
