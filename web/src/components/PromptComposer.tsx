@@ -175,7 +175,7 @@ export function PromptComposer({
 
   /*
    * Esc 的处理顺序：素材大图 → 弹窗。
-   * defaultPrevented 是关键：@ 菜单开着时 PromptMentionBox 自己会先吃掉 Esc
+   * defaultPrevented 是关键：@ 菜单开着时 Lexical 的 typeahead 会先吃掉 Esc
    * 并 preventDefault，这里就不能再把整个弹窗关掉——否则用户按一下 Esc
    * 想收起菜单，结果整段编辑区都消失了。
    */
