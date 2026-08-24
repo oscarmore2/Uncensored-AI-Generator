@@ -312,14 +312,29 @@ export function enhancePromptLocal(input: MagicPromptInput): MagicPromptResult {
   );
 }
 
-async function enhancePromptDolphin(
-  input: MagicPromptInput,
-  target: PromptTarget
-): Promise<MagicPromptResult | null> {
+/**
+ * 调一次改写模型，回正文和真实 token 消耗。
+ *
+ * 抽出来是因为选区级 AI（prompt-rewrite）要走同一条路：凭据怎么取、
+ * 端点怎么拼、usage 怎么读，只应该有一处知道。抄第二份的话，
+ * 哪天换了模型或网关，总有一处忘了改，症状是「另一个功能悄悄不工作了」。
+ *
+ * 失败一律返回 null 让调用方兜底，不抛——这条链路上任何异常都不该
+ * 让用户的正文丢失。
+ */
+export async function callMagicModel(opts: {
+  system: string;
+  user: string;
+  maxTokens?: number;
+  temperature?: number;
+  /** 放进请求体顶层，便于网关/日志识别用途 */
+  metadata?: unknown;
+  /** 出错日志前缀，便于分辨是哪个功能 */
+  tag?: string;
+}): Promise<{ content: string; tokens?: number } | null> {
   const creds = await getActiveHfCredentials();
   if (!creds) return null;
 
-  const meta = buildTaskMetadata(input, target);
   const resp = await fetch(`${creds.baseUrl.replace(/\/$/, "")}/chat/completions`, {
     method: "POST",
     headers: {
@@ -328,20 +343,19 @@ async function enhancePromptDolphin(
     },
     body: JSON.stringify({
       model: creds.magicModel,
-      temperature: 0.15,
-      max_tokens: 500,
-      // 元数据也放在请求体顶层，便于网关/日志识别用途
-      metadata: meta,
+      temperature: opts.temperature ?? 0.15,
+      max_tokens: opts.maxTokens ?? 500,
+      ...(opts.metadata !== undefined ? { metadata: opts.metadata } : {}),
       messages: [
-        { role: "system", content: buildSystemPrompt(target, input.allow_sensitive) },
-        { role: "user", content: buildUserMessage(input, meta) },
+        { role: "system", content: opts.system },
+        { role: "user", content: opts.user },
       ],
     }),
   });
 
   if (!resp.ok) {
     const body = await resp.text().catch(() => "");
-    console.warn("[magic-prompt] Dolphin HF failed:", resp.status, body.slice(0, 300));
+    console.warn(`[${opts.tag ?? "magic-prompt"}] HF failed:`, resp.status, body.slice(0, 300));
     return null;
   }
 
@@ -352,8 +366,6 @@ async function enhancePromptDolphin(
   const content = data.choices?.[0]?.message?.content?.trim();
   if (!content) return null;
 
-  const parsed = parseLlmPromptOutput(content, target);
-  if (!parsed.prompt) return null;
 
   const usage = data.usage;
   const tokens =
@@ -361,6 +373,25 @@ async function enhancePromptDolphin(
     (usage?.prompt_tokens != null && usage?.completion_tokens != null
       ? usage.prompt_tokens + usage.completion_tokens
       : undefined);
+  return { content, tokens };
+}
+
+async function enhancePromptDolphin(
+  input: MagicPromptInput,
+  target: PromptTarget
+): Promise<MagicPromptResult | null> {
+  const meta = buildTaskMetadata(input, target);
+  const called = await callMagicModel({
+    system: buildSystemPrompt(target, input.allow_sensitive),
+    user: buildUserMessage(input, meta),
+    metadata: meta,
+    tag: "magic-prompt",
+  });
+  if (!called) return null;
+  const { content, tokens } = called;
+
+  const parsed = parseLlmPromptOutput(content, target);
+  if (!parsed.prompt) return null;
 
   return withTarget(
     {
