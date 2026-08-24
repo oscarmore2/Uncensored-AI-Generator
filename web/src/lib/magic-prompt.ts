@@ -1,4 +1,5 @@
 import "server-only";
+import { maskPromptRefs, unmaskPromptRefs } from "./prompt-ref-guard";
 import { getActiveHfCredentials } from "./hf";
 import { buildLocalNegative, type NegativeKind } from "./negative-prompt";
 import {
@@ -22,6 +23,13 @@ export type MagicPromptResult = {
   prompt: string;
   negative_prompt?: string;
   source: "local" | "dolphin";
+  /**
+   * 改写过程中被模型弄丢的素材引用。
+   *
+   * 不擅自补回原文——补在哪一句只能靠猜，猜错比丢掉更糟。
+   * 如实报上去，由界面告诉用户哪几个引用需要自己放回去。
+   */
+  dropped_refs?: string[];
   /** 只回传模式与档位；模型信息绝不下发到生成端 */
   target?: {
     mode: string;
@@ -92,6 +100,10 @@ function buildSystemPrompt(target: PromptTarget, allowSensitive = false): string
   }
 
 你的任务元数据 purpose=optimize_generation_prompt：专门把用户草稿优化成「下游生成模型」可直接使用的 prompt，而不是普通聊天回复。
+
+【硬性要求】正文里形如 [[REF1]]、[[REF2]] 的记号是素材占位符，**必须逐字符原样保留**：
+不要翻译、不要改写成「参考图1」之类的说法、不要重新编号、不要增删。
+它们可以随句子移动位置，但字符本身一个都不能变。
 
 当前目标：
 - app_mode: ${target.mode}
@@ -363,12 +375,31 @@ export async function enhancePrompt(input: MagicPromptInput): Promise<MagicPromp
     spicy: input.spicy,
   });
 
+  /*
+   * 先把素材引用换成占位符再交给模型。
+   *
+   * @Image1 在模型眼里是普通文字，让它「按规则重写这段提示词」，它会顺手
+   * 把引用译成 reference image 1、并进句子、重新编号或者删掉——全都不报错，
+   * 用户只看到出片不对。胶囊化之后更糟：改坏的引用回来会退化成普通文字，
+   * 那颗胶囊就凭空没了。
+   *
+   * 本地兜底那条路也一起遮罩：它同样会拼接改写文本，没有理由区别对待。
+   */
+  const { masked, tokens } = maskPromptRefs(input.prompt);
+  const guarded = { ...input, prompt: masked };
+
+  const restore = (result: MagicPromptResult): MagicPromptResult => {
+    if (tokens.length === 0) return result;
+    const { text, missing } = unmaskPromptRefs(result.prompt, tokens);
+    return { ...result, prompt: text, ...(missing.length ? { dropped_refs: missing } : {}) };
+  };
+
   try {
-    const dolphin = await enhancePromptDolphin(input, target);
-    if (dolphin) return dolphin;
+    const dolphin = await enhancePromptDolphin(guarded, target);
+    if (dolphin) return restore(dolphin);
   } catch (err) {
     console.warn("[magic-prompt] Dolphin error, fallback local:", err);
   }
 
-  return enhancePromptLocal(input);
+  return restore(await enhancePromptLocal(guarded));
 }

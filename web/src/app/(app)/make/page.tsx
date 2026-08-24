@@ -777,7 +777,12 @@ function MakePageInner() {
     if (!prompt.trim()) return toast(t("promptFirst"), true);
     setMagicBusy(true);
     try {
-      const data = await api<{ prompt: string; negative_prompt: string | null; source: string }>(
+      const data = await api<{
+        prompt: string;
+        negative_prompt: string | null;
+        source: string;
+        dropped_refs?: string[];
+      }>(
         "/api/prompts/magic",
         {
           method: "POST",
@@ -793,7 +798,18 @@ function MakePageInner() {
       );
       setPromptFromExternal(data.prompt);
       if (data.negative_prompt) setNegative(data.negative_prompt);
-      toast(data.source === "dolphin" ? t("magicDoneDolphin", { model: "" }) : t("magicDone", { model: "" }));
+      /*
+       * 模型弄丢了素材引用就必须说出来。
+       * 服务端已经尽力保护（占位符 + system prompt），但保不住时
+       * 唯一比「静默丢掉」更好的做法就是如实告诉用户少了哪几个——
+       * 补在哪一句只有他自己知道。
+       */
+      const dropped = data.dropped_refs ?? [];
+      if (dropped.length > 0) {
+        toast(t("magicDroppedRefs", { count: dropped.length, tokens: dropped.join("、") }), true);
+      } else {
+        toast(data.source === "dolphin" ? t("magicDoneDolphin", { model: "" }) : t("magicDone", { model: "" }));
+      }
     } catch (e) {
       toast(e instanceof Error ? e.message : t("magicFailed"), true);
     } finally {

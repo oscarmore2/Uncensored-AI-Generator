@@ -81,6 +81,8 @@ export async function POST(req: Request) {
       negative_prompt: result.negative_prompt ?? null,
       source: result.source,
       target: result.target ?? null,
+      /* 模型弄丢的素材引用。不猜着补回原文，交给界面提醒用户自己放回去 */
+      dropped_refs: result.dropped_refs ?? [],
     });
   } catch (err) {
     console.error("[magic-prompt]", err);

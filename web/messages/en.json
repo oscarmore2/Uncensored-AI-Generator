@@ -562,7 +562,8 @@
     "refRebind": "Point at another material",
     "promptCanonical": "Raw text",
     "promptCanonicalNote": "This is exactly what gets submitted. Chips are written as @Image1.",
-    "refOrphanWarn": "{count} reference(s) point at material that no longer exists"
+    "refOrphanWarn": "{count} reference(s) point at material that no longer exists",
+    "magicDroppedRefs": "Magic Prompt dropped {count} material reference(s): {tokens}. Put them back where you need them."
   },
   "Profile": {
     "title": "Profile",

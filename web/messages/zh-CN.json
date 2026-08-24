@@ -562,7 +562,8 @@
     "refRebind": "改指到别的素材",
     "promptCanonical": "原文",
     "promptCanonicalNote": "这就是会提交上去的原文。胶囊写成 @Image1。",
-    "refOrphanWarn": "有 {count} 处引用指向已不存在的素材"
+    "refOrphanWarn": "有 {count} 处引用指向已不存在的素材",
+    "magicDroppedRefs": "魔法指令弄丢了 {count} 个素材引用：{tokens}。请在需要的位置重新放回。"
   },
   "Profile": {
     "title": "个人中心",
