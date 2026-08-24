@@ -22,6 +22,7 @@ export type AdminAuditAction =
   | "provider_account"
   | "plaything_product"
   | "system_signup_credits"
+  | "system_ai_token_rate"
   | "nowpayments_account"
   | "openai_account";
 

@@ -26,7 +26,8 @@ export const AI_CREDITS_PER_1K_TOKENS_KEY = "ai_credits_per_1k_tokens";
 export const DEFAULT_AI_CREDITS_PER_1K_TOKENS = 1;
 
 /** 上限只是防手滑输入，不是业务约束 */
-const MAX_RATE = 1000;
+export const MAX_AI_CREDITS_PER_1K_TOKENS = 1000;
+const MAX_RATE = MAX_AI_CREDITS_PER_1K_TOKENS;
 
 export async function getAiCreditsPer1kTokens(): Promise<number> {
   const setting = await db.appSetting.findUnique({

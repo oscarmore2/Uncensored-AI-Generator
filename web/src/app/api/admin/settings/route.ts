@@ -16,6 +16,11 @@ import {
   MAX_SIGNUP_INITIAL_CREDITS,
   setSignupInitialCredits,
 } from "@/lib/signup-settings";
+import {
+  getAiCreditsPer1kTokens,
+  MAX_AI_CREDITS_PER_1K_TOKENS,
+  setAiCreditsPer1kTokens,
+} from "@/lib/ai-token-billing";
 import { logAdminAction } from "@/lib/admin-audit";
 import { PROVIDER_LIST, toProviderId } from "@/lib/providers/meta";
 
@@ -41,6 +46,7 @@ export async function GET() {
     tierCount,
     planCount,
     signupInitialCredits,
+    aiCreditsPer1kTokens,
     nowPaymentsCredentials,
     nowPaymentsAccountCount,
   ] = await Promise.all([
@@ -61,6 +67,7 @@ export async function GET() {
     db.vipTier.count({ where: { isActive: true } }),
     db.vipPlan.count({ where: { isActive: true } }),
     getSignupInitialCredits(),
+    getAiCreditsPer1kTokens(),
     getActiveNowPaymentsCredentials(),
     db.nowPaymentsAccount.count(),
   ]);
@@ -69,6 +76,7 @@ export async function GET() {
     app_url: env.APP_URL,
     demo_mode: env.DEMO_MODE,
     signup_initial_credits: signupInitialCredits,
+    ai_credits_per_1k_tokens: aiCreditsPer1kTokens,
     vip_price_cents: env.VIP_PRICE,
     credit_packages: env.CREDIT_PACKAGES,
     // 按渠道分组：单渠道时代这里只有一个 wavespeed 字段，
@@ -143,13 +151,30 @@ export async function GET() {
   });
 }
 
-const patchSchema = z.object({
-  signup_initial_credits: z
-    .number()
-    .int()
-    .min(0)
-    .max(MAX_SIGNUP_INITIAL_CREDITS),
-});
+/*
+ * 两个字段都是选填，但至少要给一个。
+ *
+ * 选填是为了向后兼容：这个接口原本只收 signup_initial_credits，
+ * 改成必填两个会让任何只发一个字段的旧调用直接 400。
+ * 而两个都不给就成了「什么都不改却返回成功」，那是在骗调用方，所以 refine 掉。
+ */
+const patchSchema = z
+  .object({
+    signup_initial_credits: z
+      .number()
+      .int()
+      .min(0)
+      .max(MAX_SIGNUP_INITIAL_CREDITS)
+      .optional(),
+    ai_credits_per_1k_tokens: z
+      .number()
+      .min(0)
+      .max(MAX_AI_CREDITS_PER_1K_TOKENS)
+      .optional(),
+  })
+  .refine((v) => v.signup_initial_credits !== undefined || v.ai_credits_per_1k_tokens !== undefined, {
+    message: "没有任何要修改的字段",
+  });
 
 export async function PATCH(req: Request) {
   const admin = await requireRole("admin");
@@ -161,20 +186,39 @@ export async function PATCH(req: Request) {
   const parsed = patchSchema.safeParse(await req.json().catch(() => null));
   if (!parsed.success) {
     return NextResponse.json(
-      { error: `注册初始点数须为 0–${MAX_SIGNUP_INITIAL_CREDITS} 的整数` },
+      {
+        error: `注册初始点数须为 0–${MAX_SIGNUP_INITIAL_CREDITS} 的整数；AI 费率须为 0–${MAX_AI_CREDITS_PER_1K_TOKENS}`,
+      },
       { status: 400 }
     );
   }
-  const previous = await getSignupInitialCredits();
-  await setSignupInitialCredits(parsed.data.signup_initial_credits);
-  await logAdminAction(
-    admin.id,
-    "system_signup_credits",
-    { type: "app_setting", id: "signup_initial_credits" },
-    { previous, next: parsed.data.signup_initial_credits }
-  );
+
+  if (parsed.data.signup_initial_credits !== undefined) {
+    const previous = await getSignupInitialCredits();
+    await setSignupInitialCredits(parsed.data.signup_initial_credits);
+    await logAdminAction(
+      admin.id,
+      "system_signup_credits",
+      { type: "app_setting", id: "signup_initial_credits" },
+      { previous, next: parsed.data.signup_initial_credits }
+    );
+  }
+
+  if (parsed.data.ai_credits_per_1k_tokens !== undefined) {
+    const previous = await getAiCreditsPer1kTokens();
+    await setAiCreditsPer1kTokens(parsed.data.ai_credits_per_1k_tokens);
+    // 单独记一条：改费率是直接影响用户扣费的动作，不该混在别的条目里
+    await logAdminAction(
+      admin.id,
+      "system_ai_token_rate",
+      { type: "app_setting", id: "ai_credits_per_1k_tokens" },
+      { previous, next: parsed.data.ai_credits_per_1k_tokens }
+    );
+  }
+
   return NextResponse.json({
     ok: true,
-    signup_initial_credits: parsed.data.signup_initial_credits,
+    signup_initial_credits: await getSignupInitialCredits(),
+    ai_credits_per_1k_tokens: await getAiCreditsPer1kTokens(),
   });
 }
