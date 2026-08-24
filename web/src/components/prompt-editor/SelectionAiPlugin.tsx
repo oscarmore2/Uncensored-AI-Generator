@@ -34,8 +34,25 @@ export type SelectionAiLabels = {
   retry: string;
   discard: string;
   droppedRefs: string;
-  /** 本次扣了多少点。传函数而不是模板串，插值交给 i18n 自己做 */
-  charged(credits: number): string;
+  /**
+   * 本次消耗与累计零头。
+   *
+   * 两个数都得显示。只显示单次的话，用户会以为这功能免费（余额确实一直不动），
+   * 等某次突然掉 1 点时会来投诉；只显示累计的话，又不知道刚才那一下花了多少。
+   */
+  charged(cost: string, debt: string): string;
+  /** 零头攒满、真从余额里扣掉时才出现 */
+  settled(credits: number): string;
+};
+
+/** 一次调用的花费。三个数都来自服务端，前端不做任何换算 */
+export type SelectionAiCharge = {
+  /** 本次消耗，点（可能是 0.031 这样的小数） */
+  cost: string;
+  /** 还没满 1 点的累计零头 */
+  debt: string;
+  /** 本次真正从余额扣掉的整点 */
+  settled: number;
 };
 
 export type SelectionAiRequest = (
@@ -51,7 +68,7 @@ export type SelectionAiRequest = (
     /** 流式增量。**追加**显示，收到最终结果时整体替换 */
     onDelta(text: string): void;
   }
-) => Promise<{ text: string; dropped: string[]; charged?: number }>;
+) => Promise<{ text: string; dropped: string[]; charge?: SelectionAiCharge }>;
 
 /** 上下文各截多少字，与服务端 CONTEXT_CHARS 保持一致 */
 const CONTEXT_CHARS = 300;
@@ -70,7 +87,7 @@ type Phase =
       action: RewriteAction;
       text: string;
       dropped: string[];
-      charged?: number;
+      charge?: SelectionAiCharge;
     }
   | { kind: "error"; rect: DOMRect; message: string };
 
@@ -182,7 +199,7 @@ export function SelectionAiPlugin({
           /* 整体替换而不是追加：最终结果多跑了一次去壳，与流出来的那份会有出入 */
           text: result.text,
           dropped: result.dropped,
-          charged: result.charged,
+          charge: result.charge,
         });
       } catch (e) {
         if (controller.signal.aborted) return;
@@ -344,10 +361,11 @@ export function SelectionAiPlugin({
             <PreviewBtn onClick={() => apply(phase.text, "insert")} label={labels.insertBelow} />
             <PreviewBtn onClick={() => void run(phase.action, rect)} label={labels.retry} />
             <PreviewBtn onClick={finish} label={labels.discard} />
-            {phase.charged != null && phase.charged > 0 && (
+            {phase.charge && (
               /* 花了多少钱要当场说。等用户自己去流水里对账是最差的做法 */
               <span className="ml-auto pr-1.5 text-[11px] text-ink-subtle">
-                {labels.charged(phase.charged)}
+                {labels.charged(phase.charge.cost, phase.charge.debt)}
+                {phase.charge.settled > 0 && ` · ${labels.settled(phase.charge.settled)}`}
               </span>
             )}
           </div>

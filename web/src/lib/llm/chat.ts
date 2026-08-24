@@ -1,7 +1,9 @@
 import "server-only";
+import { db } from "../db";
 import { env } from "../env";
 import { getActiveHfCredentials } from "../hf";
-import { LLM_MODELS, estimateCostUsd, type LlmTier } from "./models";
+import { decryptSecret } from "../secret-crypto";
+import { estimateCostUsd, type LlmModelSpec } from "./models";
 import { createSseParser, type ChatStreamChunk } from "./sse";
 
 /**
@@ -24,18 +26,34 @@ export type LlmCredentials = {
   apiKey: string;
   baseUrl: string;
   /** 走 HF 兜底时全档位共用同一个模型：那条线只有一个模型可配 */
-  modelFor(tier: LlmTier): string;
+  modelIdFor(spec: LlmModelSpec): string;
   label: string;
 };
 
+/**
+ * 凭据来源，按优先级：管理端激活的账户 → 环境变量 → 站内已有的 HF 凭据。
+ *
+ * 最后那条兜底是有意留着的：还没接 OpenRouter 时选区级 AI 也能用，
+ * 换上游不需要「先停机再接线」。
+ */
 export async function getLlmCredentials(): Promise<LlmCredentials | null> {
+  const active = await db.llmAccount.findFirst({ where: { isActive: true } }).catch(() => null);
+  if (active) {
+    return {
+      provider: "openrouter",
+      apiKey: decryptSecret(active.apiKeyEnc),
+      baseUrl: active.baseUrl?.trim() || env.OPENROUTER_BASE_URL,
+      modelIdFor: (spec) => spec.openRouterModelId,
+      label: `${active.provider} · ${active.label}`,
+    };
+  }
   if (env.OPENROUTER_API_KEY) {
     return {
       provider: "openrouter",
       apiKey: env.OPENROUTER_API_KEY,
       baseUrl: env.OPENROUTER_BASE_URL,
-      modelFor: (tier) => LLM_MODELS[tier].openRouterModelId,
-      label: "OpenRouter",
+      modelIdFor: (spec) => spec.openRouterModelId,
+      label: "OpenRouter · env",
     };
   }
   const hf = await getActiveHfCredentials();
@@ -44,7 +62,7 @@ export async function getLlmCredentials(): Promise<LlmCredentials | null> {
       provider: "hf",
       apiKey: hf.apiToken,
       baseUrl: hf.baseUrl,
-      modelFor: () => hf.magicModel,
+      modelIdFor: () => hf.magicModel,
       label: `HF · ${hf.label}`,
     };
   }
@@ -61,7 +79,8 @@ export const LLM_TIMEOUT_MS = 15_000;
 export type ChatRequest = {
   system: string;
   user: string;
-  tier: LlmTier;
+  /** 已经解析好的模型。这一层不认识「档位」，那是上层的概念 */
+  model: LlmModelSpec;
   maxTokens?: number;
   temperature?: number;
   /** 用户点取消时中止。已产生的 token 照样算上游花过的钱 */
@@ -104,7 +123,7 @@ function headersFor(creds: LlmCredentials): Record<string, string> {
 
 function bodyFor(creds: LlmCredentials, req: ChatRequest, stream: boolean) {
   return {
-    model: creds.modelFor(req.tier),
+    model: creds.modelIdFor(req.model),
     temperature: req.temperature ?? 0.3,
     max_tokens: req.maxTokens ?? 500,
     messages: [
@@ -144,10 +163,7 @@ function withTimeout(signal?: AbortSignal): { signal: AbortSignal; done(): void 
   };
 }
 
-function readUsage(
-  raw: ChatStreamChunk["usage"],
-  tier: LlmTier
-): ChatUsage {
+function readUsage(raw: ChatStreamChunk["usage"], spec: LlmModelSpec): ChatUsage {
   if (!raw) return {};
   const prompt = raw.prompt_tokens;
   const completion = raw.completion_tokens;
@@ -166,7 +182,7 @@ function readUsage(
       promptTokens: prompt,
       completionTokens: completion,
       totalTokens: total,
-      costUsd: estimateCostUsd(LLM_MODELS[tier], prompt, completion),
+      costUsd: estimateCostUsd(spec, prompt, completion),
       costEstimated: true,
     };
   }
@@ -235,7 +251,7 @@ export async function* streamChat(req: ChatRequest): AsyncGenerator<ChatStreamEv
         }
         if (choice?.finish_reason) finishReason = choice.finish_reason;
         // usage 落在最后一个 chunk 上，那一条的 choices 通常是空数组
-        if (chunk.usage) usage = readUsage(chunk.usage, req.tier);
+        if (chunk.usage) usage = readUsage(chunk.usage, req.model);
       }
     };
 
@@ -270,7 +286,7 @@ export async function chat(
     if (!text) return null;
     return {
       text,
-      usage: readUsage(data.usage, req.tier),
+      usage: readUsage(data.usage, req.model),
       finishReason: data.choices?.[0]?.finish_reason,
     };
   } finally {

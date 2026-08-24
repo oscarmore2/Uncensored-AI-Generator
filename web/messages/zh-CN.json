@@ -576,7 +576,9 @@
     "aiRetry": "重试",
     "aiDiscard": "放弃",
     "aiDroppedRefs": "模型弄丢的引用",
-    "aiCharged": "本次扣 {credits} 点"
+    "aiCharged": "本次 {cost} 点 · 累计 {debt} 点",
+    "aiSettled": "已扣 {credits} 点",
+    "aiBlockedCharged": "（本次仍消耗 {cost} 点：内容已经送到模型跑过了）"
   },
   "Profile": {
     "title": "个人中心",

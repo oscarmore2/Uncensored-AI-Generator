@@ -1,6 +1,7 @@
 import "server-only";
 import { chat, streamChat, type ChatUsage } from "./llm/chat";
-import { pickTier, type LlmTier } from "./llm/models";
+import { pickTier, type LlmModelSpec } from "./llm/models";
+import { resolveLlmModel } from "./llm/model-store";
 import { splitEmittable } from "./llm/sse";
 import { maskPromptRefs, unmaskPromptRefs } from "./prompt-ref-guard";
 import { PROMPT_FORMAT_RULES, resolvePromptTarget } from "./prompt-targets";
@@ -52,6 +53,8 @@ export type RewriteOutput = {
   tokens?: number;
   droppedRefs: string[];
   usage?: ChatUsage;
+  /** 这次实际用的模型。计费要它的倍率，台账要它的 key */
+  model: LlmModelSpec;
 };
 
 const COMMON_RULES = [
@@ -121,15 +124,34 @@ function maxTokensFor(input: RewriteInput): number {
   return Math.min(1200, Math.max(200, Math.ceil(input.selection.length * 1.5)));
 }
 
-function requestFor(input: RewriteInput, masked: string, tier: LlmTier) {
+function requestFor(input: RewriteInput, masked: string, model: LlmModelSpec) {
   return {
     system: buildSystem(input),
     user: buildUser(input, masked),
-    tier,
+    model,
     maxTokens: maxTokensFor(input),
     temperature: input.action === "localize" ? 0.1 : 0.3,
     tag: "prompt-rewrite" as const,
   };
+}
+
+/**
+ * 请求过程中的实时状态，供调用方在**中途取消**时结账用。
+ *
+ * 取消之后拿不到 `done`，也拿不到上游的 usage——但 token 确实已经烧掉了。
+ * 没有这个对象就只能当作没花钱，那等于给「点了就取消」开了一个免费口子。
+ */
+export type RewriteProgress = {
+  /** 已收到的原始文本，未去壳未还原引用 */
+  raw: string;
+  /** 送出去的提示词全文，用来估 prompt token */
+  promptText: string;
+  model: LlmModelSpec | null;
+  usage: ChatUsage;
+};
+
+export function newRewriteProgress(): RewriteProgress {
+  return { raw: "", promptText: "", model: null, usage: {} };
 }
 
 /** 收尾：去壳 + 还原引用。流式与非流式共用，两条路的结果必须一模一样 */
@@ -140,19 +162,27 @@ function finalize(raw: string, refTokens: string[]): { text: string; droppedRefs
   return { text: restored.text, droppedRefs: restored.missing };
 }
 
-export async function rewriteSelection(input: RewriteInput): Promise<RewriteOutput | null> {
+export async function rewriteSelection(
+  input: RewriteInput,
+  opts?: { progress?: RewriteProgress }
+): Promise<RewriteOutput | null> {
   if (!input.selection.trim()) return null;
 
   const { masked, tokens: refTokens } = maskPromptRefs(input.selection);
-  const tier = pickTier({ allowSensitive: input.allowSensitive });
+  const model = await resolveLlmModel(pickTier({ allowSensitive: input.allowSensitive }));
+  const request = requestFor(input, masked, model);
+  if (opts?.progress) {
+    opts.progress.model = model;
+    opts.progress.promptText = `${request.system}\n${request.user}`;
+  }
 
-  const called = await chat(requestFor(input, masked, tier));
+  const called = await chat(request);
   if (!called) return null;
 
   const done = finalize(called.text, refTokens);
   if (!done) return null;
 
-  return { ...done, tokens: called.usage.totalTokens, usage: called.usage };
+  return { ...done, tokens: called.usage.totalTokens, usage: called.usage, model };
 }
 
 export type RewriteStreamEvent =
@@ -168,21 +198,28 @@ export type RewriteStreamEvent =
  */
 export async function* streamRewriteSelection(
   input: RewriteInput,
-  signal?: AbortSignal
+  opts?: { signal?: AbortSignal; progress?: RewriteProgress }
 ): AsyncGenerator<RewriteStreamEvent> {
   if (!input.selection.trim()) return;
 
   const { masked, tokens: refTokens } = maskPromptRefs(input.selection);
-  const tier = pickTier({ allowSensitive: input.allowSensitive });
+  const model = await resolveLlmModel(pickTier({ allowSensitive: input.allowSensitive }));
+  const request = requestFor(input, masked, model);
+  const progress = opts?.progress;
+  if (progress) {
+    progress.model = model;
+    progress.promptText = `${request.system}\n${request.user}`;
+  }
 
   let raw = "";
   /** 已经推给界面的显示文本长度。占位符还原会改变长度，只能按显示侧记 */
   let sent = 0;
   let usage: ChatUsage = {};
 
-  for await (const ev of streamChat({ ...requestFor(input, masked, tier), signal })) {
+  for await (const ev of streamChat({ ...request, signal: opts?.signal })) {
     if (ev.type === "delta") {
       raw += ev.text;
+      if (progress) progress.raw = raw;
       /*
        * 扣住还没写完的占位符再显示。不扣的话用户会眼看着屏幕上蹦出
        * `[[RE` 然后变成 @Image1——看起来就像出了 bug。
@@ -197,9 +234,13 @@ export async function* streamRewriteSelection(
     }
     usage = ev.usage;
     raw = ev.text || raw;
+    if (progress) {
+      progress.raw = raw;
+      progress.usage = usage;
+    }
   }
 
   const done = finalize(raw, refTokens);
   if (!done) return;
-  yield { type: "done", result: { ...done, tokens: usage.totalTokens, usage } };
+  yield { type: "done", result: { ...done, tokens: usage.totalTokens, usage, model } };
 }

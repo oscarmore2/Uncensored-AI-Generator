@@ -184,7 +184,8 @@ export function PromptComposer({
               retry: t("aiRetry"),
               discard: t("aiDiscard"),
               droppedRefs: t("aiDroppedRefs"),
-              charged: (credits: number) => t("aiCharged", { credits }),
+              charged: (cost: string, debt: string) => t("aiCharged", { cost, debt }),
+              settled: (credits: number) => t("aiSettled", { credits }),
             },
           }
         : undefined,

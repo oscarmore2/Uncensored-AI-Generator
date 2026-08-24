@@ -13,6 +13,7 @@ const NAV = [
   { href: "/admin/nowpayments", label: "NOWPayments", icon: "fa-key" },
   { href: "/admin/stripe", label: "Stripe", icon: "fa-credit-card" },
   { href: "/admin/hf", label: "Hugging Face", icon: "fa-brain" },
+  { href: "/admin/llm", label: "AI 文本模型", icon: "fa-comment-dots" },
   { href: "/admin/openai", label: "内容审查", icon: "fa-shield-halved" },
   { href: "/admin/providers", label: "生成渠道", icon: "fa-puzzle-piece" },
   { href: "/admin/models", label: "模型库", icon: "fa-store" },

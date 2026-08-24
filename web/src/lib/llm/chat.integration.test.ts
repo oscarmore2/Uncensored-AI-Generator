@@ -1,6 +1,7 @@
-import { describe, it, expect, beforeAll, afterAll } from "vitest";
+import { describe, it, expect, beforeAll, afterAll, vi } from "vitest";
 import { createServer, type Server } from "node:http";
 import type { AddressInfo } from "node:net";
+import { LLM_MODELS } from "./models";
 
 /**
  * 拿一个假上游把流式整条链路跑通。
@@ -11,6 +12,17 @@ import type { AddressInfo } from "node:net";
  *
  * 假上游说的是 OpenAI 兼容那套，所以它同时代表 OpenRouter 和 HF Router。
  */
+
+/*
+ * 桩掉数据库：这些用例验的是**没有覆盖行时退回出厂常量**那条路径。
+ * 连真库只会让用例变慢变飘，而且验的东西并不是这一层的。
+ */
+vi.mock("../db", () => ({
+  db: {
+    llmAccount: { findFirst: async () => null },
+    llmModel: { upsert: async () => ({}), findFirst: async () => null },
+  },
+}));
 
 let server: Server;
 let baseUrl: string;
@@ -38,8 +50,14 @@ beforeAll(async () => {
 
 afterAll(() => new Promise<void>((resolve) => server.close(() => resolve())));
 
-/** 按 SSE 格式吐出一串 chunk，每条之间给事件循环一个喘口气的机会 */
-function sse(res: import("node:http").ServerResponse, chunks: unknown[]) {
+/**
+ * 按 SSE 格式吐出一串 chunk。
+ *
+ * `gapMs` 不是随手写的：间隔太小的话，几条事件会挤进同一次 TCP 读，
+ * 于是「取消」那条用例会时灵时不灵——不是代码有问题，是同一个 chunk
+ * 里已经解析出来的 delta 不可能再收回去。要验取消就得让它们分开到达。
+ */
+function sse(res: import("node:http").ServerResponse, chunks: unknown[], gapMs = 1) {
   res.writeHead(200, { "Content-Type": "text/event-stream" });
   let i = 0;
   const next = () => {
@@ -50,7 +68,7 @@ function sse(res: import("node:http").ServerResponse, chunks: unknown[]) {
     }
     const chunk = chunks[i++];
     res.write(typeof chunk === "string" ? chunk : `data: ${JSON.stringify(chunk)}\n\n`);
-    setTimeout(next, 1);
+    setTimeout(next, gapMs);
   };
   next();
 }
@@ -69,7 +87,7 @@ describe("流式调用上游", () => {
       ]);
 
     const events = [];
-    for await (const ev of streamChat({ system: "s", user: "u", tier: "basic" })) events.push(ev);
+    for await (const ev of streamChat({ system: "s", user: "u", model: LLM_MODELS.basic })) events.push(ev);
 
     expect(events.filter((e) => e.type === "delta").map((e) => e.text)).toEqual(["光线", "柔和"]);
     const done = events.at(-1);
@@ -86,7 +104,7 @@ describe("流式调用上游", () => {
   it("请求体里带上 stream_options，否则流式响应根本不会回 usage", async () => {
     const { streamChat } = await import("./chat");
     respond = ({ res }) => sse(res, [delta("ok")]);
-    for await (const _ of streamChat({ system: "s", user: "u", tier: "basic" })) void _;
+    for await (const _ of streamChat({ system: "s", user: "u", model: LLM_MODELS.basic })) void _;
 
     expect(lastBody.stream).toBe(true);
     expect(lastBody.stream_options).toEqual({ include_usage: true });
@@ -100,7 +118,7 @@ describe("流式调用上游", () => {
       sse(res, [delta("ok"), { choices: [], usage: { prompt_tokens: 1000, completion_tokens: 1000 } }]);
 
     let usage;
-    for await (const ev of streamChat({ system: "s", user: "u", tier: "basic" })) {
+    for await (const ev of streamChat({ system: "s", user: "u", model: LLM_MODELS.basic })) {
       if (ev.type === "done") usage = ev.usage;
     }
     // 基础档 $0.15 / $0.60 每百万：1000 + 1000 token = $0.00075
@@ -121,7 +139,7 @@ describe("流式调用上游", () => {
     };
 
     const out = [];
-    for await (const ev of streamChat({ system: "s", user: "u", tier: "basic" })) {
+    for await (const ev of streamChat({ system: "s", user: "u", model: LLM_MODELS.basic })) {
       if (ev.type === "delta") out.push(ev.text);
     }
     expect(out).toEqual(["一句完整的话"]);
@@ -132,7 +150,7 @@ describe("流式调用上游", () => {
     respond = ({ res }) => sse(res, [delta("半"), { error: { message: "rate limited" } }]);
 
     await expect(async () => {
-      for await (const _ of streamChat({ system: "s", user: "u", tier: "basic" })) void _;
+      for await (const _ of streamChat({ system: "s", user: "u", model: LLM_MODELS.basic })) void _;
     }).rejects.toThrow(/rate limited/);
   });
 
@@ -144,13 +162,13 @@ describe("流式调用上游", () => {
     };
 
     await expect(async () => {
-      for await (const _ of streamChat({ system: "s", user: "u", tier: "basic" })) void _;
+      for await (const _ of streamChat({ system: "s", user: "u", model: LLM_MODELS.basic })) void _;
     }).rejects.toThrow(/402/);
   });
 
   it("取消之后不再吐新内容", async () => {
     const { streamChat } = await import("./chat");
-    respond = ({ res }) => sse(res, [delta("一"), delta("二"), delta("三"), delta("四")]);
+    respond = ({ res }) => sse(res, [delta("一"), delta("二"), delta("三"), delta("四")], 25);
 
     const controller = new AbortController();
     const got: string[] = [];
@@ -158,7 +176,7 @@ describe("流式调用上游", () => {
       for await (const ev of streamChat({
         system: "s",
         user: "u",
-        tier: "basic",
+        model: LLM_MODELS.basic,
         signal: controller.signal,
       })) {
         if (ev.type === "delta") {

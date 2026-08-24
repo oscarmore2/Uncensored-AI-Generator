@@ -53,7 +53,10 @@ import {
 import { buildMentionTargets } from "@/components/prompt-editor/targets";
 import { normalizePrompt, refTokensInText } from "@/lib/prompt-doc";
 import { PromptComposer } from "@/components/PromptComposer";
-import type { SelectionAiRequest } from "@/components/prompt-editor/SelectionAiPlugin";
+import type {
+  SelectionAiCharge,
+  SelectionAiRequest,
+} from "@/components/prompt-editor/SelectionAiPlugin";
 import { TemplatePanel, type TemplateApplyPayload } from "@/components/TemplatePanel";
 import { DraftBar } from "@/components/DraftBar";
 import { detectMediaKindFromUrl } from "@/lib/plaything-categories";
@@ -784,6 +787,16 @@ function MakePageInner() {
     setSpicy(product.spicy);
   }
 
+  /** 服务端算好的花费，前端一个数都不换算——两边各算一遍迟早对不上 */
+  const chargeOf = useCallback((event: Record<string, unknown>): SelectionAiCharge | undefined => {
+    if (typeof event.charged_credits !== "string") return undefined;
+    return {
+      cost: event.charged_credits,
+      debt: typeof event.debt_credits === "string" ? event.debt_credits : "0",
+      settled: typeof event.settled_credits === "number" ? event.settled_credits : 0,
+    };
+  }, []);
+
   /**
    * 选区级 AI 的实际请求。
    *
@@ -792,7 +805,7 @@ function MakePageInner() {
    */
   const rewriteSelection = useCallback<SelectionAiRequest>(
     async (args, { signal, onDelta }) => {
-      let result: { text: string; dropped: string[]; charged?: number } | null = null;
+      let result: { text: string; dropped: string[]; charge?: SelectionAiCharge } | null = null;
       /*
        * 失败先攒着、流走完再抛。
        *
@@ -827,14 +840,20 @@ function MakePageInner() {
             result = {
               text: String(event.text ?? ""),
               dropped: Array.isArray(event.dropped_refs) ? (event.dropped_refs as string[]) : [],
-              charged: typeof event.charged === "number" ? event.charged : undefined,
+              charge: chargeOf(event),
             };
             return;
           }
           if (event.type === "error") {
+            /*
+             * 被内容审查拦下来时**照样扣费**——上游已经跑过了。
+             * 这句话必须写在错误里说清楚，否则用户会觉得是白扣。
+             */
+            const charge = chargeOf(event);
+            const note = charge ? t("aiBlockedCharged", { cost: charge.cost }) : "";
             failure = new ApiError(
               typeof event.status === "number" ? event.status : 400,
-              String(event.error ?? t("magicFailed")),
+              `${String(event.error ?? t("magicFailed"))}${note}`,
               typeof event.code === "string" ? event.code : undefined
             );
           }
@@ -845,7 +864,7 @@ function MakePageInner() {
       if (!result) throw new ApiError(503, t("magicFailed"), "REWRITE_UNAVAILABLE");
       return result;
     },
-    [mode, tier, spicy, t]
+    [mode, tier, spicy, t, chargeOf]
   );
 
   async function runMagicPrompt() {

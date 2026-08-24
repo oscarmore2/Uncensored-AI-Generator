@@ -576,7 +576,9 @@
     "aiRetry": "Retry",
     "aiDiscard": "Discard",
     "aiDroppedRefs": "References the model dropped",
-    "aiCharged": "{credits} credits used"
+    "aiCharged": "{cost} credits · {debt} pending",
+    "aiSettled": "{credits} deducted",
+    "aiBlockedCharged": " ({cost} credits still used — the model already ran)"
   },
   "Profile": {
     "title": "Profile",

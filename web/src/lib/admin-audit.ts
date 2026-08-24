@@ -24,7 +24,9 @@ export type AdminAuditAction =
   | "system_signup_credits"
   | "system_ai_token_rate"
   | "nowpayments_account"
-  | "openai_account";
+  | "openai_account"
+  | "llm_account"
+  | "llm_model_price";
 
 export async function logAdminAction(
   adminId: number,
