@@ -570,11 +570,13 @@
     "aiShorten": "Shorten",
     "aiEmphasize": "Emphasize",
     "aiWorking": "Rewriting…",
+    "aiCancel": "Cancel",
     "aiReplace": "Replace",
     "aiInsertBelow": "Insert below",
     "aiRetry": "Retry",
     "aiDiscard": "Discard",
-    "aiDroppedRefs": "References the model dropped"
+    "aiDroppedRefs": "References the model dropped",
+    "aiCharged": "{credits} credits used"
   },
   "Profile": {
     "title": "Profile",

@@ -7,7 +7,7 @@ import { useBodyScrollLock } from "@/lib/use-body-scroll-lock";
 import dynamic from "next/dynamic";
 import type { PromptEditorHandle } from "./prompt-editor/PromptEditor";
 import type { MediaRefContextValue } from "./prompt-editor/MediaRefNode";
-import type { RewriteAction } from "./prompt-editor/SelectionAiPlugin";
+import type { SelectionAiRequest } from "./prompt-editor/SelectionAiPlugin";
 
 /*
  * 编辑器必须 ssr:false 且按需加载，两个理由都硬：
@@ -93,12 +93,7 @@ export function PromptComposer({
    * 选区级 AI 的实际请求。由 make 页注入——它才知道当前模式、档位、spicy。
    * 不传就不显示动作条。
    */
-  onRewrite?(args: {
-    action: RewriteAction;
-    selection: string;
-    contextBefore: string;
-    contextAfter: string;
-  }): Promise<{ text: string; dropped: string[] }>;
+  onRewrite?: SelectionAiRequest;
 }) {
   const t = useTranslations("Make");
   const [expanded, setExpanded] = useState(false);
@@ -183,11 +178,13 @@ export function PromptComposer({
               shorten: t("aiShorten"),
               emphasize: t("aiEmphasize"),
               working: t("aiWorking"),
+              cancel: t("aiCancel"),
               replace: t("aiReplace"),
               insertBelow: t("aiInsertBelow"),
               retry: t("aiRetry"),
               discard: t("aiDiscard"),
               droppedRefs: t("aiDroppedRefs"),
+              charged: (credits: number) => t("aiCharged", { credits }),
             },
           }
         : undefined,

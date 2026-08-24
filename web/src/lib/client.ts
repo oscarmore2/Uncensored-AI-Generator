@@ -50,6 +50,8 @@ export interface ApiGeneration {
   created_at: string;
 }
 
+import { createSseParser } from "./llm/sse";
+
 export class ApiError extends Error {
   status: number;
   code?: string;
@@ -58,6 +60,63 @@ export class ApiError extends Error {
     this.status = status;
     this.code = code;
   }
+}
+
+/**
+ * SSE 流式请求。逐个事件回调，流结束才 resolve。
+ *
+ * 与 `api()` 分开而不是加个开关：那个函数的契约是「拿到完整 JSON 再返回」，
+ * 流式的契约是「边收边给」，硬并成一个只会让两边都变难懂。
+ *
+ * 出错路径也不一样：SSE 里错误是流**中间**的一个事件（上游先给了半段文字
+ * 才被出口审查拦下来），HTTP 状态码那时早就 200 发出去了。所以调用方要
+ * 同时处理「throw 出来的 ApiError」和「error 事件」两种失败。
+ */
+export async function apiStream(
+  path: string,
+  init: RequestInit,
+  onEvent: (event: Record<string, unknown>) => void
+): Promise<void> {
+  const resp = await fetch(path, {
+    ...init,
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "text/event-stream",
+      ...init.headers,
+    },
+  });
+
+  const isSse = (resp.headers.get("content-type") ?? "").includes("text/event-stream");
+  if (!resp.ok || !isSse || !resp.body) {
+    // 鉴权失败、限流、并发锁这些在流开始之前就被挡下来了，回的是普通 JSON
+    const data = (await resp.json().catch(() => ({}))) as { error?: string; code?: string };
+    throw new ApiError(
+      resp.status,
+      data.error ?? `请求失败 (${resp.status})`,
+      data.code
+    );
+  }
+
+  const reader = resp.body.getReader();
+  const decoder = new TextDecoder();
+  const parser = createSseParser();
+  const drain = (payloads: string[]) => {
+    for (const payload of payloads) {
+      if (payload === "[DONE]") continue;
+      try {
+        onEvent(JSON.parse(payload) as Record<string, unknown>);
+      } catch {
+        // 不是我们发的事件就跳过，别让一条坏数据掐断整条流
+      }
+    }
+  };
+
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    drain(parser.feed(decoder.decode(value, { stream: true })));
+  }
+  drain(parser.flush());
 }
 
 export async function api<T>(path: string, init?: RequestInit): Promise<T> {

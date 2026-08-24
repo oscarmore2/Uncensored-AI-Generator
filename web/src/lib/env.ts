@@ -59,6 +59,11 @@ const envSchema = z.object({
   HF_MAGIC_MODEL: z
     .string()
     .default("dphn/Dolphin-Mistral-24B-Venice-Edition:featherless-ai"),
+  // 文本 LLM 聚合层：选区级 AI / 技能系统走这条线（AI_SKILL_SYSTEM_PLAN 10.1）
+  // Key: https://openrouter.ai/keys
+  // 不配的话自动退回上面的 HF 凭据——换上游之前功能照常可用
+  OPENROUTER_API_KEY: z.string().default(""),
+  OPENROUTER_BASE_URL: z.string().url().default("https://openrouter.ai/api/v1"),
   // 内容审查首选：OpenAI Moderation（omni-moderation-latest 免费，专用分类器）
   // 未配置时自动降级到 HF LLM 分类
   OPENAI_API_KEY: z.string().default(""),

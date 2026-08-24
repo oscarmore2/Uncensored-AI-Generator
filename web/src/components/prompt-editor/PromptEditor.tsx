@@ -49,8 +49,8 @@ import { Toolbar } from "./Toolbar";
 import { MentionPlugin, type RefTarget } from "./MentionPlugin";
 import {
   SelectionAiPlugin,
-  type RewriteAction,
   type SelectionAiLabels,
+  type SelectionAiRequest,
 } from "./SelectionAiPlugin";
 
 /**
@@ -133,12 +133,7 @@ export function PromptEditor({
    */
   ai?: {
     labels: SelectionAiLabels;
-    request(args: {
-      action: RewriteAction;
-      selection: string;
-      contextBefore: string;
-      contextAfter: string;
-    }): Promise<{ text: string; dropped: string[] }>;
+    request: SelectionAiRequest;
   };
 }) {
   const initialConfig = useMemo(

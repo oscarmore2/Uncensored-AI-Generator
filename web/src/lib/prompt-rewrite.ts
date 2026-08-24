@@ -1,5 +1,7 @@
 import "server-only";
-import { callMagicModel } from "./magic-prompt";
+import { chat, streamChat, type ChatUsage } from "./llm/chat";
+import { pickTier, type LlmTier } from "./llm/models";
+import { splitEmittable } from "./llm/sse";
 import { maskPromptRefs, unmaskPromptRefs } from "./prompt-ref-guard";
 import { PROMPT_FORMAT_RULES, resolvePromptTarget } from "./prompt-targets";
 import { looksChinese, stripWrapper } from "./prompt-rewrite-text";
@@ -49,6 +51,7 @@ export type RewriteOutput = {
   text: string;
   tokens?: number;
   droppedRefs: string[];
+  usage?: ChatUsage;
 };
 
 const COMMON_RULES = [
@@ -113,24 +116,90 @@ function buildUser(input: RewriteInput, maskedSelection: string): string {
 /** 上下文各截多少字。太长会稀释模型注意力，也白烧 token */
 export const CONTEXT_CHARS = 300;
 
+/** 输出上限按选区放大：expand 会写得比原文长，卡太死会被硬截断 */
+function maxTokensFor(input: RewriteInput): number {
+  return Math.min(1200, Math.max(200, Math.ceil(input.selection.length * 1.5)));
+}
+
+function requestFor(input: RewriteInput, masked: string, tier: LlmTier) {
+  return {
+    system: buildSystem(input),
+    user: buildUser(input, masked),
+    tier,
+    maxTokens: maxTokensFor(input),
+    temperature: input.action === "localize" ? 0.1 : 0.3,
+    tag: "prompt-rewrite" as const,
+  };
+}
+
+/** 收尾：去壳 + 还原引用。流式与非流式共用，两条路的结果必须一模一样 */
+function finalize(raw: string, refTokens: string[]): { text: string; droppedRefs: string[] } | null {
+  const body = stripWrapper(raw);
+  if (!body) return null;
+  const restored = unmaskPromptRefs(body, refTokens);
+  return { text: restored.text, droppedRefs: restored.missing };
+}
+
 export async function rewriteSelection(input: RewriteInput): Promise<RewriteOutput | null> {
   if (!input.selection.trim()) return null;
 
   const { masked, tokens: refTokens } = maskPromptRefs(input.selection);
+  const tier = pickTier({ allowSensitive: input.allowSensitive });
 
-  const called = await callMagicModel({
-    system: buildSystem(input),
-    user: buildUser(input, masked),
-    // 输出上限按选区放大：expand 会写得比原文长，卡太死会被硬截断
-    maxTokens: Math.min(1200, Math.max(200, Math.ceil(input.selection.length * 1.5))),
-    temperature: input.action === "localize" ? 0.1 : 0.3,
-    tag: "prompt-rewrite",
-  });
+  const called = await chat(requestFor(input, masked, tier));
   if (!called) return null;
 
-  const body = stripWrapper(called.content);
-  if (!body) return null;
+  const done = finalize(called.text, refTokens);
+  if (!done) return null;
 
-  const restored = unmaskPromptRefs(body, refTokens);
-  return { text: restored.text, tokens: called.tokens, droppedRefs: restored.missing };
+  return { ...done, tokens: called.usage.totalTokens, usage: called.usage };
+}
+
+export type RewriteStreamEvent =
+  | { type: "delta"; text: string }
+  | { type: "done"; result: RewriteOutput };
+
+/**
+ * 流式改写。逐段吐**可以直接显示的**文本，最后一条带完整结果。
+ *
+ * delta 与 done.text 会有细微出入，这是有意的：done 那份多跑了一次去壳
+ * （模型偶尔会拿 ``` 或引号把结果包起来），而去壳只有拿到全文才能做。
+ * 所以界面上收到 done 时应该**整体替换**已经流出来的文字，不要追加。
+ */
+export async function* streamRewriteSelection(
+  input: RewriteInput,
+  signal?: AbortSignal
+): AsyncGenerator<RewriteStreamEvent> {
+  if (!input.selection.trim()) return;
+
+  const { masked, tokens: refTokens } = maskPromptRefs(input.selection);
+  const tier = pickTier({ allowSensitive: input.allowSensitive });
+
+  let raw = "";
+  /** 已经推给界面的显示文本长度。占位符还原会改变长度，只能按显示侧记 */
+  let sent = 0;
+  let usage: ChatUsage = {};
+
+  for await (const ev of streamChat({ ...requestFor(input, masked, tier), signal })) {
+    if (ev.type === "delta") {
+      raw += ev.text;
+      /*
+       * 扣住还没写完的占位符再显示。不扣的话用户会眼看着屏幕上蹦出
+       * `[[RE` 然后变成 @Image1——看起来就像出了 bug。
+       */
+      const { emit } = splitEmittable(raw);
+      const display = unmaskPromptRefs(emit, refTokens).text;
+      if (display.length > sent) {
+        yield { type: "delta", text: display.slice(sent) };
+        sent = display.length;
+      }
+      continue;
+    }
+    usage = ev.usage;
+    raw = ev.text || raw;
+  }
+
+  const done = finalize(raw, refTokens);
+  if (!done) return;
+  yield { type: "done", result: { ...done, tokens: usage.totalTokens, usage } };
 }

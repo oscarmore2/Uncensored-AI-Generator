@@ -570,11 +570,13 @@
     "aiShorten": "精简",
     "aiEmphasize": "加重语气",
     "aiWorking": "改写中…",
+    "aiCancel": "取消",
     "aiReplace": "替换",
     "aiInsertBelow": "插入下方",
     "aiRetry": "重试",
     "aiDiscard": "放弃",
-    "aiDroppedRefs": "模型弄丢的引用"
+    "aiDroppedRefs": "模型弄丢的引用",
+    "aiCharged": "本次扣 {credits} 点"
   },
   "Profile": {
     "title": "个人中心",

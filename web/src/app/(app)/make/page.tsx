@@ -4,6 +4,7 @@ import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "rea
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   api,
+  apiStream,
   ApiError,
   MODES,
   estimateCost,
@@ -52,6 +53,7 @@ import {
 import { buildMentionTargets } from "@/components/prompt-editor/targets";
 import { normalizePrompt, refTokensInText } from "@/lib/prompt-doc";
 import { PromptComposer } from "@/components/PromptComposer";
+import type { SelectionAiRequest } from "@/components/prompt-editor/SelectionAiPlugin";
 import { TemplatePanel, type TemplateApplyPayload } from "@/components/TemplatePanel";
 import { DraftBar } from "@/components/DraftBar";
 import { detectMediaKindFromUrl } from "@/lib/plaything-categories";
@@ -147,6 +149,8 @@ function MakePageInner() {
     setPromptReloadKey((k) => k + 1);
   }, []);
   const [magicEnabled, setMagicEnabled] = useState(false);
+  /* 选区级 AI 是**另一个**开关：它走文本 LLM 那条线，见 /api/features */
+  const [selectionAi, setSelectionAi] = useState(false);
   const [catalog, setCatalog] = useState<CatalogResponse | null>(null);
   const [extraParams, setExtraParams] = useState<Record<string, string>>({});
   const pollingRef = useRef(false);
@@ -598,9 +602,17 @@ function MakePageInner() {
 
   useEffect(() => {
     let cancelled = false;
-    api<{ magic_prompt: boolean }>("/api/features")
-      .then((f) => !cancelled && setMagicEnabled(Boolean(f.magic_prompt)))
-      .catch(() => !cancelled && setMagicEnabled(false));
+    api<{ magic_prompt: boolean; selection_ai?: boolean }>("/api/features")
+      .then((f) => {
+        if (cancelled) return;
+        setMagicEnabled(Boolean(f.magic_prompt));
+        setSelectionAi(Boolean(f.selection_ai));
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setMagicEnabled(false);
+        setSelectionAi(false);
+      });
     api<CatalogResponse>("/api/catalog")
       .then((c) => !cancelled && setCatalog(c))
       .catch(() => !cancelled && setCatalog(null));
@@ -778,28 +790,62 @@ function MakePageInner() {
    * 刻意**不碰任何编辑器状态**：拿到什么就回什么，替换与否由用户在预览卡上决定。
    * 这正是它与魔法指令的根本差别——那个是直接把整段覆盖掉的。
    */
-  const rewriteSelection = useCallback(
-    async (args: {
-      action: string;
-      selection: string;
-      contextBefore: string;
-      contextAfter: string;
-    }) => {
-      const data = await api<{ text: string; dropped_refs?: string[] }>("/api/prompts/rewrite", {
-        method: "POST",
-        body: JSON.stringify({
-          action: args.action,
-          selection: args.selection,
-          context_before: args.contextBefore,
-          context_after: args.contextAfter,
-          mode,
-          tier,
-          spicy,
-        }),
-      });
-      return { text: data.text, dropped: data.dropped_refs ?? [] };
+  const rewriteSelection = useCallback<SelectionAiRequest>(
+    async (args, { signal, onDelta }) => {
+      let result: { text: string; dropped: string[]; charged?: number } | null = null;
+      /*
+       * 失败先攒着、流走完再抛。
+       *
+       * 出口审查是在流的**末尾**跑的，所以「被拦下来」这件事只能以事件形式
+       * 出现在流中间——那时 HTTP 200 早就发出去了。在回调里直接 throw 只会
+       * 被读取循环吞掉，用户看到的是「什么都没发生」。
+       */
+      let failure: ApiError | null = null;
+
+      await apiStream(
+        "/api/prompts/rewrite",
+        {
+          method: "POST",
+          signal,
+          body: JSON.stringify({
+            action: args.action,
+            selection: args.selection,
+            context_before: args.contextBefore,
+            context_after: args.contextAfter,
+            mode,
+            tier,
+            spicy,
+            stream: true,
+          }),
+        },
+        (event) => {
+          if (event.type === "delta") {
+            onDelta(String(event.text ?? ""));
+            return;
+          }
+          if (event.type === "done") {
+            result = {
+              text: String(event.text ?? ""),
+              dropped: Array.isArray(event.dropped_refs) ? (event.dropped_refs as string[]) : [],
+              charged: typeof event.charged === "number" ? event.charged : undefined,
+            };
+            return;
+          }
+          if (event.type === "error") {
+            failure = new ApiError(
+              typeof event.status === "number" ? event.status : 400,
+              String(event.error ?? t("magicFailed")),
+              typeof event.code === "string" ? event.code : undefined
+            );
+          }
+        }
+      );
+
+      if (failure) throw failure;
+      if (!result) throw new ApiError(503, t("magicFailed"), "REWRITE_UNAVAILABLE");
+      return result;
     },
-    [mode, tier, spicy]
+    [mode, tier, spicy, t]
   );
 
   async function runMagicPrompt() {
@@ -1280,7 +1326,7 @@ function MakePageInner() {
                 onChange={setPrompt}
                 reloadKey={promptReloadKey}
                 /* 魔法指令未启用时选区级 AI 也不给：它们共用同一套上游凭据 */
-                onRewrite={magicEnabled ? rewriteSelection : undefined}
+                onRewrite={selectionAi ? rewriteSelection : undefined}
                 /* 文生图那套规则明写「避免长段落叙事」，
                  * 给标题和列表等于鼓励用户写出会让出图变差的东西 */
                 structure={activeGroup !== "image"}
