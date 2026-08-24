@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
-import { type MentionTarget } from "./PromptMentionBox";
+import type { RefTarget } from "./prompt-editor/targets";
 import { useBodyScrollLock } from "@/lib/use-body-scroll-lock";
 import dynamic from "next/dynamic";
 import type { PromptEditorHandle } from "./prompt-editor/PromptEditor";
@@ -52,7 +52,7 @@ const Z_MEDIA_DIALOG = "z-[130]";
 /** 素材分区的固定顺序，与提交顺序一致 */
 const KIND_ORDER = ["image", "video", "audio"] as const;
 
-const KIND_ICON: Record<MentionTarget["kind"], string> = {
+const KIND_ICON: Record<RefTarget["kind"], string> = {
   image: "fa-image",
   video: "fa-film",
   audio: "fa-music",
@@ -70,7 +70,7 @@ export function PromptComposer({
 }: {
   value: string;
   onChange: (next: string) => void;
-  targets: MentionTarget[];
+  targets: RefTarget[];
   placeholder?: string;
   className?: string;
   disabled?: boolean;
@@ -90,7 +90,7 @@ export function PromptComposer({
 }) {
   const t = useTranslations("Make");
   const [expanded, setExpanded] = useState(false);
-  const [preview, setPreview] = useState<MentionTarget | null>(null);
+  const [preview, setPreview] = useState<RefTarget | null>(null);
   /* 预览只是**排版辅助**：上行的始终是原始文本，与编辑器逐字节一致 */
   const [previewing, setPreviewing] = useState(false);
 
@@ -109,7 +109,7 @@ export function PromptComposer({
 
   useBodyScrollLock(expanded);
 
-  const kindLabel: Record<MentionTarget["kind"], string> = {
+  const kindLabel: Record<RefTarget["kind"], string> = {
     image: t("mentionKindImage"),
     video: t("mentionKindVideo"),
     audio: t("mentionKindAudio"),
@@ -130,7 +130,7 @@ export function PromptComposer({
 
   /* 引用落到当前可见的那个编辑器上：弹窗开着就是弹窗里那个 */
   const insert = useCallback(
-    (target: MentionTarget) => {
+    (target: RefTarget) => {
       const h = expanded ? modalHandle.current : inlineHandle.current;
       // 带上 url 作为 hint：日后素材顺序变了才报得出「所指已变」
       h?.insertRef(target.token, target.url);
@@ -191,7 +191,7 @@ export function PromptComposer({
   }, [expanded, preview, collapse]);
 
   const citeMedia = useCallback(
-    (target: MentionTarget) => {
+    (target: RefTarget) => {
       /* 窄屏预览态下编辑器是藏起来的，没有光标可插，先切回编辑 */
       setPreviewing((on) => (window.innerWidth < 1024 ? false : on));
       requestAnimationFrame(() => insert(target));
@@ -398,7 +398,7 @@ function MediaTile({
   previewLabel,
   insertLabel,
 }: {
-  target: MentionTarget;
+  target: RefTarget;
   onPreview: () => void;
   onInsert: () => void;
   previewLabel: string;
@@ -442,7 +442,7 @@ function MediaPreviewDialog({
   onClose,
   onInsert,
 }: {
-  target: MentionTarget;
+  target: RefTarget;
   onClose: () => void;
   onInsert: () => void;
 }) {
@@ -500,7 +500,7 @@ function MediaPreviewDialog({
   );
 }
 
-function Thumb({ target }: { target: MentionTarget }) {
+function Thumb({ target }: { target: RefTarget }) {
   if (target.kind === "image") {
     // eslint-disable-next-line @next/next/no-img-element
     return <img src={target.url} alt="" className="h-full w-full object-cover" />;
@@ -523,7 +523,7 @@ function Thumb({ target }: { target: MentionTarget }) {
   );
 }
 
-function Full({ target }: { target: MentionTarget }) {
+function Full({ target }: { target: RefTarget }) {
   if (target.kind === "image") {
     // eslint-disable-next-line @next/next/no-img-element
     return <img src={target.url} alt={target.name} className="max-h-[60vh] max-w-full object-contain" />;

@@ -49,7 +49,7 @@ import {
   withMediaIds,
   type UploadedMedia,
 } from "@/components/MediaInputFields";
-import { buildMentionTargets } from "@/components/PromptMentionBox";
+import { buildMentionTargets } from "@/components/prompt-editor/targets";
 import { normalizePrompt, refTokensInText } from "@/lib/prompt-doc";
 import { PromptComposer } from "@/components/PromptComposer";
 import { TemplatePanel, type TemplateApplyPayload } from "@/components/TemplatePanel";

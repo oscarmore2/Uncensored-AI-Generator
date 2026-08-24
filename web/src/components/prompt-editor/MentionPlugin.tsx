@@ -11,6 +11,7 @@ import {
 import { $createTextNode } from "lexical";
 import { $createMediaRefNode } from "./MediaRefNode";
 import type { RefKind } from "@/lib/prompt-doc";
+import type { RefTarget } from "./targets";
 
 /**
  * 打 @ 弹出素材列表。
@@ -19,14 +20,6 @@ import type { RefKind } from "@/lib/prompt-doc";
  * 换掉 textarea 的同时把菜单弄丢或者弄得不一样，对用户就是功能退化，
  * 而且是那种「以前能用现在不能用」的退化，比没做还糟。
  */
-
-export type RefTarget = {
-  /** 插进提示词里的写法（不含 @），如 Image1 */
-  token: string;
-  kind: RefKind;
-  url: string;
-  name: string;
-};
 
 /**
  * 触发条件与 PromptMentionBox 的 MENTION_RE **逐字符相同**。
@@ -48,6 +41,8 @@ const KIND_ICON: Record<RefKind, string> = {
   video: "fa-film",
   audio: "fa-music",
 };
+
+export type { RefTarget };
 
 export function MentionPlugin({
   targets,
