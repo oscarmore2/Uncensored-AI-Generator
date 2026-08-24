@@ -4,6 +4,9 @@ import { GENERATION_MODES, GENERATION_TIERS } from "@/lib/generation-modes";
 import { getCurrentUser } from "@/lib/auth";
 import { rateLimit } from "@/lib/rate-limit";
 import { enhancePrompt } from "@/lib/magic-prompt";
+import { getAiCreditsPer1kTokens } from "@/lib/ai-token-billing";
+import { creditsForTokens, estimateTokens } from "@/lib/ai-token-cost";
+import { db } from "@/lib/db";
 import { isBlocked, reviewPrompt } from "@/lib/content-safety";
 import { hasAdultAccess } from "@/lib/adult-access";
 
@@ -75,8 +78,39 @@ export async function POST(req: Request) {
         { status: 422 }
       );
     }
+    /*
+     * 按 token 扣点。
+     *
+     * 只对真正调用了大模型的那条路收费：source === "local" 是本地规则兜底，
+     * 一个 token 都没烧，收钱说不过去。
+     *
+     * 扣费放在**出口审查通过之后**：审查被拦下来的请求用户什么都没拿到，
+     * 不该付钱。代价是那部分上游成本我们自己吃——但反过来（先扣后审）
+     * 等于让用户为一个被我们拒绝的结果买单，那更说不过去。
+     */
+    let charged = 0;
+    if (result.source === "dolphin") {
+      const per1k = await getAiCreditsPer1kTokens();
+      // 拿不到真实用量才估算，且估算只会偏高
+      const tokens = result.tokens ?? estimateTokens(parsed.data.prompt + result.prompt);
+      charged = creditsForTokens(tokens, per1k);
+      if (charged > 0) {
+        const ok = await db.user.updateMany({
+          where: { id: user.id, balance: { gte: charged } },
+          data: { balance: { decrement: charged } },
+        });
+        if (ok.count === 0) {
+          return NextResponse.json(
+            { error: "点数不足，请先充值", code: "INSUFFICIENT_CREDITS" },
+            { status: 400 }
+          );
+        }
+      }
+    }
+
     return NextResponse.json({
       ok: true,
+      charged,
       prompt: result.prompt,
       negative_prompt: result.negative_prompt ?? null,
       source: result.source,

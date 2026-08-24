@@ -24,6 +24,14 @@ export type MagicPromptResult = {
   negative_prompt?: string;
   source: "local" | "dolphin";
   /**
+   * 本次真实消耗的 token。
+   *
+   * 上游是 OpenAI 兼容接口，响应里本来就带 usage，以前只是没读。
+   * 拿不到时留空，由调用方决定要不要估算——**不在这里偷偷估**，
+   * 估算值和真实值混在一个字段里，日后对账会分不清哪次是估的。
+   */
+  tokens?: number;
+  /**
    * 改写过程中被模型弄丢的素材引用。
    *
    * 不擅自补回原文——补在哪一句只能靠猜，猜错比丢掉更糟。
@@ -339,6 +347,7 @@ async function enhancePromptDolphin(
 
   const data = (await resp.json()) as {
     choices?: Array<{ message?: { content?: string } }>;
+    usage?: { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number };
   };
   const content = data.choices?.[0]?.message?.content?.trim();
   if (!content) return null;
@@ -346,12 +355,20 @@ async function enhancePromptDolphin(
   const parsed = parseLlmPromptOutput(content, target);
   if (!parsed.prompt) return null;
 
+  const usage = data.usage;
+  const tokens =
+    usage?.total_tokens ??
+    (usage?.prompt_tokens != null && usage?.completion_tokens != null
+      ? usage.prompt_tokens + usage.completion_tokens
+      : undefined);
+
   return withTarget(
     {
       prompt: parsed.prompt,
       // 模型偶尔只回正向；支持反向的档位就用规则模板补齐，别让输入框空着
       negative_prompt: negativeFor(target, input, parsed.negative_prompt),
       source: "dolphin",
+      ...(tokens != null ? { tokens } : {}),
     },
     target
   );
