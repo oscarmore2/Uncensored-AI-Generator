@@ -101,14 +101,25 @@ export function MentionPlugin({
       onQueryChange={setQuery}
       onSelectOption={onSelect}
       triggerFn={triggerFn}
+      /*
+       * 菜单的锚点由 Lexical 直接挂到 <body> 上，且只设 position:absolute、
+       * **不设 z-index**。而放大编辑弹窗是 z-[120]，于是菜单虽然位置算对了、
+       * 选项也渲染了，却整个压在弹窗底下——常态输入框里一切正常，
+       * 一进弹窗打 @ 就「没反应」。
+       *
+       * 这里给锚点补一个高于弹窗的层级。用 240 与胶囊换绑菜单同档：
+       * 两者都是「必须盖住编辑区里一切东西」的瞬时浮层。
+       *
+       * className 是直接赋值上去的（setContainerDivAttributes），
+       * 但 display/position 走的是内联样式，不会被这条覆盖掉。
+       */
+      anchorClassName="z-[240]"
       menuRenderFn={(anchorRef, { selectedIndex, selectOptionAndCleanUp, setHighlightedIndex }) =>
         anchorRef.current
           ? createPortal(
-              <div
-                role="listbox"
-                aria-label={labels.header}
-                className="w-64 max-w-[calc(100vw-2rem)] overflow-hidden rounded-2xl border border-line bg-surface shadow-xl"
-              >
+              /* 不再挂 role="listbox"：外层锚点已经是 listbox 了，
+                 这里再来一个会变成嵌套 listbox，option 的归属就乱了 */
+              <div className="w-64 max-w-[calc(100vw-2rem)] overflow-hidden rounded-2xl border border-line bg-surface shadow-xl">
                 <div className="px-3 pt-2.5 pb-1.5 text-[10px] font-semibold uppercase tracking-wider text-ink-subtle">
                   {labels.header}
                 </div>
