@@ -51,6 +51,7 @@ import {
   SelectionAiPlugin,
   type SelectionAiLabels,
   type SelectionAiRequest,
+  type SelectionAiSkill,
 } from "./SelectionAiPlugin";
 
 /**
@@ -134,6 +135,7 @@ export function PromptEditor({
   ai?: {
     labels: SelectionAiLabels;
     request: SelectionAiRequest;
+    skills: SelectionAiSkill[];
   };
 }) {
   const initialConfig = useMemo(
@@ -206,7 +208,14 @@ export function PromptEditor({
               close: labels.mentionClose,
             }}
           />
-          {ai && <SelectionAiPlugin enabled={!disabled} labels={ai.labels} request={ai.request} />}
+          {ai && (
+            <SelectionAiPlugin
+              enabled={!disabled}
+              labels={ai.labels}
+              skills={ai.skills}
+              request={ai.request}
+            />
+          )}
           <EditablePlugin disabled={disabled} />
           <PastePlugin />
           <ReloadPlugin text={initialText} reloadKey={reloadKey} />

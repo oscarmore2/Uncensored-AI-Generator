@@ -7,7 +7,10 @@ import { useBodyScrollLock } from "@/lib/use-body-scroll-lock";
 import dynamic from "next/dynamic";
 import type { PromptEditorHandle } from "./prompt-editor/PromptEditor";
 import type { MediaRefContextValue } from "./prompt-editor/MediaRefNode";
-import type { SelectionAiRequest } from "./prompt-editor/SelectionAiPlugin";
+import type {
+  SelectionAiRequest,
+  SelectionAiSkill,
+} from "./prompt-editor/SelectionAiPlugin";
 
 /*
  * 编辑器必须 ssr:false 且按需加载，两个理由都硬：
@@ -69,6 +72,7 @@ export function PromptComposer({
   structure = true,
   reloadKey,
   onRewrite,
+  skills,
 }: {
   value: string;
   onChange: (next: string) => void;
@@ -94,6 +98,11 @@ export function PromptComposer({
    * 不传就不显示动作条。
    */
   onRewrite?: SelectionAiRequest;
+  /**
+   * 当前模式下可用的技能。由 make 页从 /api/skills 取——名称与图标都在库里，
+   * 前端不再自己维护一份清单，否则管理端停用一个技能，按钮还在。
+   */
+  skills?: SelectionAiSkill[];
 }) {
   const t = useTranslations("Make");
   const [expanded, setExpanded] = useState(false);
@@ -171,12 +180,8 @@ export function PromptComposer({
       onRewrite
         ? {
             request: onRewrite,
+            skills: skills ?? [],
             labels: {
-              polish: t("aiPolish"),
-              localize: t("aiLocalize"),
-              expand: t("aiExpand"),
-              shorten: t("aiShorten"),
-              emphasize: t("aiEmphasize"),
               working: t("aiWorking"),
               cancel: t("aiCancel"),
               replace: t("aiReplace"),
@@ -189,7 +194,7 @@ export function PromptComposer({
             },
           }
         : undefined,
-    [onRewrite, t]
+    [onRewrite, skills, t]
   );
 
   const editorLabels = useMemo(

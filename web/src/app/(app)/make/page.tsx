@@ -56,12 +56,13 @@ import { PromptComposer } from "@/components/PromptComposer";
 import type {
   SelectionAiCharge,
   SelectionAiRequest,
+  SelectionAiSkill,
 } from "@/components/prompt-editor/SelectionAiPlugin";
 import { TemplatePanel, type TemplateApplyPayload } from "@/components/TemplatePanel";
 import { DraftBar } from "@/components/DraftBar";
 import { detectMediaKindFromUrl } from "@/lib/plaything-categories";
 import { MediaExpiryBadge } from "@/components/MediaExpiryBadge";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 
 type Phase = "idle" | "submitting" | "polling";
 
@@ -87,6 +88,7 @@ type MakeDraft = {
 
 function MakePageInner() {
   const t = useTranslations("Make");
+  const locale = useLocale();
   const examplePrompts = t.raw("examples") as string[];
   const { user, refreshUser, toast } = useApp();
   const router = useRouter();
@@ -154,6 +156,8 @@ function MakePageInner() {
   const [magicEnabled, setMagicEnabled] = useState(false);
   /* 选区级 AI 是**另一个**开关：它走文本 LLM 那条线，见 /api/features */
   const [selectionAi, setSelectionAi] = useState(false);
+  /* 动作条上有哪几颗按钮由库里的技能决定，不写死在前端 */
+  const [skills, setSkills] = useState<SelectionAiSkill[]>([]);
   const [catalog, setCatalog] = useState<CatalogResponse | null>(null);
   const [extraParams, setExtraParams] = useState<Record<string, string>>({});
   const pollingRef = useRef(false);
@@ -787,6 +791,38 @@ function MakePageInner() {
     setSpicy(product.spicy);
   }
 
+  /*
+   * 技能清单随模式变：「补充细节」和「延展镜头」是两条不同的技能，
+   * 分别只在图像 / 视频模式下出现。所以 mode / tier / spicy 一变就要重取。
+   */
+  useEffect(() => {
+    if (!selectionAi) {
+      setSkills([]);
+      return;
+    }
+    let cancelled = false;
+    const params = new URLSearchParams({ trigger: "selection", mode, spicy: String(spicy) });
+    if (tier) params.set("tier", tier);
+    api<{
+      skills: Array<{ key: string; name: string; name_en: string; icon: string; description: string }>;
+    }>(`/api/skills?${params.toString()}`)
+      .then((r) => {
+        if (cancelled) return;
+        setSkills(
+          r.skills.map((x) => ({
+            key: x.key,
+            name: locale.startsWith("en") && x.name_en ? x.name_en : x.name,
+            icon: x.icon,
+            description: x.description,
+          }))
+        );
+      })
+      .catch(() => !cancelled && setSkills([]));
+    return () => {
+      cancelled = true;
+    };
+  }, [selectionAi, mode, tier, spicy, locale]);
+
   /** 服务端算好的花费，前端一个数都不换算——两边各算一遍迟早对不上 */
   const chargeOf = useCallback((event: Record<string, unknown>): SelectionAiCharge | undefined => {
     if (typeof event.charged_credits !== "string") return undefined;
@@ -825,6 +861,9 @@ function MakePageInner() {
             selection: args.selection,
             context_before: args.contextBefore,
             context_after: args.contextAfter,
+            /* {{full_text}} 用。技能没引用它就白送几百字节，值得——
+               让技能作者能拿到全文，比省这点流量重要 */
+            full_text: prompt,
             mode,
             tier,
             spicy,
@@ -864,7 +903,7 @@ function MakePageInner() {
       if (!result) throw new ApiError(503, t("magicFailed"), "REWRITE_UNAVAILABLE");
       return result;
     },
-    [mode, tier, spicy, t, chargeOf]
+    [mode, tier, spicy, prompt, t, chargeOf]
   );
 
   async function runMagicPrompt() {
@@ -1346,6 +1385,7 @@ function MakePageInner() {
                 reloadKey={promptReloadKey}
                 /* 魔法指令未启用时选区级 AI 也不给：它们共用同一套上游凭据 */
                 onRewrite={selectionAi ? rewriteSelection : undefined}
+                skills={skills}
                 /* 文生图那套规则明写「避免长段落叙事」，
                  * 给标题和列表等于鼓励用户写出会让出图变差的东西 */
                 structure={activeGroup !== "image"}

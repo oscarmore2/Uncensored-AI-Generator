@@ -344,6 +344,70 @@ model OssAccount {
 }
 
 /**
+ * AI 技能：提示词定义 + 模型选择 + 时机绑定。
+ *
+ * 它**不是插件**——不能跑代码、不能联网、不能调工具。这条边界是安全前提，
+ * 别为了「更强大」把它拆掉。
+ *
+ * 官方技能的出厂定义写在 `lib/skills/definitions.ts` 里，库里这一行是「实例」。
+ * `isOverridden` 决定升级时要不要覆盖它，见 lib/skills/store.ts。
+ */
+model Skill {
+  id      Int    @id @default(autoincrement())
+  /// official | user
+  scope   String @default("official")
+  /// scope=user 时非空
+  ownerId Int?
+
+  /**
+   * 稳定标识。
+   *
+   * 规划原写 `@@unique([scope, ownerId, key])`，这里改成**全局唯一**：
+   * ownerId 为 NULL 时那个复合约束在 SQL 里根本不去重（NULL != NULL），
+   * 官方技能反而是没有保护的。官方用固定 slug、用户技能用 nanoid，
+   * 全局唯一既不会误伤，也让播种的 upsert 有一个真的能 upsert 的键。
+   */
+  key String @unique
+
+  name        String
+  nameEn      String @default("")
+  icon        String @default("")
+  description String @default("")
+
+  /// JSON 数组，取值见 lib/skills/definitions.ts 的 SKILL_TRIGGERS
+  triggers String
+  /// JSON 数组，空数组 = 全模式。用来让「转成镜头脚本」只在视频模式下出现
+  modes    String @default("[]")
+
+  /// 作者写的任务描述。**平台会在前后各包一层**：前面是审查口径，后面是输出格式硬要求。
+  /// 技能定义不能影响审查参数（规划 7.1），所以那两层不可被作者覆盖。
+  systemPrompt String
+  /// 变量见 lib/skills/template.ts
+  userTemplate String
+
+  /// → LlmModel.key；"auto" 表示按成人模式自动选档（见 llm/models.ts 的 pickTier）
+  modelKey        String  @default("auto")
+  /// replace | insert | append | card
+  outputMode      String  @default("replace")
+  maxOutputTokens Int     @default(600)
+  temperature     Float   @default(0.4)
+  requiresVipRank Int     @default(0)
+  isActive        Boolean @default(true)
+  sortOrder       Int     @default(0)
+
+  /// true 之后播种不再覆盖它。管理端保存任何修改都会置 true，「恢复默认」置回 false
+  isOverridden  Boolean @default(false)
+  /// 用户从哪个官方技能复制而来（S3）
+  forkedFromKey String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([scope, isActive, sortOrder])
+  @@index([ownerId])
+}
+
+/**
  * 文本 LLM 上游账户（OpenRouter 等）；同一时间最多一个 isActive=true
  *
  * 刻意**不复用** `ProviderAccount`：那套是任务制（submit → 轮询）、按次计价、

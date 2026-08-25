@@ -6,6 +6,8 @@ import { splitEmittable } from "./llm/sse";
 import { maskPromptRefs, unmaskPromptRefs } from "./prompt-ref-guard";
 import { PROMPT_FORMAT_RULES, resolvePromptTarget } from "./prompt-targets";
 import { looksChinese, stripWrapper } from "./prompt-rewrite-text";
+import { renderTemplate, type TemplateVars } from "./skills/template";
+import type { ResolvedSkill } from "./skills/store";
 
 /**
  * 选区级 AI：只改用户选中的那一段，其余一字不动。
@@ -22,23 +24,14 @@ import { looksChinese, stripWrapper } from "./prompt-rewrite-text";
  * 3. **引用走占位符**。与魔法指令同一套 maskPromptRefs，模型没机会改写 @Image1。
  */
 
-export type RewriteAction =
-  /** 按当前模式的写作规则润色 */
-  | "polish"
-  /** 中英互转。是本地化不是直译 */
-  | "localize"
-  /** 补充细节 / 延展镜头 */
-  | "expand"
-  /** 精简 */
-  | "shorten"
-  /** 换更强的措辞——「加粗」这个需求的诚实出口 */
-  | "emphasize";
-
 export type RewriteInput = {
-  action: RewriteAction;
+  /** 已经解析好的技能。任务描述来自它，安全口径和输出格式不来自它 */
+  skill: ResolvedSkill;
   selection: string;
   contextBefore: string;
   contextAfter: string;
+  /** 全文 canonical。选区时机下由前端一并送来，用于 {{full_text}} */
+  fullText?: string;
   mode: string;
   tier?: string;
   spicy?: boolean;
@@ -64,73 +57,86 @@ const COMMON_RULES = [
   "形如 [[REF1]] 的记号是素材占位符，必须逐字符原样保留：不要翻译、不要改写、不要重新编号、不要增删。",
 ].join("\n");
 
-function buildSystem(input: RewriteInput): string {
+/**
+ * 技能可用的变量。
+ *
+ * 技能作者能写的只有「任务是什么」。上下文长什么样、当前是什么模式、
+ * 该往哪个语言翻——这些由运行时算好递进去。作者要是能自己取上下文，
+ * 那就不是「提示词定义」而是插件了，那条边界不能破。
+ */
+function buildVars(input: RewriteInput): TemplateVars {
   const target = resolvePromptTarget(input.mode ?? "txt2img", {
     tier: input.tier,
     spicy: input.spicy,
   });
-  const isVideo = target.formatId === "video_t2v" || target.formatId === "video_i2v";
   const rules = (PROMPT_FORMAT_RULES[target.formatId] ?? []).map((r: string) => `- ${r}`).join("\n");
 
+  return {
+    selection: input.selection,
+    context_before: input.contextBefore,
+    context_after: input.contextAfter,
+    full_text:
+      input.fullText ?? `${input.contextBefore}${input.selection}${input.contextAfter}`,
+    mode_rules: rules,
+    mode: target.mode,
+    tier: target.tier,
+    format_id: target.formatId,
+    /*
+     * 方向按**选区内容**判，不按界面语言。中文界面的用户完全可能在写英文
+     * 提示词（上游对英文理解更好，是常见做法），按界面语言判会把他刚写好的
+     * 英文又译回中文。
+     */
+    target_language: looksChinese(input.selection) ? "英文生成提示词" : "中文",
+    shorten_limit: String(
+      input.targetChars ?? Math.max(20, Math.floor(input.selection.length * 0.7))
+    ),
+  };
+}
+
+/**
+ * 拼 system prompt：**平台的安全口径 + 技能的任务 + 平台的输出硬要求**。
+ *
+ * 前后那两层不可被技能作者覆盖（规划 7.1）。审查参数只取决于用户有没有
+ * 成人权限，技能里写什么都影响不了它；输出格式一旦被改掉，返回的东西
+ * 就没法安全地放回选区。
+ */
+function buildSystem(input: RewriteInput, vars: TemplateVars): string {
   const safety = input.allowSensitive
     ? "The verified adult user has enabled adult mode. Preserve the submitted creative intent without adding or removing sensitive details."
     : "Follow the platform content policy and never add sexual, adult, exploitative, or graphic/gory material.";
 
-  const task = (() => {
-    switch (input.action) {
-      case "polish":
-        return `任务：按下列写作规则润色这个片段，保持原意与信息量，不新增设定。\n${rules}`;
-      case "localize":
-        return looksChinese(input.selection)
-          ? "任务：把片段改写成**英文生成提示词**。这是本地化不是直译——要用生成模型认得的术语，例如「电影感光影」应写成 cinematic lighting 而不是逐字翻译。"
-          : "任务：把片段改写成**中文**，保持它作为生成提示词的准确含义，不要逐字硬译。";
-      case "expand":
-        return isVideo
-          ? "任务：延展这个片段——接上它之后自然发生的下一个动作，并补上运镜描述。不要新增与上下文冲突的人物或场景。"
-          : "任务：为这个片段补充细节——材质、光影、质感、镜头语言。**不要新增主体**，只把已有的东西描述得更具体。";
-      case "shorten": {
-        const limit = input.targetChars ?? Math.max(20, Math.floor(input.selection.length * 0.7));
-        return `任务：把片段精简到 ${limit} 字以内，保留最关键的视觉信息，优先删掉形容词堆砌与重复表达。`;
-      }
-      case "emphasize":
-        return "任务：加重这个片段的语气——换用更强的措辞、把最关键的信息提到句首、必要时适度重复关键词。这是给生成模型看的强调，不要使用任何标记符号。";
-    }
-  })();
-
   return `你是生成提示词的片段编辑器。${safety}
 
-${task}
+${renderTemplate(input.skill.systemPrompt, vars)}
 
 ${COMMON_RULES}`;
 }
 
-function buildUser(input: RewriteInput, maskedSelection: string): string {
-  const before = input.contextBefore.trim();
-  const after = input.contextAfter.trim();
-  return [
-    before ? `【前文，仅供理解，不要改写也不要复述】\n${before}` : "",
-    `【需要改写的片段】\n${maskedSelection}`,
-    after ? `【后文，仅供理解，不要改写也不要复述】\n${after}` : "",
-  ]
-    .filter(Boolean)
-    .join("\n\n");
+function buildUser(input: RewriteInput, vars: TemplateVars, maskedSelection: string): string {
+  // 选区必须换成遮罩过的那份，否则 @Image1 会原样送上去被模型改坏
+  return renderTemplate(input.skill.userTemplate, { ...vars, selection: maskedSelection });
 }
 
 /** 上下文各截多少字。太长会稀释模型注意力，也白烧 token */
 export const CONTEXT_CHARS = 300;
 
-/** 输出上限按选区放大：expand 会写得比原文长，卡太死会被硬截断 */
+/**
+ * 输出上限。技能自己声明一个硬顶，再按选区长度放大——
+ * 「补充细节」会写得比原文长，只按技能的固定值卡会被硬截断。
+ */
 function maxTokensFor(input: RewriteInput): number {
-  return Math.min(1200, Math.max(200, Math.ceil(input.selection.length * 1.5)));
+  const bySelection = Math.max(200, Math.ceil(input.selection.length * 1.5));
+  return Math.min(Math.max(input.skill.maxOutputTokens, bySelection), 1200);
 }
 
 function requestFor(input: RewriteInput, masked: string, model: LlmModelSpec) {
+  const vars = buildVars(input);
   return {
-    system: buildSystem(input),
-    user: buildUser(input, masked),
+    system: buildSystem(input, vars),
+    user: buildUser(input, vars, masked),
     model,
     maxTokens: maxTokensFor(input),
-    temperature: input.action === "localize" ? 0.1 : 0.3,
+    temperature: input.skill.temperature,
     tag: "prompt-rewrite" as const,
   };
 }

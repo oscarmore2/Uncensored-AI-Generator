@@ -2,6 +2,8 @@ import { describe, it, expect, beforeAll, afterAll, vi } from "vitest";
 import { createServer, type Server } from "node:http";
 import type { AddressInfo } from "node:net";
 import { LLM_MODELS } from "./models";
+import { OFFICIAL_SKILL_BY_KEY } from "../skills/definitions";
+import { skillFromDefinition } from "../skills/store";
 
 /**
  * 拿一个假上游把流式整条链路跑通。
@@ -198,7 +200,7 @@ describe("流式改写选区", () => {
     const deltas: string[] = [];
     let final = "";
     for await (const ev of streamRewriteSelection({
-      action: "polish",
+      skill: skillFromDefinition(OFFICIAL_SKILL_BY_KEY.get("polish")!),
       selection: "她站在窗边 @Image1",
       contextBefore: "",
       contextAfter: "",
@@ -220,7 +222,7 @@ describe("流式改写选区", () => {
 
     let result;
     for await (const ev of streamRewriteSelection({
-      action: "polish",
+      skill: skillFromDefinition(OFFICIAL_SKILL_BY_KEY.get("polish")!),
       selection: "她站在窗边 @Image1",
       contextBefore: "",
       contextAfter: "",
@@ -238,7 +240,7 @@ describe("流式改写选区", () => {
 
     let result;
     for await (const ev of streamRewriteSelection({
-      action: "polish",
+      skill: skillFromDefinition(OFFICIAL_SKILL_BY_KEY.get("polish")!),
       selection: "她站在窗边",
       contextBefore: "",
       contextAfter: "",
@@ -253,7 +255,7 @@ describe("流式改写选区", () => {
     const { streamRewriteSelection } = await import("../prompt-rewrite");
     respond = ({ res }) => sse(res, [delta("ok")]);
     for await (const _ of streamRewriteSelection({
-      action: "polish",
+      skill: skillFromDefinition(OFFICIAL_SKILL_BY_KEY.get("polish")!),
       selection: "一句话",
       contextBefore: "",
       contextAfter: "",

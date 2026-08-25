@@ -1,0 +1,21 @@
+/**
+ * 技能模板里能用的变量清单。给管理端显示，也是这份契约的唯一出处。
+ *
+ * 变量之外的一切由技能作者自由书写；写错的变量名会**原样留在提示词里**，
+ * 那是故意的——静默清空的话，作者要到看见模型答非所问时才会发现。
+ */
+export const TEMPLATE_VARIABLES: Array<{ name: string; desc: string }> = [
+  { name: "selection", desc: "选区文本（素材引用已换成占位符）" },
+  { name: "context_before", desc: "选区之前的 300 字" },
+  { name: "context_after", desc: "选区之后的 300 字" },
+  { name: "full_text", desc: "整段提示词的 canonical 文本" },
+  { name: "mode_rules", desc: "当前模式的写作规则，逐条展开" },
+  { name: "mode", desc: "当前模式（txt2img / txt2vid …）" },
+  { name: "tier", desc: "当前档位" },
+  { name: "format_id", desc: "写作格式（image_t2i / video_t2v …）" },
+  { name: "target_language", desc: "中英互转的目标语言，按选区内容判定" },
+  { name: "shorten_limit", desc: "精简的目标字数" },
+];
+
+/** `{{#name}}…{{/name}}`：值非空才输出这一段。前后文经常是空的，需要它 */
+export const TEMPLATE_SECTION_HINT = "{{#context_before}}…{{/context_before}}";

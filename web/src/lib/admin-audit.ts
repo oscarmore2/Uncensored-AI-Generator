@@ -26,7 +26,9 @@ export type AdminAuditAction =
   | "nowpayments_account"
   | "openai_account"
   | "llm_account"
-  | "llm_model_price";
+  | "llm_model_price"
+  | "skill_edit"
+  | "skill_restore";
 
 export async function logAdminAction(
   adminId: number,

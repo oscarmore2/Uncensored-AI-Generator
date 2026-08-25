@@ -35,6 +35,8 @@ vi.mock("@/lib/content-safety", () => ({
 vi.mock("@/lib/db", () => ({
   db: {
     llmAccount: { findFirst: async () => null },
+    // 技能表为空 → 退回 definitions.ts 的出厂定义，与线上首次部署时一致
+    skill: { findMany: async () => [], findUnique: async () => null, create: async () => ({}) },
     // 库里没有覆盖行 → 退回 models.ts 的出厂常量
     llmModel: { upsert: async () => ({}), findFirst: async () => null },
     llmUsageLog: {
@@ -243,6 +245,20 @@ describe("选区改写路由", () => {
     });
     // 上游已经跑过了，成本已经发生。这条必须写进用户可见文案
     expect(state.logs[0]).toMatchObject({ status: "blocked", chargedMicro: 31 });
+  });
+
+  it("不存在的技能直接拒掉，不去调上游", async () => {
+    const { POST } = await import("./route");
+    let called = false;
+    respond = (res) => {
+      called = true;
+      sse(res, [delta("x")]);
+    };
+
+    const resp = await POST(post({ action: "no-such-skill", stream: true }));
+    expect(resp.status).toBe(400);
+    await expect(resp.json()).resolves.toMatchObject({ code: "SKILL_UNAVAILABLE" });
+    expect(called).toBe(false);
   });
 
   it("余额为 0 时拦在入口，不许发起新调用", async () => {

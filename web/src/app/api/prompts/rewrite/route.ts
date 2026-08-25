@@ -23,12 +23,16 @@ import {
   type LlmUsageStatus,
 } from "@/lib/llm/billing";
 import { estimateTokens } from "@/lib/ai-token-cost";
+import { getSkill } from "@/lib/skills/store";
 import { isBlocked, reviewPrompt } from "@/lib/content-safety";
 import { hasAdultAccess } from "@/lib/adult-access";
 
 const bodySchema = z.object({
-  action: z.enum(["polish", "localize", "expand", "shorten", "emphasize"]),
+  /** 技能 key。官方那五个的 key 就是原来的动作名，所以线上协议没变 */
+  action: z.string().min(1).max(64),
   selection: z.string().min(1).max(2000),
+  /** 全文 canonical，给 {{full_text}} 用。技能没用到就白送，所以是选填 */
+  full_text: z.string().max(8000).optional(),
   context_before: z.string().max(CONTEXT_CHARS).default(""),
   context_after: z.string().max(CONTEXT_CHARS).default(""),
   mode: z.enum(GENERATION_MODES).optional(),
@@ -83,6 +87,11 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "该模式不支持提示词改写" }, { status: 400 });
   }
 
+  const skill = await getSkill(input.action);
+  if (!skill || !skill.isActive || !skill.triggers.includes("selection")) {
+    return NextResponse.json({ error: "该技能不可用", code: "SKILL_UNAVAILABLE" }, { status: 400 });
+  }
+
   /*
    * 发起新调用要求余额 > 0（规划 6.2b）。等于 0 就是没钱了，拦在入口。
    * 但**已经跑起来的调用一律结算到底**，哪怕把余额打成负数——
@@ -116,10 +125,11 @@ export async function POST(req: Request) {
   const mode = input.mode ?? "txt2img";
 
   const rewriteInput: RewriteInput = {
-    action: input.action,
+    skill,
     selection: input.selection,
     contextBefore: input.context_before,
     contextAfter: input.context_after,
+    fullText: input.full_text,
     mode,
     tier: input.tier,
     spicy: input.spicy,
@@ -149,7 +159,7 @@ export async function POST(req: Request) {
     const measured = usageOrEstimate(args.usage, args.model, args.promptText, args.outputText);
     return recordLlmUsage({
       userId: user.id,
-      skillKey: input.action,
+      skillKey: skill.key,
       modelKey: args.model.key,
       trigger: TRIGGER,
       multiplierBps: args.model.priceMultiplierBps,

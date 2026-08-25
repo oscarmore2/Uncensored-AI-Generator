@@ -19,14 +19,21 @@ import { $nodesFromText } from "./lexical-bridge";
  * 替换是一步撤销，改的永远只有用户圈出来的那一段。
  */
 
-export type RewriteAction = "polish" | "localize" | "expand" | "shorten" | "emphasize";
+/**
+ * 技能 key。**不再是封闭枚举**——技能是库里的行，管理端能加能停用，
+ * 前端写死一份清单只会和库里那份对不上。
+ */
+export type RewriteAction = string;
+
+/** 动作条上的一颗按钮。名称与图标都来自库，前端不再自己维护 */
+export type SelectionAiSkill = {
+  key: string;
+  name: string;
+  icon: string;
+  description?: string;
+};
 
 export type SelectionAiLabels = {
-  polish: string;
-  localize: string;
-  expand: string;
-  shorten: string;
-  emphasize: string;
   working: string;
   cancel: string;
   replace: string;
@@ -94,10 +101,13 @@ type Phase =
 export function SelectionAiPlugin({
   enabled = true,
   labels,
+  skills,
   request,
 }: {
   enabled?: boolean;
   labels: SelectionAiLabels;
+  /** 当前模式下可用的技能。空数组就不显示动作条 */
+  skills: SelectionAiSkill[];
   /** 由外层注入，插件本身不认识 API 与模式参数 */
   request: SelectionAiRequest;
 }) {
@@ -263,7 +273,7 @@ export function SelectionAiPlugin({
     [editor, finish]
   );
 
-  if (!enabled || phase.kind === "idle") return null;
+  if (!enabled || skills.length === 0 || phase.kind === "idle") return null;
 
   const rect = phase.rect;
   const style: React.CSSProperties = dock
@@ -284,26 +294,19 @@ export function SelectionAiPlugin({
     >
       {phase.kind === "menu" && (
         <div className="flex flex-wrap gap-1 p-1.5">
-          {(
-            [
-              ["polish", "fa-wand-magic-sparkles", labels.polish],
-              ["localize", "fa-language", labels.localize],
-              ["expand", "fa-arrows-left-right-to-line", labels.expand],
-              ["shorten", "fa-compress", labels.shorten],
-              ["emphasize", "fa-bolt", labels.emphasize],
-            ] as const
-          ).map(([action, icon, label]) => (
+          {skills.map((skill) => (
             <button
-              key={action}
+              key={skill.key}
               type="button"
+              title={skill.description}
               onMouseDown={(e) => {
                 e.preventDefault();
-                void run(action, rect);
+                void run(skill.key, rect);
               }}
               className="flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-[12px] text-ink-muted hover:bg-black/[0.05] hover:text-ink"
             >
-              <i className={`fas ${icon} text-[11px]`} />
-              {label}
+              {skill.icon && <i className={`fas ${skill.icon} text-[11px]`} />}
+              {skill.name}
             </button>
           ))}
         </div>
