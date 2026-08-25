@@ -13,6 +13,8 @@ const patchSchema = z
     vip_expires_at: z.string().datetime().nullable().optional(),
     vip_tier_id: z.number().int().positive().nullable().optional(),
     plaything_access: z.boolean().optional(),
+    /* 与 VIP 等级分开：想单独关停一个滥用技能编辑的用户，不该只能靠降他的 VIP */
+    skill_authoring: z.boolean().optional(),
   })
   .refine((v) => Object.keys(v).length > 0, "至少提供一个字段");
 
@@ -44,7 +46,17 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
       vipExpiresAt: true,
       vipTierId: true,
       playthingAccess: true,
-      vipTier: { select: { id: true, code: true, name: true, discountBps: true, playthingAccess: true } },
+      skillAuthoring: true,
+      vipTier: {
+        select: {
+          id: true,
+          code: true,
+          name: true,
+          discountBps: true,
+          playthingAccess: true,
+          skillAuthoring: true,
+        },
+      },
       disabledAt: true,
       createdAt: true,
       _count: {
@@ -137,6 +149,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
       is_vip: user.isVip,
       vip_expires_at: user.vipExpiresAt,
       plaything_access: user.playthingAccess,
+      skill_authoring: user.skillAuthoring,
       vip_tier: user.vipTier
         ? {
             id: user.vipTier.id,
@@ -144,6 +157,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
             name: user.vipTier.name,
             discount_bps: user.vipTier.discountBps,
             plaything_access: user.vipTier.playthingAccess,
+            skill_authoring: user.vipTier.skillAuthoring,
           }
         : null,
       disabled_at: user.disabledAt,
@@ -291,12 +305,19 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
     });
   }
 
+  if (data.skill_authoring !== undefined && data.skill_authoring !== target.skillAuthoring) {
+    await logAdminAction(admin.id, "user_skill_authoring", { type: "user", id: userId }, {
+      skill_authoring: data.skill_authoring,
+    });
+  }
+
   const updated = await db.user.update({
     where: { id: userId },
     data: {
       ...(data.role ? { role: data.role } : {}),
       ...(data.disabled !== undefined ? { disabledAt: data.disabled ? new Date() : null } : {}),
       ...(data.plaything_access !== undefined ? { playthingAccess: data.plaything_access } : {}),
+      ...(data.skill_authoring !== undefined ? { skillAuthoring: data.skill_authoring } : {}),
       ...vipData,
     },
   });
@@ -312,6 +333,7 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
       vip_expires_at: updated.vipExpiresAt,
       vip_tier_id: updated.vipTierId,
       plaything_access: updated.playthingAccess,
+      skill_authoring: updated.skillAuthoring,
       disabled_at: updated.disabledAt,
     },
   });

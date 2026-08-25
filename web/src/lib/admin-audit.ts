@@ -28,7 +28,8 @@ export type AdminAuditAction =
   | "llm_account"
   | "llm_model_price"
   | "skill_edit"
-  | "skill_restore";
+  | "skill_restore"
+  | "user_skill_authoring";
 
 export async function logAdminAction(
   adminId: number,

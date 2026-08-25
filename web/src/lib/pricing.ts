@@ -365,6 +365,7 @@ export function tierOut(t: VipTier) {
     discount_bps: t.discountBps,
     discount_percent: t.discountBps / 100,
     plaything_access: t.playthingAccess,
+    skill_authoring: t.skillAuthoring,
     is_active: t.isActive,
   };
 }

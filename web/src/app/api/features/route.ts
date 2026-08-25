@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { llmConfigured } from "@/lib/llm/chat";
+import { hasSkillAuthoring } from "@/lib/skills/access";
 import { hasPlaythingAccess } from "@/lib/plaything-access";
 import { promptOptimizerConfigured } from "@/lib/prompt-optimizer";
 
@@ -17,6 +18,8 @@ export async function GET() {
      */
     ai_text: await llmConfigured(),
     plaything: hasPlaythingAccess(user),
+    /* 能不能自建技能。与 VIP 分开的一位，见 skills/access.ts */
+    skill_authoring: hasSkillAuthoring(user),
     // 只在玩物专区提供；与创作中心的技能系统是两条独立链路，互不替代
     plaything_prompt_optimizer: await promptOptimizerConfigured(),
   });

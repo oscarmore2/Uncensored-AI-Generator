@@ -1,4 +1,5 @@
 import "server-only";
+import crypto from "crypto";
 import { db } from "../db";
 import {
   OFFICIAL_SKILLS,
@@ -27,6 +28,7 @@ import {
 export type ResolvedSkill = {
   id: number | null;
   scope: string;
+  ownerId: number | null;
   key: string;
   name: string;
   nameEn: string;
@@ -44,11 +46,14 @@ export type ResolvedSkill = {
   isActive: boolean;
   sortOrder: number;
   isOverridden: boolean;
+  forkedFromKey: string | null;
+  forkedFromAt: Date | null;
 };
 
 type SkillRow = {
   id: number;
   scope: string;
+  ownerId: number | null;
   key: string;
   name: string;
   nameEn: string;
@@ -66,6 +71,8 @@ type SkillRow = {
   isActive: boolean;
   sortOrder: number;
   isOverridden: boolean;
+  forkedFromKey: string | null;
+  forkedFromAt: Date | null;
 };
 
 function parseList(raw: string): string[] {
@@ -81,6 +88,7 @@ export function skillFromRow(row: SkillRow): ResolvedSkill {
   return {
     id: row.id,
     scope: row.scope,
+    ownerId: row.ownerId,
     key: row.key,
     name: row.name,
     nameEn: row.nameEn,
@@ -98,6 +106,8 @@ export function skillFromRow(row: SkillRow): ResolvedSkill {
     isActive: row.isActive,
     sortOrder: row.sortOrder,
     isOverridden: row.isOverridden,
+    forkedFromKey: row.forkedFromKey,
+    forkedFromAt: row.forkedFromAt,
   };
 }
 
@@ -105,6 +115,7 @@ export function skillFromDefinition(def: SkillDefinition): ResolvedSkill {
   return {
     id: null,
     scope: "official",
+    ownerId: null,
     key: def.key,
     name: def.name,
     nameEn: def.nameEn,
@@ -122,6 +133,8 @@ export function skillFromDefinition(def: SkillDefinition): ResolvedSkill {
     isActive: true,
     sortOrder: def.sortOrder,
     isOverridden: false,
+    forkedFromKey: null,
+    forkedFromAt: null,
   };
 }
 
@@ -210,12 +223,19 @@ export async function listSkills(opts: {
   formatId?: string;
   /** 管理端要看全部，创作端只要启用的 */
   includeInactive?: boolean;
+  /** 带上这个用户自己的技能。**别人的永远不会出现在这里** */
+  ownerId?: number;
 }): Promise<ResolvedSkill[]> {
   let all: ResolvedSkill[];
   try {
     await ensureSkillsSeeded();
     const rows = await db.skill.findMany({
-      where: { scope: "official" },
+      where: {
+        OR: [
+          { scope: "official" },
+          ...(opts.ownerId ? [{ scope: "user", ownerId: opts.ownerId }] : []),
+        ],
+      },
       orderBy: [{ sortOrder: "asc" }, { id: "asc" }],
     });
     all = rows.length > 0 ? rows.map(skillFromRow) : OFFICIAL_SKILLS.map(skillFromDefinition);
@@ -239,17 +259,75 @@ export function __resetSkillSeed() {
   seeding = false;
 }
 
-/** 按 key 取一个技能，库里没有就退回出厂定义 */
-export async function getSkill(key: string): Promise<ResolvedSkill | null> {
+/** 这个人自己的技能，管理用。按最近改过的排在前面 */
+export async function listUserSkills(ownerId: number): Promise<ResolvedSkill[]> {
+  const rows = await db.skill.findMany({
+    where: { scope: "user", ownerId },
+    orderBy: [{ updatedAt: "desc" }],
+  });
+  return rows.map(skillFromRow);
+}
+
+/**
+ * 取一个可以**执行**的技能。
+ *
+ * 这是整个技能系统最要紧的一道门：官方技能人人可用，用户技能**只有作者本人**
+ * 能跑。放开这一条，A 写的 systemPrompt 就会跑在 B 的内容上——那正是
+ * 规划第〇节把「技能共享」整个划出去的原因，是完全不同量级的安全问题。
+ *
+ * 判据只有一条：`scope === "official"` 或 `ownerId === 当前用户`。
+ * 别因为「反正 key 猜不到」就省掉它——key 会出现在导出文件里。
+ */
+export async function getSkillForRun(key: string, userId: number): Promise<ResolvedSkill | null> {
   try {
     await ensureSkillsSeeded();
     const row = await db.skill.findUnique({ where: { key } });
-    if (row) return skillFromRow(row);
+    if (row) {
+      if (row.scope === "user" && row.ownerId !== userId) return null;
+      return skillFromRow(row);
+    }
   } catch (err) {
     console.error("[skill-store] get failed, using built-in defaults:", err);
   }
   const def = OFFICIAL_SKILL_BY_KEY.get(key);
   return def ? skillFromDefinition(def) : null;
+}
+
+/** 只取官方技能。fork 与管理端用 */
+export async function getOfficialSkill(key: string): Promise<ResolvedSkill | null> {
+  try {
+    await ensureSkillsSeeded();
+    const row = await db.skill.findFirst({ where: { key, scope: "official" } });
+    if (row) return skillFromRow(row);
+  } catch (err) {
+    console.error("[skill-store] get official failed:", err);
+  }
+  const def = OFFICIAL_SKILL_BY_KEY.get(key);
+  return def ? skillFromDefinition(def) : null;
+}
+
+/**
+ * 用户技能的 key。
+ *
+ * 随机而不是从名字派生：名字可以重复、可以改、可以是纯 emoji，而 key 是全局
+ * 唯一且一旦生成就不再变的东西。带 `u_` 前缀是为了一眼分辨出它不是官方技能。
+ */
+export function newUserSkillKey(): string {
+  return `u_${crypto.randomUUID().replace(/-/g, "").slice(0, 16)}`;
+}
+
+/**
+ * 来源官方技能在 fork 之后有没有更新过。
+ *
+ * **只提示，不自动合并**（规划第四节）：用户已经改过自己那一份，
+ * 合并只能靠猜，猜错比不合并更糟。
+ */
+export function sourceUpdated(
+  skill: Pick<ResolvedSkill, "forkedFromAt">,
+  officialUpdatedAt: Date | null | undefined
+): boolean {
+  if (!skill.forkedFromAt || !officialUpdatedAt) return false;
+  return officialUpdatedAt.getTime() > skill.forkedFromAt.getTime();
 }
 
 /** 与出厂值有哪些字段不一样。管理端要显示「已偏离出厂设置」的 diff */

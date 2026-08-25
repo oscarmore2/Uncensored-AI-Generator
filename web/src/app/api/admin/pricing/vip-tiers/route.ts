@@ -20,6 +20,7 @@ const createSchema = z.object({
   discount_percent: z.number().min(0).max(100).optional(),
   discount_bps: z.number().int().min(0).max(10000).optional(),
   plaything_access: z.boolean().optional().default(false),
+  skill_authoring: z.boolean().optional().default(false),
   is_active: z.boolean().optional().default(true),
 });
 
@@ -46,6 +47,7 @@ export async function POST(req: Request) {
       rank: d.rank,
       discountBps,
       playthingAccess: d.plaything_access,
+      skillAuthoring: d.skill_authoring,
       isActive: d.is_active,
     },
   });

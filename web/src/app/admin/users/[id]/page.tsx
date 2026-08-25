@@ -24,12 +24,14 @@ interface UserDetail {
     is_vip: boolean;
     vip_expires_at: string | null;
     plaything_access: boolean;
+    skill_authoring: boolean;
     vip_tier: {
       id: number;
       code: string;
       name: string;
       discount_bps: number;
       plaything_access?: boolean;
+      skill_authoring?: boolean;
     } | null;
     disabled_at: string | null;
     created_at: string;
@@ -298,6 +300,23 @@ export default function AdminUserDetailPage() {
             }`}
           >
             {u.plaything_access ? "关闭玩物" : "开通玩物"}
+          </button>
+          <button
+            disabled={busy}
+            onClick={() =>
+              void patch(
+                { skill_authoring: !u.skill_authoring },
+                u.skill_authoring ? "已关闭自建技能" : "已开通自建技能"
+              )
+            }
+            /* 与 VIP 分开的一位：单独关停滥用技能编辑的人，不必降他的 VIP */
+            className={`text-sm px-4 py-2 border rounded-xl disabled:opacity-50 ${
+              u.skill_authoring
+                ? "bg-orange-600/20 border-orange-500/30 text-orange-800"
+                : "bg-black/[0.03] border-line text-ink-muted"
+            }`}
+          >
+            {u.skill_authoring ? "关闭自建技能" : "开通自建技能"}
           </button>
           <Link
             href={`/admin/transactions?user_id=${u.id}`}

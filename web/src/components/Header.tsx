@@ -20,19 +20,25 @@ export function Header() {
   const [mobileOpen, setMobileOpen] = useState(false);
   useBodyScrollLock(mobileOpen);
   const [plaything, setPlaything] = useState(false);
+  const [skillAuthoring, setSkillAuthoring] = useState(false);
 
   useEffect(() => {
     if (!user) {
       setPlaything(false);
+      setSkillAuthoring(false);
       return;
     }
     let cancelled = false;
-    api<{ plaything?: boolean }>("/api/features")
+    api<{ plaything?: boolean; skill_authoring?: boolean }>("/api/features")
       .then((f) => {
-        if (!cancelled) setPlaything(Boolean(f.plaything));
+        if (cancelled) return;
+        setPlaything(Boolean(f.plaything));
+        setSkillAuthoring(Boolean(f.skill_authoring));
       })
       .catch(() => {
-        if (!cancelled) setPlaything(false);
+        if (cancelled) return;
+        setPlaything(false);
+        setSkillAuthoring(false);
       });
     return () => {
       cancelled = true;
@@ -50,6 +56,7 @@ export function Header() {
     ...nav.slice(0, 1),
     ...(plaything ? [{ href: "/plaything", label: t("plaything") }] : []),
     ...nav.slice(1),
+    ...(skillAuthoring ? [{ href: "/skills", label: t("skills") }] : []),
     ...(isMod ? [{ href: "/mod", label: t("moderation") }] : []),
     ...(isAdmin ? [{ href: "/admin", label: t("admin") }] : []),
   ];

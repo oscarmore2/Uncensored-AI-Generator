@@ -96,6 +96,7 @@ interface VipTier {
   discount_bps: number;
   discount_percent: number;
   plaything_access: boolean;
+  skill_authoring: boolean;
   is_active: boolean;
 }
 
@@ -987,6 +988,11 @@ export default function AdminPricingPage() {
                       玩物专区
                     </span>
                   )}
+                  {t.skill_authoring && (
+                    <span className="ml-2 text-[10px] px-2 py-0.5 rounded-full bg-orange-500/20 text-orange-800">
+                      自建技能
+                    </span>
+                  )}
                   {!t.is_active && <span className="text-ink-subtle text-xs ml-2">停用</span>}
                 </div>
               </div>
@@ -1023,6 +1029,22 @@ export default function AdminPricingPage() {
                 }
               >
                 {t.plaything_access ? "关玩物" : "开玩物"}
+              </button>
+              <button
+                disabled={busy}
+                className="px-3 py-1.5 text-xs border border-line rounded-xl"
+                onClick={() =>
+                  action(
+                    () =>
+                      api(`/api/admin/pricing/vip-tiers/${t.id}`, {
+                        method: "PATCH",
+                        body: JSON.stringify({ skill_authoring: !t.skill_authoring }),
+                      }),
+                    t.skill_authoring ? "已关闭自建技能" : "已开启自建技能"
+                  )
+                }
+              >
+                {t.skill_authoring ? "关技能" : "开技能"}
               </button>
               <button
                 disabled={busy}

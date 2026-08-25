@@ -43,6 +43,8 @@ export async function GET(req: Request) {
   const skills = await listSkills({
     trigger: q.trigger as SkillTrigger,
     formatId: target?.formatId,
+    /* 只带这个人自己的。别人的技能永远不会出现在任何人的菜单里 */
+    ownerId: user.id,
   });
 
   const vipRank = isVipActive(user) ? (user.vipTier?.rank ?? 0) : 0;

@@ -7,7 +7,14 @@ import { getSession } from "./session";
 export type AuthUser = User & {
   vipTier: Pick<
     VipTier,
-    "id" | "code" | "name" | "rank" | "discountBps" | "isActive" | "playthingAccess"
+    | "id"
+    | "code"
+    | "name"
+    | "rank"
+    | "discountBps"
+    | "isActive"
+    | "playthingAccess"
+    | "skillAuthoring"
   > | null;
 };
 
@@ -39,6 +46,7 @@ export async function getCurrentUser(): Promise<AuthUser | null> {
           discountBps: true,
           isActive: true,
           playthingAccess: true,
+          skillAuthoring: true,
         },
       },
     },

@@ -5,7 +5,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { rateLimit } from "@/lib/rate-limit";
 import { acquireUserLock } from "@/lib/user-lock";
 import { enhancePrompt } from "@/lib/magic-prompt";
-import { getSkill } from "@/lib/skills/store";
+import { getSkillForRun } from "@/lib/skills/store";
 import { LLM_TIMEOUT_MS } from "@/lib/llm/chat";
 import { estimateCostUsd } from "@/lib/llm/models";
 import { chargeFieldsOf, recordLlmUsage, vipDiscountBpsOf } from "@/lib/llm/billing";
@@ -56,7 +56,7 @@ export async function POST(req: Request) {
     );
   }
 
-  const skill = await getSkill(input.skill ?? DEFAULT_MANUAL_SKILL);
+  const skill = await getSkillForRun(input.skill ?? DEFAULT_MANUAL_SKILL, user.id);
   if (!skill || !skill.isActive || !skill.triggers.includes("manual")) {
     return NextResponse.json({ error: "该技能不可用", code: "SKILL_UNAVAILABLE" }, { status: 400 });
   }

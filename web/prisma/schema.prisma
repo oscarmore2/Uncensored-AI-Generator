@@ -27,6 +27,9 @@ model User {
   vipExpiresAt              DateTime?
   vipTierId                 Int?
   playthingAccess           Boolean   @default(false) // 玩物专区单独授权
+  /// 可自建 / fork / 导入 AI 技能。与 VIP 等级**分开**判定：
+  /// 管理员想单独关停一个滥用技能编辑的用户，不该只能靠降他的 VIP——那是在惩罚他付过的钱
+  skillAuthoring            Boolean   @default(false)
   disabledAt                DateTime? // 封禁时间；非空表示禁止登录且会话失效
   acceptedTermsAt           DateTime?
   termsVersion              String?
@@ -397,8 +400,11 @@ model Skill {
 
   /// true 之后播种不再覆盖它。管理端保存任何修改都会置 true，「恢复默认」置回 false
   isOverridden  Boolean @default(false)
-  /// 用户从哪个官方技能复制而来（S3）
+  /// 用户从哪个官方技能复制而来
   forkedFromKey String?
+  /// fork 那一刻来源技能的 updatedAt。用来提示「来源技能已更新」——
+  /// **不自动合并**：用户已经改过自己那份，合并只能靠猜，猜错比不合并更糟
+  forkedFromAt  DateTime?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -613,6 +619,7 @@ model VipTier {
   rank            Int      @default(0)
   discountBps     Int      @default(0)
   playthingAccess Boolean  @default(false) // 该等级 VIP 可进玩物专区
+  skillAuthoring  Boolean  @default(false) // 该等级 VIP 可自建 AI 技能
   isActive        Boolean  @default(true)
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt

@@ -23,7 +23,7 @@ import {
   type LlmUsageStatus,
 } from "@/lib/llm/billing";
 import { estimateTokens } from "@/lib/ai-token-cost";
-import { getSkill } from "@/lib/skills/store";
+import { getSkillForRun } from "@/lib/skills/store";
 import { isBlocked, reviewPrompt } from "@/lib/content-safety";
 import { hasAdultAccess } from "@/lib/adult-access";
 
@@ -87,7 +87,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "该模式不支持提示词改写" }, { status: 400 });
   }
 
-  const skill = await getSkill(input.action);
+  const skill = await getSkillForRun(input.action, user.id);
   if (!skill || !skill.isActive || !skill.triggers.includes("selection")) {
     return NextResponse.json({ error: "该技能不可用", code: "SKILL_UNAVAILABLE" }, { status: 400 });
   }
