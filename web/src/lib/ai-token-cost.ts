@@ -1,19 +1,10 @@
 /**
- * token 与点数之间的换算。纯函数，不碰数据库、不 server-only——
- * 这样它能被单测直接跑，也能在界面上预估「这次大概花几点」。
- */
-
-/**
- * token 数 -> 扣多少点。
+ * 拿不到上游用量时的 token 估算。纯函数，不碰数据库。
  *
- * 向上取整且至少 1 点（费率配成 0 时例外，那是「本功能不收费」的显式意图）。
- * 不设下限的话，短句改写会算出 0 点，等于免费无限调用大模型。
+ * 「token 数 → 点数」那一半已经搬去 `llm/pricing.ts`：那里按微点算，
+ * 精度到千分之一点。原来这里那个「至少 1 点」的整点口径是成本的几十倍，
+ * 随魔法指令归位成技能一并退休了。
  */
-export function creditsForTokens(totalTokens: number, per1kCredits: number): number {
-  if (per1kCredits <= 0) return 0;
-  if (!Number.isFinite(totalTokens) || totalTokens <= 0) return 0;
-  return Math.max(1, Math.ceil((totalTokens / 1000) * per1kCredits));
-}
 
 /** 中日韩统一表意文字等「一字一 token」的区段 */
 const CJK_RANGES: [number, number][] = [

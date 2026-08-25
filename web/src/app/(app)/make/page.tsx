@@ -153,11 +153,12 @@ function MakePageInner() {
     setPrompt(normalizePrompt(text ?? ""));
     setPromptReloadKey((k) => k + 1);
   }, []);
-  const [magicEnabled, setMagicEnabled] = useState(false);
-  /* 选区级 AI 是**另一个**开关：它走文本 LLM 那条线，见 /api/features */
-  const [selectionAi, setSelectionAi] = useState(false);
+  /* AI 文本功能总开关（上游配没配）。具体有哪些按钮由技能清单决定 */
+  const [aiText, setAiText] = useState(false);
   /* 动作条上有哪几颗按钮由库里的技能决定，不写死在前端 */
   const [skills, setSkills] = useState<SelectionAiSkill[]>([]);
+  /* 整段级技能。魔法指令是其中第一个 */
+  const [manualSkills, setManualSkills] = useState<SelectionAiSkill[]>([]);
   const [catalog, setCatalog] = useState<CatalogResponse | null>(null);
   const [extraParams, setExtraParams] = useState<Record<string, string>>({});
   const pollingRef = useRef(false);
@@ -609,17 +610,9 @@ function MakePageInner() {
 
   useEffect(() => {
     let cancelled = false;
-    api<{ magic_prompt: boolean; selection_ai?: boolean }>("/api/features")
-      .then((f) => {
-        if (cancelled) return;
-        setMagicEnabled(Boolean(f.magic_prompt));
-        setSelectionAi(Boolean(f.selection_ai));
-      })
-      .catch(() => {
-        if (cancelled) return;
-        setMagicEnabled(false);
-        setSelectionAi(false);
-      });
+    api<{ ai_text?: boolean }>("/api/features")
+      .then((f) => !cancelled && setAiText(Boolean(f.ai_text)))
+      .catch(() => !cancelled && setAiText(false));
     api<CatalogResponse>("/api/catalog")
       .then((c) => !cancelled && setCatalog(c))
       .catch(() => !cancelled && setCatalog(null));
@@ -794,34 +787,46 @@ function MakePageInner() {
   /*
    * 技能清单随模式变：「补充细节」和「延展镜头」是两条不同的技能，
    * 分别只在图像 / 视频模式下出现。所以 mode / tier / spicy 一变就要重取。
+   *
+   * 选区级和整段级一起取：两边都是「库里有什么就显示什么」，
+   * 管理端停用一个技能，对应的按钮就该消失。
    */
   useEffect(() => {
-    if (!selectionAi) {
+    if (!aiText) {
       setSkills([]);
+      setManualSkills([]);
       return;
     }
     let cancelled = false;
-    const params = new URLSearchParams({ trigger: "selection", mode, spicy: String(spicy) });
-    if (tier) params.set("tier", tier);
-    api<{
-      skills: Array<{ key: string; name: string; name_en: string; icon: string; description: string }>;
-    }>(`/api/skills?${params.toString()}`)
-      .then((r) => {
+    const pick = (x: { name: string; name_en: string; key: string; icon: string; description: string }) => ({
+      key: x.key,
+      name: locale.startsWith("en") && x.name_en ? x.name_en : x.name,
+      icon: x.icon,
+      description: x.description,
+    });
+    const fetchFor = (trigger: string) => {
+      const params = new URLSearchParams({ trigger, mode, spicy: String(spicy) });
+      if (tier) params.set("tier", tier);
+      return api<{
+        skills: Array<{ key: string; name: string; name_en: string; icon: string; description: string }>;
+      }>(`/api/skills?${params.toString()}`);
+    };
+
+    void Promise.all([fetchFor("selection"), fetchFor("manual")])
+      .then(([sel, man]) => {
         if (cancelled) return;
-        setSkills(
-          r.skills.map((x) => ({
-            key: x.key,
-            name: locale.startsWith("en") && x.name_en ? x.name_en : x.name,
-            icon: x.icon,
-            description: x.description,
-          }))
-        );
+        setSkills(sel.skills.map(pick));
+        setManualSkills(man.skills.map(pick));
       })
-      .catch(() => !cancelled && setSkills([]));
+      .catch(() => {
+        if (cancelled) return;
+        setSkills([]);
+        setManualSkills([]);
+      });
     return () => {
       cancelled = true;
     };
-  }, [selectionAi, mode, tier, spicy, locale]);
+  }, [aiText, mode, tier, spicy, locale]);
 
   /** 服务端算好的花费，前端一个数都不换算——两边各算一遍迟早对不上 */
   const chargeOf = useCallback((event: Record<string, unknown>): SelectionAiCharge | undefined => {
@@ -906,7 +911,7 @@ function MakePageInner() {
     [mode, tier, spicy, prompt, t, chargeOf]
   );
 
-  async function runMagicPrompt() {
+  async function runMagicPrompt(skill: SelectionAiSkill) {
     if (magicBusy) return;
     if (!prompt.trim()) return toast(t("promptFirst"), true);
     setMagicBusy(true);
@@ -916,11 +921,13 @@ function MakePageInner() {
         negative_prompt: string | null;
         source: string;
         dropped_refs?: string[];
+        charged_credits?: string;
       }>(
         "/api/prompts/magic",
         {
           method: "POST",
           body: JSON.stringify({
+            skill: skill.key,
             prompt: prompt.trim(),
             mode,
             tier,
@@ -941,8 +948,13 @@ function MakePageInner() {
       const dropped = data.dropped_refs ?? [];
       if (dropped.length > 0) {
         toast(t("magicDroppedRefs", { count: dropped.length, tokens: dropped.join("、") }), true);
+      } else if (data.source === "local") {
+        /* 上游没通、用了本地规则扩写——这件事必须说，结果质量差得远 */
+        toast(t("magicDoneLocal", { skill: skill.name }), true);
       } else {
-        toast(data.source === "dolphin" ? t("magicDoneDolphin", { model: "" }) : t("magicDone", { model: "" }));
+        /* 花了多少要当场说，与选区级同一条规矩 */
+        const cost = data.charged_credits ? ` · ${data.charged_credits} 点` : "";
+        toast(t("magicDone", { skill: skill.name }) + cost);
       }
     } catch (e) {
       toast(e instanceof Error ? e.message : t("magicFailed"), true);
@@ -1318,13 +1330,16 @@ function MakePageInner() {
               <div className="flex items-center justify-between mb-2 gap-2 flex-wrap">
                 <label className="text-sm font-semibold text-ink-muted">{t("prompt")}</label>
                 <div className="flex items-center gap-2">
-                  {magicEnabled && (
+                  {/* 整段级技能。第一个用魔法指令那身皮，其余排在后面 */}
+                  {manualSkills.map((skill, index) =>
+                    index === 0 ? (
                     <button
+                      key={skill.key}
                       type="button"
-                      onClick={() => void runMagicPrompt()}
+                      onClick={() => void runMagicPrompt(skill)}
                       disabled={magicBusy || phase !== "idle"}
                       className="magic-prompt-btn inline-flex items-center gap-x-1.5 px-3.5 py-1.5 rounded-full text-sm font-medium text-black disabled:opacity-50 disabled:cursor-not-allowed transition-transform hover:scale-[1.02] active:scale-[0.98]"
-                      title={t("magicTitle")}
+                      title={skill.description}
                     >
                       {magicBusy ? (
                         <i className="fas fa-spinner fa-spin text-[13px] text-[#5c4a7a]" />
@@ -1339,8 +1354,21 @@ function MakePageInner() {
                           <path d="M6.2 15.5l.45 1.4 1.4.45-1.4.45-.45 1.4-.45-1.4-1.4-.45 1.4-.45.45-1.4z" fill="currentColor" opacity="0.65" />
                         </svg>
                       )}
-                      <span>{magicBusy ? t("casting") : t("magic")}</span>
+                      <span>{magicBusy ? t("casting") : skill.name}</span>
                     </button>
+                    ) : (
+                      <button
+                        key={skill.key}
+                        type="button"
+                        onClick={() => void runMagicPrompt(skill)}
+                        disabled={magicBusy || phase !== "idle"}
+                        title={skill.description}
+                        className="inline-flex items-center gap-x-1.5 rounded-full border border-line px-3 py-1.5 text-sm text-ink-muted hover:text-ink disabled:opacity-50"
+                      >
+                        {skill.icon && <i className={`fas ${skill.icon} text-[12px]`} />}
+                        <span>{skill.name}</span>
+                      </button>
+                    )
                   )}
                   <button
                     type="button"
@@ -1384,7 +1412,7 @@ function MakePageInner() {
                 onChange={setPrompt}
                 reloadKey={promptReloadKey}
                 /* 魔法指令未启用时选区级 AI 也不给：它们共用同一套上游凭据 */
-                onRewrite={selectionAi ? rewriteSelection : undefined}
+                onRewrite={aiText ? rewriteSelection : undefined}
                 skills={skills}
                 /* 文生图那套规则明写「避免长段落叙事」，
                  * 给标题和列表等于鼓励用户写出会让出图变差的东西 */

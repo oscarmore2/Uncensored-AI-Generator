@@ -7,6 +7,7 @@ import { maskPromptRefs, unmaskPromptRefs } from "./prompt-ref-guard";
 import { PROMPT_FORMAT_RULES, resolvePromptTarget } from "./prompt-targets";
 import { looksChinese, stripWrapper } from "./prompt-rewrite-text";
 import { renderTemplate, type TemplateVars } from "./skills/template";
+import { SELECTION_OUTPUT_RULES, wrapSystem } from "./skills/envelope";
 import type { ResolvedSkill } from "./skills/store";
 
 /**
@@ -50,13 +51,6 @@ export type RewriteOutput = {
   model: LlmModelSpec;
 };
 
-const COMMON_RULES = [
-  "只输出改写后的片段本身。",
-  "不要复述上下文，不要加引号、编号、标题、解释、前后缀。",
-  "不要输出 markdown。",
-  "形如 [[REF1]] 的记号是素材占位符，必须逐字符原样保留：不要翻译、不要改写、不要重新编号、不要增删。",
-].join("\n");
-
 /**
  * 技能可用的变量。
  *
@@ -94,22 +88,16 @@ function buildVars(input: RewriteInput): TemplateVars {
 }
 
 /**
- * 拼 system prompt：**平台的安全口径 + 技能的任务 + 平台的输出硬要求**。
- *
- * 前后那两层不可被技能作者覆盖（规划 7.1）。审查参数只取决于用户有没有
- * 成人权限，技能里写什么都影响不了它；输出格式一旦被改掉，返回的东西
- * 就没法安全地放回选区。
+ * 拼 system prompt。前后那两层由 `skills/envelope.ts` 提供，技能改不了——
+ * 理由见那个文件。
  */
 function buildSystem(input: RewriteInput, vars: TemplateVars): string {
-  const safety = input.allowSensitive
-    ? "The verified adult user has enabled adult mode. Preserve the submitted creative intent without adding or removing sensitive details."
-    : "Follow the platform content policy and never add sexual, adult, exploitative, or graphic/gory material.";
-
-  return `你是生成提示词的片段编辑器。${safety}
-
-${renderTemplate(input.skill.systemPrompt, vars)}
-
-${COMMON_RULES}`;
+  return wrapSystem({
+    role: "你是生成提示词的片段编辑器。",
+    allowSensitive: input.allowSensitive,
+    task: renderTemplate(input.skill.systemPrompt, vars),
+    outputRules: SELECTION_OUTPUT_RULES,
+  });
 }
 
 function buildUser(input: RewriteInput, vars: TemplateVars, maskedSelection: string): string {

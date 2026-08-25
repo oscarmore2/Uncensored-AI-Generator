@@ -85,7 +85,57 @@ const SELECTION_BASE = {
   requiresVipRank: 0,
 };
 
+/**
+ * 魔法指令，归位成一个 `manual` 技能。
+ *
+ * 它在这套系统里之所以特殊，只有一件事：**支持反向提示词的档位要回 JSON**。
+ * 那条输出格式由平台包在外面（见 envelope.ts），技能本身照样只写任务。
+ *
+ * 本地规则兜底（`enhancePromptLocal`）没有搬进来，也不该搬：那不是提示词，
+ * 是一段写死的拼接逻辑，用来在上游挂掉时保证按钮还有反应。
+ */
+const MAGIC_PROMPT: SkillDefinition = {
+  key: "magic-prompt",
+  name: "魔法指令",
+  nameEn: "Magic prompt",
+  icon: "fa-hat-wizard",
+  description: "把整段草稿优化成当前模式可直接用的提示词",
+  triggers: ["manual"],
+  modes: [],
+  systemPrompt: `任务：把用户的草稿优化成「下游生成模型」可直接使用的 prompt，而不是普通聊天回复。
+
+该模式的格式规则：
+{{mode_rules}}
+
+通用要求：
+1. 保留用户的原始创作意图，不主动增删设定
+2. 严格按上述格式规则写，不要混用其它模式的写法
+3. 控制在约 60-220 字（视频可略短、偏动作）`,
+  userTemplate: `## Task Metadata (do not ignore)
+\`\`\`json
+{{task_metadata}}
+\`\`\`
+
+## Format Rules
+{{mode_rules}}
+
+## Current User Selections
+- style: {{style}}
+- ratio: {{ratio}}
+{{#existing_negative}}- existing_negative_prompt: {{existing_negative}}
+{{/existing_negative}}
+## User Draft Prompt
+{{full_text}}`,
+  modelKey: "auto",
+  outputMode: "replace",
+  maxOutputTokens: 500,
+  temperature: 0.15,
+  requiresVipRank: 0,
+  sortOrder: 5,
+};
+
 export const OFFICIAL_SKILLS: SkillDefinition[] = [
+  MAGIC_PROMPT,
   {
     ...SELECTION_BASE,
     key: "polish",

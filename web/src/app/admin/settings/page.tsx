@@ -2,13 +2,11 @@
 
 import { useEffect, useState } from "react";
 import { api, ApiError } from "@/lib/client";
-import { creditsForTokens } from "@/lib/ai-token-cost";
 
 interface Settings {
   app_url: string;
   demo_mode: boolean;
   signup_initial_credits: number;
-  ai_credits_per_1k_tokens: number;
   vip_price_cents: number;
   credit_packages: Record<string, number>;
   providers: Array<{
@@ -63,18 +61,14 @@ export default function AdminSettingsPage() {
   const [settings, setSettings] = useState<Settings | null>(null);
   const [error, setError] = useState("");
   const [signupCredits, setSignupCredits] = useState(20);
-  const [aiRate, setAiRate] = useState(1);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
-  const [aiSaving, setAiSaving] = useState(false);
-  const [aiMessage, setAiMessage] = useState("");
 
   useEffect(() => {
     api<Settings>("/api/admin/settings")
       .then((value) => {
         setSettings(value);
         setSignupCredits(value.signup_initial_credits);
-        setAiRate(value.ai_credits_per_1k_tokens);
       })
       .catch((e) => setError(e instanceof ApiError ? e.message : "加载失败"));
   }, []);
@@ -101,31 +95,6 @@ export default function AdminSettingsPage() {
       setMessage(reason instanceof ApiError ? reason.message : "保存失败");
     } finally {
       setSaving(false);
-    }
-  }
-
-  async function saveAiRate() {
-    if (!Number.isFinite(aiRate) || aiRate < 0 || aiRate > 1000) {
-      setAiMessage("AI 费率须为 0–1000");
-      return;
-    }
-    setAiSaving(true);
-    setAiMessage("");
-    try {
-      const result = await api<{ ai_credits_per_1k_tokens: number }>("/api/admin/settings", {
-        method: "PATCH",
-        body: JSON.stringify({ ai_credits_per_1k_tokens: aiRate }),
-      });
-      setSettings((current) =>
-        current
-          ? { ...current, ai_credits_per_1k_tokens: result.ai_credits_per_1k_tokens }
-          : current
-      );
-      setAiMessage("已保存，立即对新的 AI 请求生效");
-    } catch (reason) {
-      setAiMessage(reason instanceof ApiError ? reason.message : "保存失败");
-    } finally {
-      setAiSaving(false);
     }
   }
 
@@ -231,55 +200,6 @@ export default function AdminSettingsPage() {
           </button>
         </div>
         {message && <p className="mt-3 text-xs text-amber-800">{message}</p>}
-      </div>
-
-      <div className="glass rounded-3xl p-5 mb-8">
-        <div className="text-sm font-semibold mb-1">魔法指令费率</div>
-        <p className="mb-4 text-xs leading-relaxed text-ink-subtle">
-          魔法指令按<strong>实际消耗的 token</strong>扣点，与生成扣点分开定价——改一句提示词和出一段视频，
-          成本差好几个数量级。只有真正调用了大模型才扣；本地规则兜底不收费。
-          <br />
-          填 0 表示本功能不收费。由于设有「至少 1 点」的下限，小于 1 的费率与 1 等效。
-          <br />
-          <strong>这条只管魔法指令。</strong>选区级 AI 与技能系统走的是另一套——按每个模型的单价与
-          倍率算，精度到千分之一点，在「AI 文本模型」页配置。魔法指令在技能系统里归位成一个官方技能之后，
-          这条设置就会一并退休。
-        </p>
-        <div className="flex flex-wrap items-center gap-3">
-          <input
-            type="number"
-            min={0}
-            max={1000}
-            step={0.5}
-            value={aiRate}
-            onChange={(event) => setAiRate(Number(event.target.value) || 0)}
-            className="w-40 rounded-xl border border-line bg-surface px-3 py-2"
-          />
-          <span className="text-sm text-ink-muted">点 / 1000 token</span>
-          <button
-            type="button"
-            disabled={aiSaving}
-            onClick={() => void saveAiRate()}
-            className="rounded-xl bg-orange-700 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
-          >
-            {aiSaving ? "保存中…" : "保存"}
-          </button>
-        </div>
-        {/* 光看一个费率数字很难判断贵不贵，把它换算成用户实际感受得到的东西 */}
-        <p className="mt-3 text-xs text-ink-muted">
-          按此费率：一次典型改写（600~1500 token）扣{" "}
-          <span className="font-mono font-semibold text-ink">
-            {creditsForTokens(600, aiRate)}~{creditsForTokens(1500, aiRate)}
-          </span>{" "}
-          点；新用户注册送的 {settings.signup_initial_credits} 点约够{" "}
-          <span className="font-mono font-semibold text-ink">
-            {creditsForTokens(1000, aiRate) > 0
-              ? Math.floor(settings.signup_initial_credits / creditsForTokens(1000, aiRate))
-              : "∞"}
-          </span>{" "}
-          次。
-        </p>
-        {aiMessage && <p className="mt-3 text-xs text-amber-800">{aiMessage}</p>}
       </div>
 
       <div className="glass rounded-3xl p-5 mb-8">

@@ -16,11 +16,6 @@ import {
   MAX_SIGNUP_INITIAL_CREDITS,
   setSignupInitialCredits,
 } from "@/lib/signup-settings";
-import {
-  getAiCreditsPer1kTokens,
-  MAX_AI_CREDITS_PER_1K_TOKENS,
-  setAiCreditsPer1kTokens,
-} from "@/lib/ai-token-billing";
 import { logAdminAction } from "@/lib/admin-audit";
 import { PROVIDER_LIST, toProviderId } from "@/lib/providers/meta";
 
@@ -46,7 +41,6 @@ export async function GET() {
     tierCount,
     planCount,
     signupInitialCredits,
-    aiCreditsPer1kTokens,
     nowPaymentsCredentials,
     nowPaymentsAccountCount,
   ] = await Promise.all([
@@ -67,7 +61,6 @@ export async function GET() {
     db.vipTier.count({ where: { isActive: true } }),
     db.vipPlan.count({ where: { isActive: true } }),
     getSignupInitialCredits(),
-    getAiCreditsPer1kTokens(),
     getActiveNowPaymentsCredentials(),
     db.nowPaymentsAccount.count(),
   ]);
@@ -76,7 +69,6 @@ export async function GET() {
     app_url: env.APP_URL,
     demo_mode: env.DEMO_MODE,
     signup_initial_credits: signupInitialCredits,
-    ai_credits_per_1k_tokens: aiCreditsPer1kTokens,
     vip_price_cents: env.VIP_PRICE,
     credit_packages: env.CREDIT_PACKAGES,
     // 按渠道分组：单渠道时代这里只有一个 wavespeed 字段，
@@ -166,13 +158,8 @@ const patchSchema = z
       .min(0)
       .max(MAX_SIGNUP_INITIAL_CREDITS)
       .optional(),
-    ai_credits_per_1k_tokens: z
-      .number()
-      .min(0)
-      .max(MAX_AI_CREDITS_PER_1K_TOKENS)
-      .optional(),
   })
-  .refine((v) => v.signup_initial_credits !== undefined || v.ai_credits_per_1k_tokens !== undefined, {
+  .refine((v) => v.signup_initial_credits !== undefined, {
     message: "没有任何要修改的字段",
   });
 
@@ -186,9 +173,7 @@ export async function PATCH(req: Request) {
   const parsed = patchSchema.safeParse(await req.json().catch(() => null));
   if (!parsed.success) {
     return NextResponse.json(
-      {
-        error: `注册初始点数须为 0–${MAX_SIGNUP_INITIAL_CREDITS} 的整数；AI 费率须为 0–${MAX_AI_CREDITS_PER_1K_TOKENS}`,
-      },
+      { error: `注册初始点数须为 0–${MAX_SIGNUP_INITIAL_CREDITS} 的整数` },
       { status: 400 }
     );
   }
@@ -204,21 +189,8 @@ export async function PATCH(req: Request) {
     );
   }
 
-  if (parsed.data.ai_credits_per_1k_tokens !== undefined) {
-    const previous = await getAiCreditsPer1kTokens();
-    await setAiCreditsPer1kTokens(parsed.data.ai_credits_per_1k_tokens);
-    // 单独记一条：改费率是直接影响用户扣费的动作，不该混在别的条目里
-    await logAdminAction(
-      admin.id,
-      "system_ai_token_rate",
-      { type: "app_setting", id: "ai_credits_per_1k_tokens" },
-      { previous, next: parsed.data.ai_credits_per_1k_tokens }
-    );
-  }
-
   return NextResponse.json({
     ok: true,
     signup_initial_credits: await getSignupInitialCredits(),
-    ai_credits_per_1k_tokens: await getAiCreditsPer1kTokens(),
   });
 }

@@ -2,7 +2,7 @@ import "server-only";
 import { db } from "../db";
 import { ZC_STARTER_USD_PER_CREDIT } from "../generation-catalog";
 import { isVipActive } from "../pricing";
-import { chargedMicroFor, settleDebt, usdToMicro } from "./pricing";
+import { chargedMicroFor, formatMicroCredits, settleDebt, usdToMicro } from "./pricing";
 
 /**
  * LLM 的落账：算钱、扣钱、记一笔用量。
@@ -142,6 +142,21 @@ async function settleMicro(
   // 抢了四次都没抢到。宁可漏收这一笔，也不能在这里死循环拖住用户的请求
   console.error(`[llm-billing] settle contention, dropped ${micro}μ for user ${userId}`);
   return { settledCredits: 0, debtMicro: 0 };
+}
+
+/**
+ * 回给前端的花费。三个数缺一不可：
+ * 单次消耗要显示出来（否则用户以为免费），零头要显示出来（否则某次突然掉
+ * 1 点会来投诉），真正扣掉的整点要显示出来（余额变了得有个交代）。
+ */
+export function chargeFieldsOf(settled: LlmUsageResult) {
+  return {
+    charged_micro: settled.chargedMicro,
+    charged_credits: formatMicroCredits(settled.chargedMicro),
+    settled_credits: settled.settledCredits,
+    debt_micro: settled.debtMicro,
+    debt_credits: formatMicroCredits(settled.debtMicro),
+  };
 }
 
 /** 当前用户能享受的折扣。VIP 过期就是 0，与生成端同一条判定 */

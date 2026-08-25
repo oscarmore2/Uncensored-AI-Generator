@@ -15,6 +15,11 @@ export const TEMPLATE_VARIABLES: Array<{ name: string; desc: string }> = [
   { name: "format_id", desc: "写作格式（image_t2i / video_t2v …）" },
   { name: "target_language", desc: "中英互转的目标语言，按选区内容判定" },
   { name: "shorten_limit", desc: "精简的目标字数" },
+  { name: "style", desc: "当前风格选择（仅 manual 时机）" },
+  { name: "ratio", desc: "当前画幅（仅 manual 时机）" },
+  { name: "existing_negative", desc: "用户已填的反向提示词（仅 manual 时机）" },
+  { name: "task_metadata", desc: "任务元数据 JSON，便于网关与日志识别用途（仅 manual 时机）" },
+  { name: "prompt_field", desc: "上游接收提示词的字段名（仅 manual 时机）" },
 ];
 
 /** `{{#name}}…{{/name}}`：值非空才输出这一段。前后文经常是空的，需要它 */

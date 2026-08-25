@@ -15,8 +15,8 @@ import {
 } from "@/lib/prompt-rewrite";
 import { LLM_TIMEOUT_MS, type ChatUsage } from "@/lib/llm/chat";
 import { estimateCostUsd, type LlmModelSpec } from "@/lib/llm/models";
-import { formatMicroCredits } from "@/lib/llm/pricing";
 import {
+  chargeFieldsOf as chargeFields,
   recordLlmUsage,
   vipDiscountBpsOf,
   type LlmUsageResult,
@@ -228,21 +228,6 @@ function fail(f: Failure & Partial<ReturnType<typeof chargeFields>>) {
     { error, ...(code ? { code } : {}), ...(level ? { level } : {}), ...rest },
     { status }
   );
-}
-
-/**
- * 回给前端的花费。三个数缺一不可：
- * 单次消耗要显示出来（否则用户以为免费），零头要显示出来（否则某次突然掉
- * 1 点会来投诉），真正扣掉的整点要显示出来（余额变了得有个交代）。
- */
-function chargeFields(settled: LlmUsageResult) {
-  return {
-    charged_micro: settled.chargedMicro,
-    charged_credits: formatMicroCredits(settled.chargedMicro),
-    settled_credits: settled.settledCredits,
-    debt_micro: settled.debtMicro,
-    debt_credits: formatMicroCredits(settled.debtMicro),
-  };
 }
 
 /**

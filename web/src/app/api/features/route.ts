@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
-import { hfConfigured } from "@/lib/hf";
 import { llmConfigured } from "@/lib/llm/chat";
 import { hasPlaythingAccess } from "@/lib/plaything-access";
 import { promptOptimizerConfigured } from "@/lib/prompt-optimizer";
@@ -11,15 +10,14 @@ export async function GET() {
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   return NextResponse.json({
-    magic_prompt: await hfConfigured(),
     /*
-     * 选区级 AI 走的是文本 LLM 那条线（OpenRouter，没配就退回 HF），
-     * 与魔法指令**不是同一个开关**——只配了 OpenRouter 时魔法指令还没迁过来，
-     * 但选区级 AI 已经能用了。
+     * 选区级 AI 与魔法指令现在是**同一条线**（技能系统），所以只有一个开关。
+     * 具体某个时机下有没有按钮，由 /api/skills 的技能清单决定——
+     * 管理端把技能全停用了，开关是开的但菜单是空的。
      */
-    selection_ai: await llmConfigured(),
+    ai_text: await llmConfigured(),
     plaything: hasPlaythingAccess(user),
-    // 只在玩物专区提供；创作中心的魔法指令继续走 magic_prompt（HF）
+    // 只在玩物专区提供；与创作中心的技能系统是两条独立链路，互不替代
     plaything_prompt_optimizer: await promptOptimizerConfigured(),
   });
 }
