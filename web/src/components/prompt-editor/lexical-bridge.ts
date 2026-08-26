@@ -17,6 +17,7 @@ import {
 } from "@lexical/list";
 import { $createHeadingNode, $isHeadingNode } from "@lexical/rich-text";
 import { $createMediaRefNode, $isMediaRefNode } from "./MediaRefNode";
+import { levelFromTag, tagForLevel } from "./transformers";
 import { parsePrompt, type BlockNode, type InlineNode, type PromptDoc } from "@/lib/prompt-doc";
 
 /**
@@ -57,7 +58,11 @@ export function $docFromEditor(): PromptDoc {
   const blocks: BlockNode[] = [];
   for (const child of $getRoot().getChildren()) {
     if ($isHeadingNode(child)) {
-      blocks.push({ type: "heading", children: inlineFrom(child) });
+      blocks.push({
+        type: "heading",
+        level: levelFromTag(child.getTag()),
+        children: inlineFrom(child),
+      });
     } else if ($isListNode(child)) {
       const items = child
         .getChildren()
@@ -136,7 +141,7 @@ export function $blockNodesFromDoc(doc: PromptDoc): ElementNode[] {
         break;
       }
       case "heading": {
-        const h = $createHeadingNode("h2");
+        const h = $createHeadingNode(tagForLevel(block.level));
         appendInline(h, block.children);
         out.push(h);
         break;

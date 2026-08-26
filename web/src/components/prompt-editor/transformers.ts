@@ -1,5 +1,6 @@
 import { $createHeadingNode, $isHeadingNode, HeadingNode } from "@lexical/rich-text";
 import { ORDERED_LIST, UNORDERED_LIST, type ElementTransformer } from "@lexical/markdown";
+import { MAX_HEADING_LEVEL, type HeadingLevel } from "@/lib/prompt-doc";
 
 /**
  * 允许的 markdown 快捷输入 —— **一份白名单，不是把库里的默认值拿来用**。
@@ -13,23 +14,39 @@ import { ORDERED_LIST, UNORDERED_LIST, type ElementTransformer } from "@lexical/
  * 于是只剩下真能序列化的三样：分节标题、无序列表、有序列表。
  */
 
-/** 分节标题在编辑器里长什么样。只有这一级 */
-const HEADING_TAG = "h2" as const;
+export type HeadingTag = "h1" | "h2" | "h3";
+
+const TAGS: Record<HeadingLevel, HeadingTag> = { 1: "h1", 2: "h2", 3: "h3" };
+
+export function tagForLevel(level: HeadingLevel): HeadingTag {
+  return TAGS[level] ?? "h2";
+}
+
+export function levelFromTag(tag: string): HeadingLevel {
+  const n = Number(tag.replace(/^h/i, ""));
+  if (n >= 1 && n <= MAX_HEADING_LEVEL) return n as HeadingLevel;
+  return 2;
+}
 
 /**
- * 标题：`#`、`##`、`###` 都出同一级。
+ * 标题：`#` / `##` / `###` 分别是一、二、三级。
  *
- * 不做多级层级，因为**任何一级序列化出去都是同一个纯文本行**（符号丢弃）。
- * 做成三种视觉大小，等于在屏幕上画出一套存不下来、一保存就蒸发的层级，
- * 和上面拒绝加粗是同一个理由。三个前缀都认，纯粹是照顾肌肉记忆。
+ * 以前三个前缀都出同一级，理由是「符号序列化时会丢，画出来的层级存不下来」。
+ * 现在符号跟着一起序列化了（见 prompt-doc 的 serializeBlock），层级是真的：
+ * 存得下、认得回、章节级 AI 也是按它分组的。
+ *
+ * `####` 起不认——doc 只到三级，认了就得往下压一级，那等于用户敲的东西
+ * 被悄悄改了。留成正文更诚实。
  */
 export const SECTION_HEADING: ElementTransformer = {
   dependencies: [HeadingNode],
   export: (node, exportChildren) =>
-    $isHeadingNode(node) ? `# ${exportChildren(node)}` : null,
-  regExp: /^(#{1,6})\s/,
-  replace: (parentNode, children, _match, isImport) => {
-    const heading = $createHeadingNode(HEADING_TAG);
+    $isHeadingNode(node)
+      ? `${"#".repeat(levelFromTag(node.getTag()))} ${exportChildren(node)}`
+      : null,
+  regExp: /^(#{1,3})\s/,
+  replace: (parentNode, children, match, isImport) => {
+    const heading = $createHeadingNode(tagForLevel(match[1].length as HeadingLevel));
     heading.append(...children);
     parentNode.replace(heading);
     if (!isImport) heading.select(0, 0);
@@ -41,5 +58,3 @@ export const SECTION_HEADING: ElementTransformer = {
 
 /** 编辑器实际启用的全部快捷输入 */
 export const PROMPT_TRANSFORMERS = [SECTION_HEADING, UNORDERED_LIST, ORDERED_LIST];
-
-export { HEADING_TAG };

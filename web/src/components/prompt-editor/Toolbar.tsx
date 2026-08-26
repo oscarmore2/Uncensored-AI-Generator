@@ -17,7 +17,8 @@ import {
   $isRangeSelection,
   type BaseSelection,
 } from "lexical";
-import { HEADING_TAG } from "./transformers";
+import { levelFromTag, tagForLevel } from "./transformers";
+import { MAX_HEADING_LEVEL, type HeadingLevel } from "@/lib/prompt-doc";
 
 /**
  * 结构工具条。
@@ -34,7 +35,13 @@ import { HEADING_TAG } from "./transformers";
  * 按钮比 schema 多一个，就是一个骗人的按钮。
  */
 
-type BlockType = "paragraph" | "heading" | "ul" | "ol";
+type BlockType = "paragraph" | "h1" | "h2" | "h3" | "ul" | "ol";
+
+/** 一到三级，与 doc 的 HeadingLevel 一一对应 */
+const LEVELS: HeadingLevel[] = Array.from(
+  { length: MAX_HEADING_LEVEL },
+  (_, i) => (i + 1) as HeadingLevel
+);
 
 /**
  * 当前光标所在块是什么类型。
@@ -47,7 +54,7 @@ function $blockTypeOf(selection: BaseSelection | null): BlockType {
   const anchor = selection.anchor.getNode();
   const top = anchor.getKey() === "root" ? anchor : anchor.getTopLevelElement();
   if ($isListNode(top)) return top.getListType() === "number" ? "ol" : "ul";
-  if ($isHeadingNode(top)) return "heading";
+  if ($isHeadingNode(top)) return `h${levelFromTag(top.getTag())}` as BlockType;
   return "paragraph";
 }
 
@@ -83,19 +90,22 @@ export function Toolbar({
     [editor]
   );
 
-  const toggleHeading = useCallback(() => {
-    editor.update(() => {
-      const selection = $ensureSelection();
-      if (!$isRangeSelection(selection)) return;
-      /* 当前类型在 update 内部现读，不用组件里那个 block state：
-       * 后者由 registerUpdateListener 异步刷新，连点两下时它还停在上一轮，
-       * 于是「取消标题」会被当成「设为标题」。 */
-      const isHeading = $blockTypeOf(selection) === "heading";
-      $setBlocksType(selection, () =>
-        isHeading ? $createParagraphNode() : $createHeadingNode(HEADING_TAG)
-      );
-    });
-  }, [editor]);
+  const toggleHeading = useCallback(
+    (level: HeadingLevel) => {
+      editor.update(() => {
+        const selection = $ensureSelection();
+        if (!$isRangeSelection(selection)) return;
+        /* 当前类型在 update 内部现读，不用组件里那个 block state：
+         * 后者由 registerUpdateListener 异步刷新，连点两下时它还停在上一轮，
+         * 于是「取消标题」会被当成「设为标题」。 */
+        const already = $blockTypeOf(selection) === `h${level}`;
+        $setBlocksType(selection, () =>
+          already ? $createParagraphNode() : $createHeadingNode(tagForLevel(level))
+        );
+      });
+    },
+    [editor]
+  );
 
   const toggleList = useCallback(
     (kind: "ul" | "ol") => {
@@ -116,13 +126,18 @@ export function Toolbar({
 
   return (
     <div className="flex flex-wrap items-center gap-1" role="toolbar" aria-label="段落结构">
-      <Button
-        active={block === "heading"}
-        disabled={disabled}
-        onClick={toggleHeading}
-        label={labels.heading}
-        icon="fa-heading"
-      />
+      {/* 一级一个按钮，而不是一个「标题」按钮循环切换：
+          循环切换要点三下才回到正文，而且看不出当前是第几级 */}
+      {LEVELS.map((level) => (
+        <Button
+          key={level}
+          active={block === `h${level}`}
+          disabled={disabled}
+          onClick={() => toggleHeading(level)}
+          label={`${labels.heading} ${level}`}
+          text={`H${level}`}
+        />
+      ))}
       <Button
         active={block === "ul"}
         disabled={disabled}
@@ -147,12 +162,15 @@ function Button({
   onClick,
   label,
   icon,
+  text,
 }: {
   active: boolean;
   disabled?: boolean;
   onClick(): void;
   label: string;
-  icon: string;
+  /** 图标与文字二选一。标题按钮用文字，H1/H2/H3 用图标画不出层级 */
+  icon?: string;
+  text?: string;
 }) {
   return (
     <button
@@ -172,7 +190,7 @@ function Button({
           : "border-line bg-surface text-ink-muted hover:bg-black/[0.04]"
       }`}
     >
-      <i className={`fas ${icon}`} />
+      {icon ? <i className={`fas ${icon}`} /> : <span className="font-semibold">{text}</span>}
     </button>
   );
 }

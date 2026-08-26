@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   type PromptDoc,
   normalizePrompt,
+  parsePastedText,
   parsePrompt,
   parseRefToken,
   refNeedsSeparator,
@@ -61,14 +62,69 @@ describe("空白规则", () => {
 });
 
 describe("schema 的序列化约定", () => {
-  it("标题不输出井号，且只跟下一块隔一个换行", () => {
+  it("标题带着井号出去，且只跟下一块隔一个换行", () => {
     const doc: PromptDoc = {
       blocks: [
-        { type: "heading", children: [{ type: "text", text: "开场镜头" }] },
+        { type: "heading", level: 1, children: [{ type: "text", text: "开场镜头" }] },
         { type: "paragraph", children: [{ type: "text", text: "人物从左侧走入" }] },
       ],
     };
-    expect(serializePrompt(doc)).toBe("开场镜头\n人物从左侧走入");
+    expect(serializePrompt(doc)).toBe("# 开场镜头\n人物从左侧走入");
+  });
+
+  it("层级用井号个数表示，且能原样认回来", () => {
+    const doc: PromptDoc = {
+      blocks: [
+        { type: "heading", level: 1, children: [{ type: "text", text: "第一幕" }] },
+        { type: "heading", level: 2, children: [{ type: "text", text: "镜头一" }] },
+        { type: "heading", level: 3, children: [{ type: "text", text: "细节" }] },
+      ],
+    };
+    const text = serializePrompt(doc);
+    expect(text).toBe("# 第一幕\n## 镜头一\n### 细节");
+    /* 标题活不过一次保存的话，用户敲的分镜下次打开就分不出章节了 */
+    expect(parsePrompt(text).blocks).toEqual(doc.blocks);
+  });
+
+  it("四个以上井号不当标题，原样留成正文", () => {
+    const blocks = parsePrompt("#### 不是标题").blocks;
+    expect(blocks[0].type).toBe("paragraph");
+    expect(normalizePrompt("#### 不是标题")).toBe("#### 不是标题");
+  });
+
+  it("井号后面没空格不算标题", () => {
+    expect(parsePrompt("#标签").blocks[0].type).toBe("paragraph");
+    expect(normalizePrompt("#标签")).toBe("#标签");
+  });
+
+  it("标题把前后切开，不会被并进相邻段落", () => {
+    const blocks = parsePrompt("上一句\n# 标题\n下一句").blocks;
+    expect(blocks.map((b) => b.type)).toEqual(["paragraph", "heading", "paragraph"]);
+  });
+
+  it("**粘贴进来的 markdown 标题也认**——用户报的就是这个", () => {
+    /*
+     * 以前 markdown 快捷输入只在「敲」的时候生效，粘贴走的是 parsePastedText，
+     * 而它认不出井号。于是从别处贴一份分镜稿进来，# 全部原样留在正文里，
+     * 而自己敲的那几行却变成了标题——同一份文档里两种样子。
+     */
+    const doc = parsePastedText("# SHOT 01\n## 00:00—00:14\n\n【画面】\nB城，血红色太阳。");
+    expect(doc.blocks.map((b) => b.type)).toEqual(["heading", "heading", "paragraph"]);
+    expect(doc.blocks[0]).toMatchObject({ level: 1 });
+    expect(doc.blocks[1]).toMatchObject({ level: 2 });
+  });
+
+  it("标题里的素材引用照常识别", () => {
+    const blocks = parsePrompt("# 参考 @Image1 的镜头").blocks;
+    expect(blocks[0]).toEqual({
+      type: "heading",
+      level: 1,
+      children: [
+        { type: "text", text: "参考 " },
+        { type: "ref", token: "Image1" },
+        { type: "text", text: " 的镜头" },
+      ],
+    });
   });
 
   it("注释块整段剔除，行内注释一个字符都不上行", () => {
@@ -314,6 +370,15 @@ describe("不变式", () => {
     "* 星号加空格是列表项",
     "a*b*c",
     "混排 @Image1\n- 列表里也有 @Video2\n\n结尾段",
+    "# 标题",
+    "#### 四个井号不是标题",
+    "#没有空格",
+    "# 标题\n正文",
+    "# 标题\n## 二级\n### 三级",
+    "  # 缩进的标题",
+    "# ",
+    "#",
+    "# @Image1",
     // 随机输入逮到的回归：缩进的列表项若要求顶格识别，normalize 会不幂等
     "\t* 缩进的列表项",
     "   - 空格缩进的列表项",
@@ -332,6 +397,8 @@ describe("不变式", () => {
     const ALPHABET = [
       "@", "I", "m", "a", "g", "e", "V", "i", "d", "o", "A", "u",
       "1", "2", "0", " ", "\n", "-", "*", ".", "\t", "猫", "，", "(", "`",
+      // 井号必须在里面：标题现在带着符号序列化，是最容易破坏幂等的一条规则
+      "#",
     ];
     let seed = 20260823;
     const rand = () => {
@@ -361,7 +428,7 @@ describe("不变式", () => {
     const docs: PromptDoc[] = [
       {
         blocks: [
-          { type: "heading", children: [{ type: "text", text: "开场镜头" }] },
+          { type: "heading", level: 1, children: [{ type: "text", text: "开场镜头" }] },
           {
             type: "paragraph",
             children: [

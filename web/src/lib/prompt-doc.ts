@@ -47,7 +47,7 @@ export type InlineNode =
 export type BlockNode =
   | { type: "paragraph"; children: InlineNode[] }
   /** 分节标题：序列化成**纯文本行**，# 符号丢弃 */
-  | { type: "heading"; children: InlineNode[] }
+  | { type: "heading"; level: HeadingLevel; children: InlineNode[] }
   | { type: "list"; ordered: boolean; items: InlineNode[][] }
   /** 注释块：整段剔除 */
   | { type: "note"; children: InlineNode[] }
@@ -63,6 +63,12 @@ export const EMPTY_DOC: PromptDoc = { blocks: [] };
  * ------------------------------------------------------------------ */
 
 export type RefKind = "image" | "video" | "audio";
+
+/**
+ * 标题层级。最多三级——再深就没人分得清了，而提示词也不是论文。
+ */
+export type HeadingLevel = 1 | 2 | 3;
+export const MAX_HEADING_LEVEL = 3;
 
 /** 与 PromptMentionBox 的 KIND_WORD 一致；改这里必须同时改那边 */
 const KIND_WORD: Record<RefKind, string> = {
@@ -161,7 +167,20 @@ function serializeBlock(block: BlockNode): { text: string; hugNext: boolean } | 
     }
     case "heading": {
       const text = serializeInline(block.children);
-      return text.trim() ? { text, hugNext: true } : null;
+      /*
+       * **带着 `#` 一起序列化。**
+       *
+       * 早先这里是丢掉符号的，理由是「任何一级出去都是同一个纯文本行」。
+       * 那条理由在标题只是装饰时成立，现在不成立了：章节是可点、可套用技能、
+       * 要能在原文里存下来的结构。符号丢了，标题就活不过一次保存——
+       * 用户敲的 `# SHOT 01` 存完变回普通一行，下次打开分不出章节。
+       *
+       * 代价是 `#` 会跟着进提交给上游的正文。这是有意的：所见即所提交，
+       * 中间再插一层「提交前偷偷剔掉」只会制造第二种真相。图像模式本来就
+       * 不给结构编辑（那套规则明写「避免长段落叙事」），所以受影响的
+       * 只有视频这类本来就在写分镜的模式，`#` 在那里是有意义的结构。
+       */
+      return text.trim() ? { text: `${"#".repeat(block.level)} ${text}`, hugNext: true } : null;
     }
     case "list": {
       const items = block.items.map((item) => serializeInline(item)).filter((t) => t.trim());
@@ -221,6 +240,8 @@ export function serializePrompt(doc: PromptDoc): string {
  *
  * 缩进本身照旧保留（每行只 trimEnd），这里放宽的只是「算不算列表项」。
  */
+/** 分节标题。最多三级，`####` 起不再当标题，原样留成正文 */
+const HEADING_RE = /^\s*(#{1,3})\s+(.*)$/;
 /** 无序列表项 */
 const UL_RE = /^\s*[-*]\s+(.*)$/;
 /** 有序列表项 */
@@ -274,10 +295,12 @@ function paragraphFrom(lines: string[]): BlockNode {
 /**
  * canonical -> doc。
  *
- * 注意这个方向**必然丢信息**：标题的符号已经丢了、注释已经剔了、槽位已经
- * 填成死文本了，canonical 里没有任何痕迹能把它们认回来。所以
- * parse(serialize(doc)) === doc 这条**对含标题/注释/槽位的 doc 不成立**，
+ * 注意这个方向**必然丢信息**：注释已经剔了、槽位已经填成死文本了，
+ * canonical 里没有任何痕迹能把它们认回来。所以
+ * parse(serialize(doc)) === doc 这条**对含注释/槽位的 doc 不成立**，
  * 也不可能成立——那是 schema 设计的直接后果，不是实现偷懒。
+ *
+ * 标题是个例外：它带着 `#` 一起序列化，所以能原样认回来。
  *
  * 真正成立并且被单测钉死的是这两条：
  *   1. serialize(parse(t)) 幂等                          原文视图反复进出不会越改越乱
@@ -312,6 +335,17 @@ export function parsePrompt(text: string): PromptDoc {
     };
 
     for (const line of chunk) {
+      const heading = HEADING_RE.exec(line);
+      if (heading) {
+        flushBuf();
+        flushList();
+        blocks.push({
+          type: "heading",
+          level: heading[1].length as HeadingLevel,
+          children: parseInlineText(heading[2]),
+        });
+        continue;
+      }
       const ul = UL_RE.exec(line);
       const ol = ul ? null : OL_RE.exec(line);
       if (ul || ol) {
