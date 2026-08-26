@@ -1,7 +1,7 @@
 import "server-only";
 import { chat, streamChat, type ChatUsage } from "./llm/chat";
-import { pickTier, type LlmModelSpec } from "./llm/models";
-import { resolveLlmModel } from "./llm/model-store";
+import type { LlmModelSpec } from "./llm/models";
+import { resolveSkillModel } from "./llm/model-store";
 import { splitEmittable } from "./llm/sse";
 import { maskPromptRefs, unmaskPromptRefs } from "./prompt-ref-guard";
 import { PROMPT_FORMAT_RULES, resolvePromptTarget } from "./prompt-targets";
@@ -163,7 +163,9 @@ export async function rewriteSelection(
   if (!input.selection.trim()) return null;
 
   const { masked, tokens: refTokens } = maskPromptRefs(input.selection);
-  const model = await resolveLlmModel(pickTier({ allowSensitive: input.allowSensitive }));
+  const { model } = await resolveSkillModel(input.skill.modelKey, {
+    allowSensitive: input.allowSensitive,
+  });
   const request = requestFor(input, masked, model);
   if (opts?.progress) {
     opts.progress.model = model;
@@ -197,7 +199,9 @@ export async function* streamRewriteSelection(
   if (!input.selection.trim()) return;
 
   const { masked, tokens: refTokens } = maskPromptRefs(input.selection);
-  const model = await resolveLlmModel(pickTier({ allowSensitive: input.allowSensitive }));
+  const { model } = await resolveSkillModel(input.skill.modelKey, {
+    allowSensitive: input.allowSensitive,
+  });
   const request = requestFor(input, masked, model);
   const progress = opts?.progress;
   if (progress) {

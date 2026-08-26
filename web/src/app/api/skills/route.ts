@@ -6,6 +6,8 @@ import { resolvePromptTarget } from "@/lib/prompt-targets";
 import { SKILL_TRIGGERS, type SkillTrigger } from "@/lib/skills/definitions";
 import { listSkills } from "@/lib/skills/store";
 import { isVipActive } from "@/lib/pricing";
+import { hasAdultAccess } from "@/lib/adult-access";
+import { AUTO_MODEL_KEY, canUseModel, listLlmModels } from "@/lib/llm/model-store";
 
 /**
  * 创作端可见的技能清单。
@@ -48,10 +50,28 @@ export async function GET(req: Request) {
   });
 
   const vipRank = isVipActive(user) ? (user.vipTier?.rank ?? 0) : 0;
+  const adultAccess = hasAdultAccess(user);
+  const byKey = new Map((await listLlmModels()).map((m) => [m.key, m]));
+
+  /**
+   * 用不了绑定的模型就**整条不显示**，而不是显示了点下去再报错。
+   *
+   * 判的是「技能配成了哪个模型」，不是「这次实际会跑哪个」——后者在成人模式下
+   * 会自动切档，拿它判会让一条绑了进阶档的技能对非会员也亮起来。
+   *
+   * 绑的模型不存在（运营删了、改了 key）时按 auto 处理：一条技能不该因为
+   * 某个模型下架就从所有人的菜单里消失。
+   */
+  const modelAllowed = (modelKey: string) => {
+    if (!modelKey || modelKey === AUTO_MODEL_KEY) return true;
+    const model = byKey.get(modelKey);
+    if (!model) return true;
+    return canUseModel(model, { vipRank, adultAccess });
+  };
 
   return NextResponse.json({
     skills: skills
-      .filter((s) => s.requiresVipRank <= vipRank)
+      .filter((s) => s.requiresVipRank <= vipRank && modelAllowed(s.modelKey))
       .map((s) => ({
         key: s.key,
         name: s.name,

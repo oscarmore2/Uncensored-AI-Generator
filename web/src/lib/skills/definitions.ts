@@ -27,7 +27,21 @@ export const SKILL_TRIGGERS = [
 ] as const;
 export type SkillTrigger = (typeof SKILL_TRIGGERS)[number];
 
-export const SKILL_OUTPUT_MODES = ["replace", "insert", "append", "card"] as const;
+/**
+ * 结果怎么落地。
+ *
+ * 原来还有 `insert` / `append` 两个值，删掉了：**「插入下方」本来就是预览卡上
+ * 一颗按钮**，再用技能配置表达一遍是多此一举，而且会出现「技能说 append、
+ * 按钮说替换」这种自相矛盾的状态。
+ *
+ * 真正需要区分的只有一件事：**这次的输出是不是用来顶替原文的**。
+ * 「检查这段有什么问题」回的是一段评语，用户顺手点「替换」就会把评语写进
+ * 提示词里——看起来还挺像回事，可能到出片不对才发现。`card` 就是为它存在的：
+ * 只读，不给任何落地按钮。
+ *
+ * 字段仍是 String，以后真要加值不用迁移。
+ */
+export const SKILL_OUTPUT_MODES = ["replace", "card"] as const;
 export type SkillOutputMode = (typeof SKILL_OUTPUT_MODES)[number];
 
 /** 与 `prompt-targets.ts` 的 PromptFormatId 一致。空数组 = 全模式 */

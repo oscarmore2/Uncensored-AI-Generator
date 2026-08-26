@@ -31,6 +31,11 @@ export type SelectionAiSkill = {
   name: string;
   icon: string;
   description?: string;
+  /**
+   * `card` = 这次的输出**不是用来顶替原文的**（比如「这段有什么问题」）。
+   * 只读展示，不给落地按钮——不然用户顺手一点，评语就写进提示词里了。
+   */
+  outputMode?: "replace" | "card";
 };
 
 export type SelectionAiLabels = {
@@ -41,6 +46,8 @@ export type SelectionAiLabels = {
   retry: string;
   discard: string;
   droppedRefs: string;
+  /** 只读结果的收起按钮 */
+  done: string;
   /**
    * 本次消耗与累计零头。
    *
@@ -88,10 +95,12 @@ type Phase =
   | { kind: "menu"; rect: DOMRect }
   /** 等结果 / 边流边显示。text 是已经流出来的部分 */
   | { kind: "pending"; rect: DOMRect; action: RewriteAction; text: string }
+  /* 存的是技能而不是只存 key：拿到结果时要按它的 outputMode 决定给哪些按钮 */
   | {
       kind: "preview";
       rect: DOMRect;
       action: RewriteAction;
+      readOnly: boolean;
       text: string;
       dropped: string[];
       charge?: SelectionAiCharge;
@@ -206,6 +215,7 @@ export function SelectionAiPlugin({
           kind: "preview",
           rect,
           action,
+          readOnly: skills.find((s) => s.key === action)?.outputMode === "card",
           /* 整体替换而不是追加：最终结果多跑了一次去壳，与流出来的那份会有出入 */
           text: result.text,
           dropped: result.dropped,
@@ -360,10 +370,15 @@ export function SelectionAiPlugin({
             </p>
           )}
           <div className="flex flex-wrap items-center gap-1 p-1.5">
-            <PreviewBtn primary onClick={() => apply(phase.text, "replace")} label={labels.replace} />
-            <PreviewBtn onClick={() => apply(phase.text, "insert")} label={labels.insertBelow} />
+            {/* 只读结果不给落地按钮：它回的不是用来顶替原文的东西 */}
+            {!phase.readOnly && (
+              <>
+                <PreviewBtn primary onClick={() => apply(phase.text, "replace")} label={labels.replace} />
+                <PreviewBtn onClick={() => apply(phase.text, "insert")} label={labels.insertBelow} />
+              </>
+            )}
             <PreviewBtn onClick={() => void run(phase.action, rect)} label={labels.retry} />
-            <PreviewBtn onClick={finish} label={labels.discard} />
+            <PreviewBtn primary={phase.readOnly} onClick={finish} label={phase.readOnly ? labels.done : labels.discard} />
             {phase.charge && (
               /* 花了多少钱要当场说。等用户自己去流水里对账是最差的做法 */
               <span className="ml-auto pr-1.5 text-[11px] text-ink-subtle">

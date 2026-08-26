@@ -16,6 +16,9 @@ import {
 import { portableSkillSchema, toPortable, USER_TRIGGERS } from "@/lib/skills/portable";
 import { OFFICIAL_SKILL_BY_KEY, SKILL_MODE_IDS, SKILL_OUTPUT_MODES } from "@/lib/skills/definitions";
 import { TEMPLATE_VARIABLES } from "@/lib/skills/variables";
+import { AUTO_MODEL_KEY, canUseModel, listLlmModels } from "@/lib/llm/model-store";
+import { hasAdultAccess } from "@/lib/adult-access";
+import { isVipActive } from "@/lib/pricing";
 
 /**
  * 用户自己的技能。
@@ -39,6 +42,7 @@ function skillOut(skill: ResolvedSkill, officialUpdatedAt: Map<string, Date>) {
     output_mode: skill.outputMode,
     max_output_tokens: skill.maxOutputTokens,
     temperature: skill.temperature,
+    model_key: skill.modelKey,
     is_active: skill.isActive,
     /**
      * 还在跟随官方吗。
@@ -100,6 +104,21 @@ export async function GET() {
       modes: SKILL_MODE_IDS,
       output_modes: SKILL_OUTPUT_MODES,
       variables: TEMPLATE_VARIABLES,
+      /*
+       * 只列这个人用得上的模型。用不上的**不显示**而不是显示后禁用——
+       * 列一排点不动的选项，除了让人去猜「我要充到什么档」没有别的作用。
+       */
+      models: [
+        { key: AUTO_MODEL_KEY, label: "自动（按是否成人模式选档）", tier: "" },
+        ...(await listLlmModels())
+          .filter((m) =>
+            canUseModel(m, {
+              vipRank: isVipActive(user) ? (user.vipTier?.rank ?? 0) : 0,
+              adultAccess: hasAdultAccess(user),
+            })
+          )
+          .map((m) => ({ key: m.key, label: m.label, tier: m.tierCode })),
+      ],
     },
   });
 }

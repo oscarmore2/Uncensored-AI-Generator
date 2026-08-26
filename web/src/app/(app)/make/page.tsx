@@ -159,6 +159,8 @@ function MakePageInner() {
   const [skills, setSkills] = useState<SelectionAiSkill[]>([]);
   /* 整段级技能。魔法指令是其中第一个 */
   const [manualSkills, setManualSkills] = useState<SelectionAiSkill[]>([]);
+  /* 只读技能（outputMode=card）的结果。它回的不是用来顶替正文的东西 */
+  const [manualCard, setManualCard] = useState<{ title: string; text: string } | null>(null);
   const [catalog, setCatalog] = useState<CatalogResponse | null>(null);
   const [extraParams, setExtraParams] = useState<Record<string, string>>({});
   const pollingRef = useRef(false);
@@ -798,17 +800,32 @@ function MakePageInner() {
       return;
     }
     let cancelled = false;
-    const pick = (x: { name: string; name_en: string; key: string; icon: string; description: string }) => ({
+    const pick = (x: {
+      name: string;
+      name_en: string;
+      key: string;
+      icon: string;
+      description: string;
+      output_mode?: string;
+    }): SelectionAiSkill => ({
       key: x.key,
       name: locale.startsWith("en") && x.name_en ? x.name_en : x.name,
       icon: x.icon,
       description: x.description,
+      outputMode: x.output_mode === "card" ? "card" : "replace",
     });
     const fetchFor = (trigger: string) => {
       const params = new URLSearchParams({ trigger, mode, spicy: String(spicy) });
       if (tier) params.set("tier", tier);
       return api<{
-        skills: Array<{ key: string; name: string; name_en: string; icon: string; description: string }>;
+        skills: Array<{
+          key: string;
+          name: string;
+          name_en: string;
+          icon: string;
+          description: string;
+          output_mode?: string;
+        }>;
       }>(`/api/skills?${params.toString()}`);
     };
 
@@ -937,6 +954,15 @@ function MakePageInner() {
           }),
         }
       );
+      if (skill.outputMode === "card") {
+        /*
+         * 只读技能的输出是一段说明/评语，**绝不能写回正文**——
+         * 那样用户的提示词里就多了一段「这段有三个问题……」，
+         * 而且看起来还挺像回事，可能到出片不对才发现。
+         */
+        setManualCard({ title: skill.name, text: data.prompt });
+        return;
+      }
       setPromptFromExternal(data.prompt);
       if (data.negative_prompt) setNegative(data.negative_prompt);
       /*
@@ -1421,6 +1447,24 @@ function MakePageInner() {
                 className="prompt-box w-full bg-surface border border-line focus:border-orange-500/60 rounded-2xl p-4 pr-12 text-sm placeholder:text-ink-subtle outline-none min-h-[120px]"
                 placeholder={mode === "imgedit" ? t("editPlaceholder") : t("promptPlaceholder")}
               />
+              {manualCard && (
+                /* 只读结果：给一块能读的地方，而不是塞进 toast 里一闪而过 */
+                <div className="mt-3 rounded-2xl border border-line bg-black/[0.03] p-3">
+                  <div className="mb-1.5 flex items-center gap-2">
+                    <span className="text-xs font-semibold">{manualCard.title}</span>
+                    <button
+                      type="button"
+                      onClick={() => setManualCard(null)}
+                      className="ml-auto rounded-lg border border-line px-2 py-0.5 text-[11px] text-ink-muted"
+                    >
+                      {t("aiDone")}
+                    </button>
+                  </div>
+                  <p className="whitespace-pre-wrap break-words text-[12px] leading-relaxed text-ink-muted">
+                    {manualCard.text}
+                  </p>
+                </div>
+              )}
               {orphanRefs.length > 0 ? (
                 <p className="mt-2 flex items-start gap-1.5 text-[11px] text-red-700">
                   <i className="fas fa-link-slash mt-0.5" />

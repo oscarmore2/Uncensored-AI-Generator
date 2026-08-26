@@ -9,6 +9,7 @@ import {
 } from "@/lib/skills/definitions";
 import { diffFromFactory, ensureSkillsSeeded, skillFromRow } from "@/lib/skills/store";
 import { TEMPLATE_VARIABLES } from "@/lib/skills/variables";
+import { AUTO_MODEL_KEY, listLlmModels } from "@/lib/llm/model-store";
 
 export async function GET() {
   const admin = await requireRole("admin");
@@ -59,6 +60,16 @@ export async function GET() {
       output_modes: SKILL_OUTPUT_MODES,
       modes: SKILL_MODE_IDS,
       variables: TEMPLATE_VARIABLES,
+      /* 管理端不受 VIP / 成人验证限制，但绑了带门槛的模型，够不着的用户就看不到这条技能 */
+      models: [
+        { key: AUTO_MODEL_KEY, label: "自动（按是否成人模式选档）", tier: "", gated: false },
+        ...(await listLlmModels()).map((m) => ({
+          key: m.key,
+          label: m.label,
+          tier: m.tierCode,
+          gated: m.requiresVipRank > 0 || m.requiresAdult,
+        })),
+      ],
     },
   });
 }

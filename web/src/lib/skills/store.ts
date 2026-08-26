@@ -224,9 +224,9 @@ export async function ensureSkillsSeeded(): Promise<void> {
  * 官方跟随代码里的出厂值，用户副本跟随库里的官方行。复用同一个字段，
  * 就不必再造第二套状态机。
  *
- * 判定「改没改」只看**提示词相关的字段**。名称、图标、说明、启用与否是
- * 用户自己的东西：给副本改个名不该让它掉出升级链路，官方改了名也不该
- * 把用户起的名字冲掉。
+ * 界线是：**凡是影响它怎么跑的都算「改」，只有纯装饰不算**。
+ * 名称、图标、说明、启用与否是用户自己的东西——给副本改个名不该让它掉出
+ * 升级链路，官方改了名也不该把用户起的名字冲掉。
  */
 const MIRRORED = [
   "systemPrompt",
@@ -236,12 +236,13 @@ const MIRRORED = [
   "outputMode",
   "maxOutputTokens",
   "temperature",
+  "modelKey",
 ] as const;
 
 type MirroredField = (typeof MIRRORED)[number];
 export type MirroredValues = Pick<
   ResolvedSkill,
-  "systemPrompt" | "userTemplate" | "outputMode" | "maxOutputTokens" | "temperature"
+  "systemPrompt" | "userTemplate" | "outputMode" | "maxOutputTokens" | "temperature" | "modelKey"
 > & { triggers: string[]; modes: string[] };
 
 export const MIRRORED_FIELDS: readonly MirroredField[] = MIRRORED;
@@ -260,6 +261,7 @@ function mirroredOf(skill: ResolvedSkill): MirroredValues {
     outputMode: skill.outputMode,
     maxOutputTokens: Math.min(skill.maxOutputTokens, 1200),
     temperature: skill.temperature,
+    modelKey: skill.modelKey,
   };
 }
 
@@ -277,6 +279,7 @@ function mirroredWriteFields(v: MirroredValues) {
     outputMode: v.outputMode,
     maxOutputTokens: v.maxOutputTokens,
     temperature: v.temperature,
+    modelKey: v.modelKey,
   };
 }
 

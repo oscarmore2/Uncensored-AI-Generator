@@ -188,6 +188,7 @@ export function PromptComposer({
               insertBelow: t("aiInsertBelow"),
               retry: t("aiRetry"),
               discard: t("aiDiscard"),
+              done: t("aiDone"),
               droppedRefs: t("aiDroppedRefs"),
               charged: (cost: string, debt: string) => t("aiCharged", { cost, debt }),
               settled: (credits: number) => t("aiSettled", { credits }),

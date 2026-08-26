@@ -481,12 +481,14 @@ describe("内容是否与来源一致", () => {
     outputMode: "replace" as const,
     maxOutputTokens: 600,
     temperature: 0.3,
+    modelKey: "auto",
   };
 
   it("一模一样就还算跟随", async () => {
     const { sameAsSource } = await freshStore();
     expect(sameAsSource({ ...mirror }, mirror)).toBe(true);
   });
+
 
   it("提示词改了就算独立", async () => {
     const { sameAsSource } = await freshStore();
@@ -499,5 +501,10 @@ describe("内容是否与来源一致", () => {
     expect(sameAsSource({ ...mirror, modes: ["video_t2v"] }, mirror)).toBe(false);
     expect(sameAsSource({ ...mirror, temperature: 0.9 }, mirror)).toBe(false);
     expect(sameAsSource({ ...mirror, maxOutputTokens: 900 }, mirror)).toBe(false);
+  });
+
+  it("换了模型也算——凡是影响它怎么跑的都算「改」", async () => {
+    const { sameAsSource } = await freshStore();
+    expect(sameAsSource({ ...mirror, modelKey: "advanced-4o" }, mirror)).toBe(false);
   });
 });

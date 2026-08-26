@@ -27,6 +27,8 @@ interface MySkill {
   user_template: string;
   max_output_tokens: number;
   temperature: number;
+  model_key: string;
+  output_mode: string;
   is_active: boolean;
   /** 还在跟随官方吗。跟随中 = 官方一变它跟着变 */
   linked: boolean;
@@ -52,6 +54,7 @@ interface Resp {
     triggers: string[];
     modes: string[];
     variables: Array<{ name: string; desc: string }>;
+    models: Array<{ key: string; label: string; tier: string }>;
   };
 }
 
@@ -255,6 +258,7 @@ export default function MySkillsPage() {
               key={skill.id}
               skill={skill}
               modes={data.meta.modes}
+              models={data.meta.models}
               busy={busy}
               onExport={() => download(skill)}
               onPatch={(body, msg) =>
@@ -283,6 +287,7 @@ export default function MySkillsPage() {
 function SkillCard({
   skill,
   modes,
+  models,
   busy,
   onPatch,
   onExport,
@@ -290,6 +295,7 @@ function SkillCard({
 }: {
   skill: MySkill;
   modes: string[];
+  models: Array<{ key: string; label: string; tier: string }>;
   busy: boolean;
   onPatch(body: Record<string, unknown>, msg?: string): void;
   onExport(): void;
@@ -307,6 +313,8 @@ function SkillCard({
     user_template: skill.user_template,
     temperature: String(skill.temperature),
     max_output_tokens: String(skill.max_output_tokens),
+    model_key: skill.model_key,
+    output_mode: skill.output_mode,
   });
 
   const triggerLabel: Record<string, string> = {

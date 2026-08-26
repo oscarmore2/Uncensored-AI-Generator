@@ -6,6 +6,9 @@ import { hasSkillAuthoring } from "@/lib/skills/access";
 import { USER_TRIGGERS } from "@/lib/skills/portable";
 import { SKILL_MODE_IDS, SKILL_OUTPUT_MODES } from "@/lib/skills/definitions";
 import { sameAsSource, sourceMirror, type MirroredValues } from "@/lib/skills/store";
+import { AUTO_MODEL_KEY, canUseModel, getLlmModelByKey } from "@/lib/llm/model-store";
+import { hasAdultAccess } from "@/lib/adult-access";
+import { isVipActive } from "@/lib/pricing";
 
 const patchSchema = z
   .object({
@@ -21,6 +24,8 @@ const patchSchema = z
     max_output_tokens: z.number().int().min(50).max(1200).optional(),
     temperature: z.number().min(0).max(2).optional(),
     is_active: z.boolean().optional(),
+    /** 绑定的模型。"auto" = 按是否成人模式自动选档 */
+    model_key: z.string().min(1).max(80).optional(),
     /** 用户看过「来源已更新」的提示之后，可以把时间戳对齐，让提示消失 */
     acknowledge_source: z.boolean().optional(),
   })
@@ -68,6 +73,26 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
   const current = await ownOrNull(id, user.id);
   if (!current) return NextResponse.json({ error: "技能不存在" }, { status: 404 });
 
+  /*
+   * 模型的门禁在这里再判一次，不能只靠前端只列可用项——
+   * 那份清单是给人看的，这里才是拦得住脚本的地方。
+   */
+  if (d.model_key !== undefined && d.model_key !== AUTO_MODEL_KEY) {
+    const model = await getLlmModelByKey(d.model_key);
+    const allowed =
+      model &&
+      canUseModel(model, {
+        vipRank: isVipActive(user) ? (user.vipTier?.rank ?? 0) : 0,
+        adultAccess: hasAdultAccess(user),
+      });
+    if (!allowed) {
+      return NextResponse.json(
+        { error: "当前账号还用不了这个模型", code: "MODEL_NOT_ALLOWED" },
+        { status: 403 }
+      );
+    }
+  }
+
   let forkedFromAt = current.forkedFromAt;
   if (d.acknowledge_source && current.forkedFromKey) {
     const official = await db.skill.findFirst({
@@ -99,6 +124,7 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
       outputMode: (d.output_mode ?? current.outputMode) as MirroredValues["outputMode"],
       maxOutputTokens: d.max_output_tokens ?? current.maxOutputTokens,
       temperature: d.temperature ?? current.temperature,
+      modelKey: d.model_key ?? current.modelKey,
     };
     const mirror = await sourceMirror(current.forkedFromKey);
     // 来源不见了也当作独立：一个跟随着不存在的东西的副本毫无意义
@@ -128,6 +154,7 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
       ...(d.max_output_tokens !== undefined ? { maxOutputTokens: d.max_output_tokens } : {}),
       ...(d.temperature !== undefined ? { temperature: d.temperature } : {}),
       ...(d.is_active !== undefined ? { isActive: d.is_active } : {}),
+      ...(d.model_key !== undefined ? { modelKey: d.model_key } : {}),
       isOverridden,
       forkedFromAt,
     },

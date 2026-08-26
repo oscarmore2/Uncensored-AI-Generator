@@ -41,6 +41,7 @@ interface Resp {
     triggers: string[];
     implemented_triggers: string[];
     output_modes: string[];
+    models: Array<{ key: string; label: string; tier: string; gated: boolean }>;
     modes: string[];
     variables: Array<{ name: string; desc: string }>;
   };
@@ -209,6 +210,8 @@ function SkillCard({
     max_output_tokens: String(skill.max_output_tokens),
     sort_order: String(skill.sort_order),
     modes: skill.modes,
+    model_key: skill.model_key,
+    output_mode: skill.output_mode,
   });
 
   return (
@@ -330,6 +333,37 @@ function SkillCard({
             />
           </Labeled>
 
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+            <Labeled label="绑定模型">
+              <select
+                value={draft.model_key}
+                onChange={(e) => setDraft({ ...draft, model_key: e.target.value })}
+                className="w-full bg-surface border border-line rounded-xl px-2.5 py-1.5 text-xs outline-none focus:border-orange-500/60"
+              >
+                {meta.models.map((m) => (
+                  <option key={m.key} value={m.key}>
+                    {m.label}
+                    {m.gated ? "（有门槛）" : ""}
+                  </option>
+                ))}
+              </select>
+            </Labeled>
+            <Labeled label="结果怎么落地">
+              <select
+                value={draft.output_mode}
+                onChange={(e) => setDraft({ ...draft, output_mode: e.target.value })}
+                className="w-full bg-surface border border-line rounded-xl px-2.5 py-1.5 text-xs outline-none focus:border-orange-500/60"
+              >
+                <option value="replace">替换正文（给替换 / 插入下方按钮）</option>
+                <option value="card">只读（回的不是用来顶替原文的东西）</option>
+              </select>
+            </Labeled>
+          </div>
+          <p className="text-[10px] leading-relaxed text-ink-subtle">
+            绑定固定模型后，<strong>成人模式下仍会自动改用无限制档</strong>——基础 / 进阶档挂的模型
+            会拒答，那比不给这个功能更糟。绑了有门槛的模型时，够不着的用户看不到这条技能。
+          </p>
+
           <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
             <Labeled label="温度">
               <TextInput
@@ -361,6 +395,8 @@ function SkillCard({
                   max_output_tokens: Number(draft.max_output_tokens),
                   sort_order: Number(draft.sort_order),
                   modes: draft.modes,
+                  model_key: draft.model_key,
+                  output_mode: draft.output_mode,
                 })
               }
               className="px-4 py-2 text-xs font-semibold rounded-xl bg-orange-700 text-white disabled:opacity-50"

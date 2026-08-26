@@ -1,8 +1,8 @@
 import "server-only";
 import { maskPromptRefs, unmaskPromptRefs } from "./prompt-ref-guard";
 import { chat, llmConfigured, type ChatUsage } from "./llm/chat";
-import { pickTier, type LlmModelSpec } from "./llm/models";
-import { resolveLlmModel } from "./llm/model-store";
+import type { LlmModelSpec } from "./llm/models";
+import { resolveSkillModel } from "./llm/model-store";
 import { manualOutputRules, wrapSystem } from "./skills/envelope";
 import { renderTemplate, type TemplateVars } from "./skills/template";
 import type { ResolvedSkill } from "./skills/store";
@@ -298,7 +298,9 @@ async function enhancePromptWithSkill(
 ): Promise<MagicPromptResult | null> {
   const meta = buildTaskMetadata(input, target);
   const vars = buildVars(input, target, meta);
-  const model = await resolveLlmModel(pickTier({ allowSensitive: input.allow_sensitive }));
+  const { model } = await resolveSkillModel(skill.modelKey, {
+    allowSensitive: input.allow_sensitive,
+  });
 
   const called = await chat({
     system: wrapSystem({

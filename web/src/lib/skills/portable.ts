@@ -33,7 +33,8 @@ export const portableSkillSchema = z.object({
   modes: z.array(z.enum(SKILL_MODE_IDS)).default([]),
   system_prompt: z.string().min(1).max(8000),
   user_template: z.string().min(1).max(8000),
-  output_mode: z.enum(SKILL_OUTPUT_MODES).default("replace"),
+  /* 老导出文件里可能是已经删掉的 insert / append，按 replace 收下而不是整份拒绝 */
+  output_mode: z.enum(SKILL_OUTPUT_MODES).catch("replace").default("replace"),
   max_output_tokens: z.number().int().min(50).max(1200).default(600),
   temperature: z.number().min(0).max(2).default(0.4),
   /** 来源官方技能。导入时会校验它确实存在，不存在就丢掉——那只是一条提示 */
