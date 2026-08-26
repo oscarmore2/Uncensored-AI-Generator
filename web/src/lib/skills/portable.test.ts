@@ -10,6 +10,7 @@ const base = {
   description: "",
   triggers: ["selection"],
   modes: [],
+  sectionLevels: [],
   systemPrompt: "任务：润色",
   userTemplate: "{{selection}}",
   outputMode: "replace",

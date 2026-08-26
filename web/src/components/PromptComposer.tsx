@@ -73,6 +73,7 @@ export function PromptComposer({
   reloadKey,
   onRewrite,
   skills,
+  sectionSkills,
 }: {
   value: string;
   onChange: (next: string) => void;
@@ -103,6 +104,8 @@ export function PromptComposer({
    * 前端不再自己维护一份清单，否则管理端停用一个技能，按钮还在。
    */
   skills?: SelectionAiSkill[];
+  /** 章节级技能（点标题触发，也画在编辑器上方那排） */
+  sectionSkills?: SelectionAiSkill[];
 }) {
   const t = useTranslations("Make");
   const [expanded, setExpanded] = useState(false);
@@ -181,6 +184,7 @@ export function PromptComposer({
         ? {
             request: onRewrite,
             skills: skills ?? [],
+            sectionSkills: sectionSkills ?? [],
             labels: {
               working: t("aiWorking"),
               cancel: t("aiCancel"),
@@ -196,7 +200,7 @@ export function PromptComposer({
             },
           }
         : undefined,
-    [onRewrite, skills, t]
+    [onRewrite, skills, sectionSkills, t]
   );
 
   const editorLabels = useMemo(

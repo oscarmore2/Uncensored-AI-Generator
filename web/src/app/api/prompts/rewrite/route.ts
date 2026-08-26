@@ -50,6 +50,11 @@ const bodySchema = z.object({
   tier: z.enum(GENERATION_TIERS).optional(),
   spicy: z.boolean().optional(),
   target_chars: z.number().int().min(10).max(2000).optional(),
+  /**
+   * 这次是哪个时机触发的。默认选区级；章节级传 section。
+   * 服务端拿它做两件事：校验技能确实绑了这个时机、以及记进用量台账。
+   */
+  trigger: z.enum(["selection", "section"]).default("selection"),
   /** 要流式就置 true。不支持流式的环境照旧拿 JSON */
   stream: z.boolean().optional(),
 });
@@ -57,8 +62,6 @@ const bodySchema = z.object({
 /** 锁的兜底时长：够一次硬超时跑完，再留一点收尾时间 */
 const LOCK_TTL_MS = LLM_TIMEOUT_MS + 10_000;
 
-/** 这一期只有选区级一个时机；S4 才有 block / slash / empty / submit */
-const TRIGGER = "selection";
 
 type Failure = { error: string; code?: string; status: number; level?: string };
 
@@ -99,7 +102,7 @@ export async function POST(req: Request) {
   }
 
   const skill = await getSkillForRun(input.action, user.id);
-  if (!skill || !skill.isActive || !skill.triggers.includes("selection")) {
+  if (!skill || !skill.isActive || !skill.triggers.includes(input.trigger)) {
     return NextResponse.json({ error: "该技能不可用", code: "SKILL_UNAVAILABLE" }, { status: 400 });
   }
 
@@ -173,7 +176,7 @@ export async function POST(req: Request) {
       userId: user.id,
       skillKey: skill.key,
       modelKey: args.model.key,
-      trigger: TRIGGER,
+      trigger: input.trigger,
       multiplierBps: args.model.priceMultiplierBps,
       vipDiscountBps,
       status: args.status,
@@ -221,7 +224,15 @@ export async function POST(req: Request) {
       }
     }
 
-    return streamResponse({ req, rewriteInput, review, bill, release, logUser: user.id });
+    return streamResponse({
+      req,
+      rewriteInput,
+      review,
+      bill,
+      release,
+      logUser: user.id,
+      trigger: input.trigger,
+    });
   } catch (err) {
     release();
     console.error("[prompt-rewrite]", err);
@@ -293,8 +304,9 @@ function streamResponse(args: {
   }): Promise<LlmUsageResult>;
   release(): void;
   logUser: number;
+  trigger: string;
 }) {
-  const { req, rewriteInput, review, bill, release, logUser } = args;
+  const { req, rewriteInput, review, bill, release, logUser, trigger } = args;
   const encoder = new TextEncoder();
   const progress: RewriteProgress = newRewriteProgress();
 
@@ -360,7 +372,7 @@ function streamResponse(args: {
           }).catch((e) => console.error("[prompt-rewrite:bill]", e));
         } else if (!canceled) {
           console.error("[prompt-rewrite:stream]", err);
-          await logFailure(logUser, progress);
+          await logFailure(logUser, trigger, progress);
         }
         if (!canceled) send({ type: "error", error: "改写失败，请稍后重试", status: 400 });
       } finally {
@@ -387,13 +399,13 @@ function streamResponse(args: {
 }
 
 /** 一个字都没产出的失败也要落台账：报表里「失败率」比「花了多少」更早示警 */
-async function logFailure(userId: number, progress: RewriteProgress) {
+async function logFailure(userId: number, trigger: string, progress: RewriteProgress) {
   if (!progress.model) return;
   await recordLlmUsage({
     userId,
     skillKey: "unknown",
     modelKey: progress.model.key,
-    trigger: TRIGGER,
+    trigger,
     promptTokens: 0,
     completionTokens: 0,
     costUsd: 0,

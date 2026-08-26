@@ -14,7 +14,12 @@ import {
   type ResolvedSkill,
 } from "@/lib/skills/store";
 import { portableSkillSchema, toPortable, USER_TRIGGERS } from "@/lib/skills/portable";
-import { OFFICIAL_SKILL_BY_KEY, SKILL_MODE_IDS, SKILL_OUTPUT_MODES } from "@/lib/skills/definitions";
+import {
+  OFFICIAL_SKILL_BY_KEY,
+  SKILL_MODE_IDS,
+  SKILL_OUTPUT_MODES,
+  SKILL_SECTION_LEVELS,
+} from "@/lib/skills/definitions";
 import { TEMPLATE_VARIABLES } from "@/lib/skills/variables";
 import { AUTO_MODEL_KEY, canUseModel, listLlmModels } from "@/lib/llm/model-store";
 import { hasAdultAccess } from "@/lib/adult-access";
@@ -37,6 +42,7 @@ function skillOut(skill: ResolvedSkill, officialUpdatedAt: Map<string, Date>) {
     description: skill.description,
     triggers: skill.triggers,
     modes: skill.modes,
+    section_levels: skill.sectionLevels,
     system_prompt: skill.systemPrompt,
     user_template: skill.userTemplate,
     output_mode: skill.outputMode,
@@ -102,6 +108,7 @@ export async function GET() {
     meta: {
       triggers: USER_TRIGGERS,
       modes: SKILL_MODE_IDS,
+      section_levels: SKILL_SECTION_LEVELS,
       output_modes: SKILL_OUTPUT_MODES,
       variables: TEMPLATE_VARIABLES,
       /*

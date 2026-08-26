@@ -159,6 +159,8 @@ function MakePageInner() {
   const [skills, setSkills] = useState<SelectionAiSkill[]>([]);
   /* 整段级技能。魔法指令是其中第一个 */
   const [manualSkills, setManualSkills] = useState<SelectionAiSkill[]>([]);
+  /* 章节级技能。点标题触发，也画在编辑器上方那排 */
+  const [sectionSkills, setSectionSkills] = useState<SelectionAiSkill[]>([]);
   /* 只读技能（outputMode=card）的结果。它回的不是用来顶替正文的东西 */
   const [manualCard, setManualCard] = useState<{ title: string; text: string } | null>(null);
   const [catalog, setCatalog] = useState<CatalogResponse | null>(null);
@@ -821,12 +823,14 @@ function MakePageInner() {
       icon: string;
       description: string;
       output_mode?: string;
+      section_levels?: number[];
     }): SelectionAiSkill => ({
       key: x.key,
       name: locale.startsWith("en") && x.name_en ? x.name_en : x.name,
       icon: x.icon,
       description: x.description,
       outputMode: x.output_mode === "card" ? "card" : "replace",
+      sectionLevels: x.section_levels ?? [],
     });
     const fetchFor = (trigger: string) => {
       const params = new URLSearchParams({ trigger, mode, spicy: String(spicy) });
@@ -839,20 +843,23 @@ function MakePageInner() {
           icon: string;
           description: string;
           output_mode?: string;
+          section_levels?: number[];
         }>;
       }>(`/api/skills?${params.toString()}`);
     };
 
-    void Promise.all([fetchFor("selection"), fetchFor("manual")])
-      .then(([sel, man]) => {
+    void Promise.all([fetchFor("selection"), fetchFor("manual"), fetchFor("section")])
+      .then(([sel, man, sec]) => {
         if (cancelled) return;
         setSkills(sel.skills.map(pick));
         setManualSkills(man.skills.map(pick));
+        setSectionSkills(sec.skills.map(pick));
       })
       .catch(() => {
         if (cancelled) return;
         setSkills([]);
         setManualSkills([]);
+        setSectionSkills([]);
       });
     return () => {
       cancelled = true;
@@ -899,6 +906,7 @@ function MakePageInner() {
           signal,
           body: JSON.stringify({
             action: args.action,
+            trigger: args.trigger,
             selection: args.selection,
             context_before: args.contextBefore,
             context_after: args.contextAfter,
@@ -1462,6 +1470,7 @@ function MakePageInner() {
                 /* 魔法指令未启用时选区级 AI 也不给：它们共用同一套上游凭据 */
                 onRewrite={aiText ? rewriteSelection : undefined}
                 skills={skills}
+                sectionSkills={sectionSkills}
                 /* 文生图那套规则明写「避免长段落叙事」，
                  * 给标题和列表等于鼓励用户写出会让出图变差的东西 */
                 structure={activeGroup !== "image"}

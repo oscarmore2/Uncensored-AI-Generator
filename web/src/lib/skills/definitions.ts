@@ -16,6 +16,8 @@ export const SKILL_TRIGGERS = [
   "selection",
   /** 工具栏按钮，整段 */
   "manual",
+  /** 点章节标题 → 以整章为范围 */
+  "section",
   /** 点块把手 → 菜单（S4） */
   "block",
   /** 空处打 `/`（S4） */
@@ -56,6 +58,9 @@ export const SKILL_MODE_IDS = [
 const IMAGE_MODES = ["image_t2i", "image_i2i", "image_edit"];
 const VIDEO_MODES = ["video_t2v", "video_i2v"];
 
+/** 标题层级，与 prompt-doc 的 HeadingLevel 一致 */
+export const SKILL_SECTION_LEVELS = [1, 2, 3] as const;
+
 export type SkillDefinition = {
   key: string;
   name: string;
@@ -64,6 +69,8 @@ export type SkillDefinition = {
   description: string;
   triggers: SkillTrigger[];
   modes: string[];
+  /** 空 = 所有层级。只对 section 时机有意义 */
+  sectionLevels?: number[];
   systemPrompt: string;
   userTemplate: string;
   modelKey: string;
@@ -148,8 +155,65 @@ const MAGIC_PROMPT: SkillDefinition = {
   sortOrder: 5,
 };
 
+/**
+ * 章节级技能的用户消息模板。
+ *
+ * `{{selection}}` 在这个时机下装的是**整节的 canonical 文本，带着井号**，
+ * 所以模型看得到层级，回来的东西也应该带着标题——否则一次「整节润色」
+ * 会把标题吃掉。
+ */
+const SECTION_TEMPLATE = `{{#context_before}}【前文，仅供理解，不要改写也不要复述】
+{{context_before}}
+
+{{/context_before}}【需要改写的整节】
+{{selection}}
+{{#context_after}}
+【后文，仅供理解，不要改写也不要复述】
+{{context_after}}{{/context_after}}`;
+
+const SECTION_BASE = {
+  triggers: ["section"] as SkillTrigger[],
+  userTemplate: SECTION_TEMPLATE,
+  modelKey: "auto",
+  modes: [] as string[],
+  /** 空 = 所有层级。运营可以按需改成只在 # 或只在 ## 上出现 */
+  sectionLevels: [] as number[],
+  maxOutputTokens: 1200,
+  requiresVipRank: 0,
+};
+
 export const OFFICIAL_SKILLS: SkillDefinition[] = [
   MAGIC_PROMPT,
+  {
+    ...SECTION_BASE,
+    key: "section-polish",
+    name: "整节润色",
+    nameEn: "Polish section",
+    icon: "fa-feather",
+    description: "按当前模式的写作规则润色整节，保留标题与结构",
+    systemPrompt: `任务：按下列写作规则润色这一整节，保持原意与信息量，不新增设定。
+**保留原有的标题行与它的井号层级**，不要把标题删掉或改级。
+{{mode_rules}}`,
+    outputMode: "replace" as SkillOutputMode,
+    temperature: 0.3,
+    sortOrder: 60,
+  },
+  {
+    ...SECTION_BASE,
+    key: "section-check",
+    name: "检查本节",
+    nameEn: "Check section",
+    icon: "fa-circle-question",
+    description: "逐条指出这一节的问题，不改动正文",
+    systemPrompt: `任务：检查这一节有什么问题，逐条列出。只诊断，**不要输出改写后的正文**。
+看这几件事：有没有缺主体；前后有没有自相矛盾；引用的素材占位符在这一节里说不说得通；
+有没有违反下列写作规则。
+{{mode_rules}}`,
+    /* 回的是评语不是正文——给「替换」按钮的话，用户顺手一点评语就进提示词了 */
+    outputMode: "card" as SkillOutputMode,
+    temperature: 0.2,
+    sortOrder: 61,
+  },
   {
     ...SELECTION_BASE,
     key: "polish",

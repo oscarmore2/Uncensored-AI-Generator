@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { SKILL_MODE_IDS, SKILL_OUTPUT_MODES } from "./definitions";
+import { SKILL_MODE_IDS, SKILL_OUTPUT_MODES, SKILL_SECTION_LEVELS } from "./definitions";
 
 /**
  * 技能的导入 / 导出格式。纯的，两端共用。
@@ -19,7 +19,7 @@ export const SKILL_EXPORT_VERSION = 1;
  * 让用户勾 `block` / `slash` 只会造出一条永远不触发的技能，
  * 然后他会来问「为什么我的技能不工作」。S4 做完再放开。
  */
-export const USER_TRIGGERS = ["selection", "manual"] as const;
+export const USER_TRIGGERS = ["selection", "manual", "section"] as const;
 
 export const portableSkillSchema = z.object({
   version: z.literal(SKILL_EXPORT_VERSION),
@@ -31,6 +31,8 @@ export const portableSkillSchema = z.object({
   description: z.string().max(200).default(""),
   triggers: z.array(z.enum(USER_TRIGGERS)).min(1),
   modes: z.array(z.enum(SKILL_MODE_IDS)).default([]),
+  /** 空 = 所有层级。只对 section 时机有意义 */
+  section_levels: z.array(z.union([z.literal(1), z.literal(2), z.literal(3)])).default([]),
   system_prompt: z.string().min(1).max(8000),
   user_template: z.string().min(1).max(8000),
   /* 老导出文件里可能是已经删掉的 insert / append，按 replace 收下而不是整份拒绝 */
@@ -51,6 +53,7 @@ type SkillLike = {
   description: string;
   triggers: string[];
   modes: string[];
+  sectionLevels: number[];
   systemPrompt: string;
   userTemplate: string;
   outputMode: string;
@@ -71,6 +74,7 @@ export function toPortable(skill: SkillLike): PortableSkill {
       (USER_TRIGGERS as readonly string[]).includes(t)
     ),
     modes: skill.modes as PortableSkill["modes"],
+    section_levels: skill.sectionLevels as PortableSkill["section_levels"],
     system_prompt: skill.systemPrompt,
     user_template: skill.userTemplate,
     output_mode: skill.outputMode as PortableSkill["output_mode"],

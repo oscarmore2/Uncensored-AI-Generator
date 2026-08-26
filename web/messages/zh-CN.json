@@ -653,6 +653,8 @@
     "modelNote": "绑定固定模型后，成人模式下仍会自动改用无限制档——基础 / 进阶档挂的模型会拒答。",
     "triggerSelection": "选中文字",
     "triggerManual": "工具栏按钮",
+    "triggerSection": "点章节标题",
+    "fieldSectionLevels": "出现在哪几级标题上（都不勾 = 所有层级）",
     "variables": "模板里能用的变量",
     "variablesNote": "条件段 {section}：值为空时整段丢掉。写错的变量名会原样留在提示词里——那是故意的，静默清空的话你要到模型答非所问时才发现。",
     "envelopeNote": "你只写「要做什么」。内容审查的口径和输出格式由平台包在外面，技能改不了。",

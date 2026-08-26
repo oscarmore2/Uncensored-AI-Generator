@@ -14,6 +14,7 @@ const patchSchema = z
     description: z.string().max(200).optional(),
     triggers: z.array(z.enum(SKILL_TRIGGERS)).min(1).optional(),
     modes: z.array(z.enum(SKILL_MODE_IDS)).optional(),
+    section_levels: z.array(z.union([z.literal(1), z.literal(2), z.literal(3)])).optional(),
     system_prompt: z.string().min(1).max(8000).optional(),
     user_template: z.string().min(1).max(8000).optional(),
     model_key: z.string().min(1).max(80).optional(),
@@ -51,6 +52,9 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
       ...(d.description !== undefined ? { description: d.description } : {}),
       ...(d.triggers !== undefined ? { triggers: JSON.stringify(d.triggers) } : {}),
       ...(d.modes !== undefined ? { modes: JSON.stringify(d.modes) } : {}),
+      ...(d.section_levels !== undefined
+        ? { sectionLevels: JSON.stringify(d.section_levels) }
+        : {}),
       ...(d.system_prompt !== undefined ? { systemPrompt: d.system_prompt } : {}),
       ...(d.user_template !== undefined ? { userTemplate: d.user_template } : {}),
       ...(d.model_key !== undefined ? { modelKey: d.model_key } : {}),

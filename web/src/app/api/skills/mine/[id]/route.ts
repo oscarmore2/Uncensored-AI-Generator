@@ -17,6 +17,7 @@ const patchSchema = z
     description: z.string().max(200).optional(),
     triggers: z.array(z.enum(USER_TRIGGERS)).min(1).optional(),
     modes: z.array(z.enum(SKILL_MODE_IDS)).optional(),
+    section_levels: z.array(z.union([z.literal(1), z.literal(2), z.literal(3)])).optional(),
     system_prompt: z.string().min(1).max(8000).optional(),
     user_template: z.string().min(1).max(8000).optional(),
     output_mode: z.enum(SKILL_OUTPUT_MODES).optional(),
@@ -121,6 +122,7 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
       userTemplate: d.user_template ?? current.userTemplate,
       triggers: d.triggers ?? parseList(current.triggers),
       modes: d.modes ?? parseList(current.modes),
+      sectionLevels: d.section_levels ?? parseList(current.sectionLevels).map(Number),
       outputMode: (d.output_mode ?? current.outputMode) as MirroredValues["outputMode"],
       maxOutputTokens: d.max_output_tokens ?? current.maxOutputTokens,
       temperature: d.temperature ?? current.temperature,
@@ -148,6 +150,9 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
       ...(d.description !== undefined ? { description: d.description } : {}),
       ...(d.triggers !== undefined ? { triggers: JSON.stringify(d.triggers) } : {}),
       ...(d.modes !== undefined ? { modes: JSON.stringify(d.modes) } : {}),
+      ...(d.section_levels !== undefined
+        ? { sectionLevels: JSON.stringify(d.section_levels) }
+        : {}),
       ...(d.system_prompt !== undefined ? { systemPrompt: d.system_prompt } : {}),
       ...(d.user_template !== undefined ? { userTemplate: d.user_template } : {}),
       ...(d.output_mode !== undefined ? { outputMode: d.output_mode } : {}),

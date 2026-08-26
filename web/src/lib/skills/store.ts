@@ -8,6 +8,7 @@ import {
   type SkillOutputMode,
   type SkillTrigger,
 } from "./definitions";
+import { USER_TRIGGERS } from "./portable";
 
 /**
  * 技能的读写与播种。
@@ -36,6 +37,8 @@ export type ResolvedSkill = {
   description: string;
   triggers: string[];
   modes: string[];
+  /** 空 = 所有层级。只对 section 时机有意义 */
+  sectionLevels: number[];
   systemPrompt: string;
   userTemplate: string;
   modelKey: string;
@@ -61,6 +64,7 @@ type SkillRow = {
   description: string;
   triggers: string;
   modes: string;
+  sectionLevels: string;
   systemPrompt: string;
   userTemplate: string;
   modelKey: string;
@@ -96,6 +100,7 @@ export function skillFromRow(row: SkillRow): ResolvedSkill {
     description: row.description,
     triggers: parseList(row.triggers),
     modes: parseList(row.modes),
+    sectionLevels: parseList(row.sectionLevels).map(Number).filter(Number.isFinite),
     systemPrompt: row.systemPrompt,
     userTemplate: row.userTemplate,
     modelKey: row.modelKey,
@@ -123,6 +128,7 @@ export function skillFromDefinition(def: SkillDefinition): ResolvedSkill {
     description: def.description,
     triggers: def.triggers,
     modes: def.modes,
+    sectionLevels: def.sectionLevels ?? [],
     systemPrompt: def.systemPrompt,
     userTemplate: def.userTemplate,
     modelKey: def.modelKey,
@@ -147,6 +153,7 @@ export function factoryFields(def: SkillDefinition) {
     description: def.description,
     triggers: JSON.stringify(def.triggers),
     modes: JSON.stringify(def.modes),
+    sectionLevels: JSON.stringify(def.sectionLevels ?? []),
     systemPrompt: def.systemPrompt,
     userTemplate: def.userTemplate,
     modelKey: def.modelKey,
@@ -233,6 +240,7 @@ const MIRRORED = [
   "userTemplate",
   "triggers",
   "modes",
+  "sectionLevels",
   "outputMode",
   "maxOutputTokens",
   "temperature",
@@ -243,13 +251,13 @@ type MirroredField = (typeof MIRRORED)[number];
 export type MirroredValues = Pick<
   ResolvedSkill,
   "systemPrompt" | "userTemplate" | "outputMode" | "maxOutputTokens" | "temperature" | "modelKey"
-> & { triggers: string[]; modes: string[] };
+> & { triggers: string[]; modes: string[]; sectionLevels: number[] };
 
 export const MIRRORED_FIELDS: readonly MirroredField[] = MIRRORED;
 
 /** 用户副本能绑的时机只有已经有前端实现的那些，官方那份要先滤一道 */
 function forkableTriggers(triggers: string[]): string[] {
-  return triggers.filter((t) => t === "selection" || t === "manual");
+  return triggers.filter((t) => (USER_TRIGGERS as readonly string[]).includes(t));
 }
 
 function mirroredOf(skill: ResolvedSkill): MirroredValues {
@@ -258,6 +266,7 @@ function mirroredOf(skill: ResolvedSkill): MirroredValues {
     userTemplate: skill.userTemplate,
     triggers: forkableTriggers(skill.triggers),
     modes: skill.modes,
+    sectionLevels: skill.sectionLevels,
     outputMode: skill.outputMode,
     maxOutputTokens: Math.min(skill.maxOutputTokens, 1200),
     temperature: skill.temperature,
@@ -276,6 +285,7 @@ function mirroredWriteFields(v: MirroredValues) {
     userTemplate: v.userTemplate,
     triggers: JSON.stringify(v.triggers),
     modes: JSON.stringify(v.modes),
+    sectionLevels: JSON.stringify(v.sectionLevels),
     outputMode: v.outputMode,
     maxOutputTokens: v.maxOutputTokens,
     temperature: v.temperature,
@@ -482,6 +492,7 @@ export function diffFromFactory(skill: ResolvedSkill): string[] {
     "description",
     "triggers",
     "modes",
+    "sectionLevels",
     "systemPrompt",
     "userTemplate",
     "modelKey",

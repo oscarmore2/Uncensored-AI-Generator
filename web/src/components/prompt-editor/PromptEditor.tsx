@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { LexicalComposer } from "@lexical/react/LexicalComposer";
 import { RichTextPlugin } from "@lexical/react/LexicalRichTextPlugin";
 import { ContentEditable } from "@lexical/react/LexicalContentEditable";
@@ -136,8 +136,14 @@ export function PromptEditor({
     labels: SelectionAiLabels;
     request: SelectionAiRequest;
     skills: SelectionAiSkill[];
+    /** 章节级技能。点标题、以及工具栏那排按钮用它 */
+    sectionSkills?: SelectionAiSkill[];
   };
 }) {
+  /* 章节按钮的落点。用 state 而不是 ref：ref 变化不触发重渲染，
+     插件拿到的会永远是第一次的 null */
+  const [sectionBar, setSectionBar] = useState<HTMLDivElement | null>(null);
+
   const initialConfig = useMemo(
     () => ({
       namespace: "prompt",
@@ -160,11 +166,14 @@ export function PromptEditor({
     <LexicalComposer initialConfig={initialConfig}>
       <MediaRefProvider value={refContext}>
         {structure && (
-          <div className="mb-2 shrink-0 border-b border-line pb-2">
+          <div className="mb-2 shrink-0 space-y-1.5 border-b border-line pb-2">
             <Toolbar
               disabled={disabled}
               labels={{ heading: labels.heading, bullet: labels.bullet, ordered: labels.ordered }}
             />
+            {/* 章节按钮由 SelectionAiPlugin 传送进来——它在下面，包不住这里，
+                所以给它一个空容器而不是用 context */}
+            <div ref={setSectionBar} />
           </div>
         )}
         <div className={`relative ${className}`}>
@@ -213,6 +222,8 @@ export function PromptEditor({
               enabled={!disabled}
               labels={ai.labels}
               skills={ai.skills}
+              sectionSkills={structure ? ai.sectionSkills : []}
+              sectionBar={sectionBar}
               request={ai.request}
             />
           )}

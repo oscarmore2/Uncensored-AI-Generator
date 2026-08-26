@@ -55,8 +55,16 @@ function inlineFrom(node: ElementNode): InlineNode[] {
 
 /** 当前编辑器内容 -> doc。必须在 editor.read/update 里调 */
 export function $docFromEditor(): PromptDoc {
+  return $docFromNodes($getRoot().getChildren());
+}
+
+/**
+ * 一串顶层节点 -> doc。**与传入的节点一一对应**，不合并也不丢弃，
+ * 章节级动作就靠这条性质拿某一段的 canonical 文本。
+ */
+export function $docFromNodes(nodes: LexicalNode[]): PromptDoc {
   const blocks: BlockNode[] = [];
-  for (const child of $getRoot().getChildren()) {
+  for (const child of nodes) {
     if ($isHeadingNode(child)) {
       blocks.push({
         type: "heading",

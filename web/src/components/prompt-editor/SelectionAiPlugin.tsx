@@ -5,12 +5,20 @@ import { createPortal } from "react-dom";
 import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
 import {
   $createParagraphNode,
+  $getNearestNodeFromDOMNode,
+  $getNodeByKey,
   $getRoot,
   $getSelection,
   $insertNodes,
   $isRangeSelection,
+  type LexicalNode,
 } from "lexical";
-import { $nodesFromText } from "./lexical-bridge";
+import { $isHeadingNode } from "@lexical/rich-text";
+import { serializePrompt } from "@/lib/prompt-doc";
+import { $blockNodesFromDoc, $docFromNodes, $nodesFromText } from "./lexical-bridge";
+import { parsePrompt } from "@/lib/prompt-doc";
+import { levelFromTag } from "./transformers";
+import { sectionRangeAt } from "./section";
 import { computePlacement, EDGE, MIN_CARD_HEIGHT, type Placement } from "./placement";
 
 /**
@@ -37,7 +45,20 @@ export type SelectionAiSkill = {
    * 只读展示，不给落地按钮——不然用户顺手一点，评语就写进提示词里了。
    */
   outputMode?: "replace" | "card";
+  /** 空 = 所有层级。只对章节级技能有意义 */
+  sectionLevels?: number[];
 };
+
+/**
+ * 这次动作作用在哪一段。
+ *
+ * `selection` 是用户圈出来的那一段；`section` 是一个标题连同它下面所有块，
+ * 直到下一个同级或更高级的标题。两者的**替换目标完全不同**，
+ * 混用会把整章的结果盖到一句话上，或者反过来。
+ */
+type Scope =
+  | { kind: "selection" }
+  | { kind: "section"; keys: string[]; level: number; title: string };
 
 export type SelectionAiLabels = {
   working: string;
@@ -75,6 +96,8 @@ export type SelectionAiCharge = {
 export type SelectionAiRequest = (
   args: {
     action: RewriteAction;
+    /** 选区级还是章节级。服务端拿它校验技能确实绑了这个时机，并记进用量台账 */
+    trigger: "selection" | "section";
     selection: string;
     contextBefore: string;
     contextAfter: string;
@@ -104,13 +127,14 @@ const FALLBACK_WIDTH = 336;
 
 type Phase =
   | { kind: "idle" }
-  | { kind: "menu"; rect: DOMRect }
+  | { kind: "menu"; rect: DOMRect; scope: Scope }
   /** 等结果 / 边流边显示。text 是已经流出来的部分 */
-  | { kind: "pending"; rect: DOMRect; action: RewriteAction; text: string }
+  | { kind: "pending"; rect: DOMRect; scope: Scope; action: RewriteAction; text: string }
   /* 存的是技能而不是只存 key：拿到结果时要按它的 outputMode 决定给哪些按钮 */
   | {
       kind: "preview";
       rect: DOMRect;
+      scope: Scope;
       action: RewriteAction;
       readOnly: boolean;
       text: string;
@@ -124,10 +148,20 @@ export function SelectionAiPlugin({
   enabled = true,
   labels,
   skills,
+  sectionSkills = [],
+  sectionBar,
   request,
 }: {
   enabled?: boolean;
   labels: SelectionAiLabels;
+  /** 章节级技能（section 时机）。按当前标题层级过滤后显示 */
+  sectionSkills?: SelectionAiSkill[];
+  /**
+   * 章节按钮画在哪儿——编辑器上方那条工具栏里的一个空容器。
+   * 用传送门而不是 context：工具栏在这个插件的**上面**，
+   * 插件里 provide 的 context 包不住它。
+   */
+  sectionBar?: HTMLElement | null;
   /** 当前模式下可用的技能。空数组就不显示动作条 */
   skills: SelectionAiSkill[];
   /** 由外层注入，插件本身不认识 API 与模式参数 */
@@ -139,6 +173,8 @@ export function SelectionAiPlugin({
   const shotRef = useRef<{ selection: string; before: string; after: string } | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const cardRef = useRef<HTMLDivElement | null>(null);
+  /** 光标当前所在的章节。工具栏那排章节按钮跟着它变 */
+  const [activeSection, setActiveSection] = useState<Scope | null>(null);
   const dock = useDockToBottom();
 
   /* 组件被卸载（切页 / 收起弹窗）时把还在跑的请求掐掉 */
@@ -159,35 +195,71 @@ export function SelectionAiPlugin({
           const native = window.getSelection();
           const range = native && native.rangeCount > 0 ? native.getRangeAt(0) : null;
           const rect = range?.getBoundingClientRect();
-          if (rect && rect.width + rect.height > 0) next = { kind: "menu", rect };
+          if (rect && rect.width + rect.height > 0) {
+            next = { kind: "menu", rect, scope: { kind: "selection" } };
+          }
         });
         return next;
       });
     });
   }, [editor, enabled]);
 
-  /** 抓取选区与前后文。必须在 editor.read 里调 */
-  const snapshot = useCallback(() => {
-    return editor.getEditorState().read(() => {
-      const selection = $getSelection();
-      if (!$isRangeSelection(selection)) return null;
-      const whole = $getRoot().getTextContent();
-      const picked = selection.getTextContent();
-      /*
-       * 用整段文本定位选区，而不是遍历节点算偏移。
-       * 节点偏移在有胶囊（DecoratorNode）时算起来很容易差一位，
-       * 而这里只需要「大致的前后文」，indexOf 足够且不会算错。
-       */
-      const at = whole.indexOf(picked);
-      const before = at >= 0 ? whole.slice(Math.max(0, at - CONTEXT_CHARS), at) : "";
-      const after = at >= 0 ? whole.slice(at + picked.length, at + picked.length + CONTEXT_CHARS) : "";
-      return { selection: picked, before, after };
+  /*
+   * 点标题弹出章节菜单。
+   *
+   * 走 DOM 的 click 而不是 Lexical 的 CLICK_COMMAND：要知道「点的是不是标题」，
+   * 最直接的答案在 DOM 上（closest("h1,h2,h3")），绕回节点树反而更绕。
+   */
+  useEffect(() => {
+    if (!enabled || sectionSkills.length === 0) return;
+    const onClick = (event: MouseEvent) => {
+      const el = (event.target as HTMLElement | null)?.closest?.("h1,h2,h3");
+      if (!el) return;
+      const rect = el.getBoundingClientRect();
+      editor.getEditorState().read(() => {
+        const scope = $sectionAt($getNearestNodeFromDOMNode(el));
+        if (scope) setPhase({ kind: "menu", rect, scope });
+      });
+    };
+    return editor.registerRootListener((root, prev) => {
+      prev?.removeEventListener("click", onClick);
+      root?.addEventListener("click", onClick);
     });
-  }, [editor]);
+  }, [editor, enabled, sectionSkills.length]);
+
+  /* 工具栏那排章节按钮要知道光标在哪一节 */
+  useEffect(() => {
+    if (!enabled) return;
+    return editor.registerUpdateListener(({ editorState }) => {
+      editorState.read(() => {
+        const selection = $getSelection();
+        const node = $isRangeSelection(selection) ? selection.anchor.getNode() : null;
+        setActiveSection($sectionAt(node));
+      });
+    });
+  }, [editor, enabled]);
+
+  /** 这次菜单该列哪些技能：选区级列选区技能，章节级按标题层级过滤 */
+  const menuSkillsFor = useCallback(
+    (scope: Scope) =>
+      scope.kind === "section" ? levelSkills(sectionSkills, scope.level) : skills,
+    [skills, sectionSkills]
+  );
+
+  /** 抓取要改的那一段与它的前后文。必须在 editor.read 里调 */
+  const snapshot = useCallback(
+    (scope: Scope) => {
+      return editor.getEditorState().read(() => {
+        if (scope.kind === "section") return $sectionShot(scope.keys);
+        return $selectionShot();
+      });
+    },
+    [editor]
+  );
 
   const run = useCallback(
-    async (action: RewriteAction, rect: DOMRect) => {
-      const shot = shotRef.current ?? snapshot();
+    async (action: RewriteAction, rect: DOMRect, scope: Scope) => {
+      const shot = shotRef.current ?? snapshot(scope);
       if (!shot?.selection.trim()) return;
       shotRef.current = shot;
 
@@ -203,11 +275,12 @@ export function SelectionAiPlugin({
        * 一次请求就几秒，锁住的代价可以接受。
        */
       editor.setEditable(false);
-      setPhase({ kind: "pending", rect, action, text: "" });
+      setPhase({ kind: "pending", rect, scope, action, text: "" });
       try {
         const result = await request(
           {
             action,
+            trigger: scope.kind,
             selection: shot.selection,
             contextBefore: shot.before,
             contextAfter: shot.after,
@@ -228,8 +301,10 @@ export function SelectionAiPlugin({
         setPhase({
           kind: "preview",
           rect,
+          scope,
           action,
-          readOnly: skills.find((s) => s.key === action)?.outputMode === "card",
+          readOnly:
+            [...skills, ...sectionSkills].find((s) => s.key === action)?.outputMode === "card",
           /* 整体替换而不是追加：最终结果多跑了一次去壳，与流出来的那份会有出入 */
           text: result.text,
           dropped: result.dropped,
@@ -245,7 +320,7 @@ export function SelectionAiPlugin({
         editor.setEditable(true);
       }
     },
-    [editor, request, snapshot]
+    [editor, request, skills, sectionSkills, snapshot]
   );
 
   const finish = useCallback(() => {
@@ -256,9 +331,15 @@ export function SelectionAiPlugin({
     setPhase({ kind: "idle" });
   }, [editor]);
 
-  /** 替换选中那一段。整个替换是一步撤销 */
+  /** 把结果落到正文里。整个替换是一步撤销 */
   const apply = useCallback(
-    (text: string, mode: "replace" | "insert") => {
+    (text: string, mode: "replace" | "insert", scope: Scope) => {
+      if (scope.kind === "section") {
+        editor.update(() => $applySection(scope.keys, text, mode));
+        editor.focus();
+        finish();
+        return;
+      }
       editor.update(() => {
         const selection = $getSelection();
         if (!$isRangeSelection(selection)) return;
@@ -300,7 +381,29 @@ export function SelectionAiPlugin({
 
   const placement = useCardPlacement(phase.kind === "idle" ? null : phase.rect, cardRef);
 
-  if (!enabled || skills.length === 0 || phase.kind === "idle") return null;
+  if (!enabled) return null;
+
+  /*
+   * 章节按钮画进编辑器上方那条工具栏。它与浮动卡片是两套独立的出口：
+   * 卡片跟着点击走，这一排跟着光标走，两者可以同时在。
+   */
+  const sectionRow =
+    sectionBar && activeSection?.kind === "section"
+      ? createPortal(
+          <SectionRow
+            title={activeSection.title}
+            level={activeSection.level}
+            skills={levelSkills(sectionSkills, activeSection.level)}
+            disabled={phase.kind === "pending"}
+            onPick={(key, el) => void run(key, el.getBoundingClientRect(), activeSection)}
+          />,
+          sectionBar
+        )
+      : null;
+
+  if (phase.kind === "idle" || (phase.kind === "menu" && menuSkillsFor(phase.scope).length === 0)) {
+    return sectionRow;
+  }
 
   const rect = phase.rect;
   const style: React.CSSProperties = dock
@@ -323,7 +426,10 @@ export function SelectionAiPlugin({
         maxHeight: placement.maxHeight,
       };
 
-  return createPortal(
+  return (
+    <>
+      {sectionRow}
+      {createPortal(
     <div
       ref={cardRef}
       style={style}
@@ -337,14 +443,14 @@ export function SelectionAiPlugin({
     >
       {phase.kind === "menu" && (
         <div className="flex flex-wrap gap-1 p-1.5">
-          {skills.map((skill) => (
+          {menuSkillsFor(phase.scope).map((skill) => (
             <button
               key={skill.key}
               type="button"
               title={skill.description}
               onMouseDown={(e) => {
                 e.preventDefault();
-                void run(skill.key, rect);
+                void run(skill.key, rect, phase.scope);
               }}
               className="flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-[12px] text-ink-muted hover:bg-black/[0.05] hover:text-ink"
             >
@@ -413,11 +519,21 @@ export function SelectionAiPlugin({
             {/* 只读结果不给落地按钮：它回的不是用来顶替原文的东西 */}
             {!phase.readOnly && (
               <>
-                <PreviewBtn primary onClick={() => apply(phase.text, "replace")} label={labels.replace} />
-                <PreviewBtn onClick={() => apply(phase.text, "insert")} label={labels.insertBelow} />
+                <PreviewBtn
+                  primary
+                  onClick={() => apply(phase.text, "replace", phase.scope)}
+                  label={labels.replace}
+                />
+                <PreviewBtn
+                  onClick={() => apply(phase.text, "insert", phase.scope)}
+                  label={labels.insertBelow}
+                />
               </>
             )}
-            <PreviewBtn onClick={() => void run(phase.action, rect)} label={labels.retry} />
+            <PreviewBtn
+              onClick={() => void run(phase.action, rect, phase.scope)}
+              label={labels.retry}
+            />
             <PreviewBtn primary={phase.readOnly} onClick={finish} label={phase.readOnly ? labels.done : labels.discard} />
             {phase.charge && (
               /* 花了多少钱要当场说。等用户自己去流水里对账是最差的做法 */
@@ -430,7 +546,53 @@ export function SelectionAiPlugin({
         </div>
       )}
     </div>,
-    document.body
+        document.body
+      )}
+    </>
+  );
+}
+
+/** 这一级标题上该出现哪些技能。空 sectionLevels = 所有层级 */
+function levelSkills(skills: SelectionAiSkill[], level: number): SelectionAiSkill[] {
+  return skills.filter((s) => !s.sectionLevels?.length || s.sectionLevels.includes(level));
+}
+
+/** 编辑器上方那排章节按钮 */
+function SectionRow({
+  title,
+  level,
+  skills,
+  disabled,
+  onPick,
+}: {
+  title: string;
+  level: number;
+  skills: SelectionAiSkill[];
+  disabled: boolean;
+  onPick(key: string, el: HTMLElement): void;
+}) {
+  if (skills.length === 0) return null;
+  return (
+    <div className="flex flex-wrap items-center gap-1">
+      {/* 先说清楚这些按钮作用在哪一节，否则用户不知道「重写这一幕」是哪一幕 */}
+      <span className="mr-1 max-w-[12rem] truncate text-[11px] text-ink-subtle">
+        H{level} · {title || "（无标题）"}
+      </span>
+      {skills.map((skill) => (
+        <button
+          key={skill.key}
+          type="button"
+          disabled={disabled}
+          title={skill.description}
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={(e) => onPick(skill.key, e.currentTarget)}
+          className="flex h-8 items-center gap-1.5 rounded-lg border border-line bg-surface px-2 text-[12px] text-ink-muted hover:bg-black/[0.04] disabled:opacity-40"
+        >
+          {skill.icon && <i className={`fas ${skill.icon} text-[11px]`} />}
+          {skill.name}
+        </button>
+      ))}
+    </div>
   );
 }
 
@@ -578,4 +740,93 @@ function PreviewBtn({
       {label}
     </button>
   );
+}
+
+
+/** 选区 + 前后各 300 字。必须在 editor.read 里调 */
+function $selectionShot(): { selection: string; before: string; after: string } | null {
+  const selection = $getSelection();
+  if (!$isRangeSelection(selection)) return null;
+  const whole = $getRoot().getTextContent();
+  const picked = selection.getTextContent();
+  /*
+   * 用整段文本定位选区，而不是遍历节点算偏移。
+   * 节点偏移在有胶囊（DecoratorNode）时算起来很容易差一位，
+   * 而这里只需要「大致的前后文」，indexOf 足够且不会算错。
+   */
+  const at = whole.indexOf(picked);
+  const before = at >= 0 ? whole.slice(Math.max(0, at - CONTEXT_CHARS), at) : "";
+  const after = at >= 0 ? whole.slice(at + picked.length, at + picked.length + CONTEXT_CHARS) : "";
+  return { selection: picked, before, after };
+}
+
+/**
+ * 整章 + 前后各 300 字。必须在 editor.read 里调。
+ *
+ * 取的是 **canonical 文本**（`serializePrompt`）而不是 `getTextContent()`：
+ * 后者不带井号，模型看不到层级，回来的东西也就不带标题——一次「重写这一幕」
+ * 会把标题吃掉。
+ */
+function $sectionShot(keys: string[]): { selection: string; before: string; after: string } | null {
+  const children = $getRoot().getChildren();
+  const start = children.findIndex((c) => c.getKey() === keys[0]);
+  if (start < 0) return null;
+  const end = start + keys.length;
+
+  const textOf = (nodes: LexicalNode[]) => serializePrompt($docFromNodes(nodes));
+  return {
+    selection: textOf(children.slice(start, end)),
+    before: textOf(children.slice(0, start)).slice(-CONTEXT_CHARS),
+    after: textOf(children.slice(end)).slice(0, CONTEXT_CHARS),
+  };
+}
+
+/**
+ * 光标（或某个节点）所在的章节。必须在 editor.read 里调。
+ *
+ * 范围算法在 `section.ts` 里（纯函数，有单测）：一个标题连同它下面所有块，
+ * 直到下一个**同级或更高级**的标题。子标题不切断父章节。
+ */
+function $sectionAt(node: LexicalNode | null): Scope | null {
+  const children = $getRoot().getChildren();
+  const levels = children.map((c) => ($isHeadingNode(c) ? levelFromTag(c.getTag()) : null));
+  const top = node ? (node.getTopLevelElement() ?? node) : null;
+  const index = top ? children.findIndex((c) => c.getKey() === top.getKey()) : -1;
+  const range = sectionRangeAt(levels, index);
+  if (!range) return null;
+  const slice = children.slice(range.start, range.end);
+  return {
+    kind: "section",
+    keys: slice.map((c) => c.getKey()),
+    level: levels[range.start] as number,
+    title: children[range.start].getTextContent(),
+  };
+}
+
+
+/** 结果永远当块级插入：章节动作产出的是若干段，不是一句话 */
+function $blocksFromText(text: string) {
+  return $blockNodesFromDoc(parsePrompt(text));
+}
+
+/**
+ * 用结果替换掉整章，或插在整章之后。必须在 editor.update 里调。
+ *
+ * 先插新的、再删旧的——顺序反过来的话，删到只剩空文档时 Lexical 会自己补一个
+ * 空段落，新内容就插到它后面去了，正文顶上凭空多一行空行。
+ */
+function $applySection(keys: string[], text: string, mode: "replace" | "insert") {
+  const nodes = $blocksFromText(text);
+  if (nodes.length === 0) return;
+
+  const olds = keys.map((k) => $getNodeByKey(k)).filter((n): n is LexicalNode => n !== null);
+  const last = olds[olds.length - 1];
+  if (!last) return;
+
+  let cursor: LexicalNode = last;
+  for (const node of nodes) {
+    cursor.insertAfter(node);
+    cursor = node;
+  }
+  if (mode === "replace") for (const old of olds) old.remove();
 }

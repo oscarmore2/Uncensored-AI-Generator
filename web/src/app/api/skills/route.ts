@@ -79,6 +79,8 @@ export async function GET(req: Request) {
         icon: s.icon,
         description: s.description,
         output_mode: s.outputMode,
+        /** 空 = 所有层级。前端按当前章节的标题层级过滤 */
+        section_levels: s.sectionLevels,
       })),
   });
 }

@@ -653,6 +653,8 @@
     "modelNote": "Even with a pinned model, adult mode still switches to the unrestricted tier — the basic and advanced models refuse those requests.",
     "triggerSelection": "Text selection",
     "triggerManual": "Toolbar button",
+    "triggerSection": "Section heading",
+    "fieldSectionLevels": "Show on which heading levels (none = all)",
     "variables": "Variables you can use",
     "variablesNote": "Conditional block {section}: dropped entirely when the value is empty. A misspelled variable stays in the prompt verbatim \u2014 on purpose, since silently blanking it would only surface as the model answering the wrong question.",
     "envelopeNote": "You write only the task. The content-policy clause and the output format are wrapped around it by the platform and cannot be overridden.",

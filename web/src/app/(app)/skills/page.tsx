@@ -23,6 +23,7 @@ interface MySkill {
   description: string;
   triggers: string[];
   modes: string[];
+  section_levels: number[];
   system_prompt: string;
   user_template: string;
   max_output_tokens: number;
@@ -53,6 +54,7 @@ interface Resp {
   meta: {
     triggers: string[];
     modes: string[];
+    section_levels: number[];
     variables: Array<{ name: string; desc: string }>;
     models: Array<{ key: string; label: string; tier: string }>;
   };
@@ -309,6 +311,7 @@ function SkillCard({
     description: skill.description,
     triggers: skill.triggers,
     modes: skill.modes,
+    section_levels: skill.section_levels,
     system_prompt: skill.system_prompt,
     user_template: skill.user_template,
     temperature: String(skill.temperature),
@@ -320,6 +323,7 @@ function SkillCard({
   const triggerLabel: Record<string, string> = {
     selection: t("triggerSelection"),
     manual: t("triggerManual"),
+    section: t("triggerSection"),
   };
 
   return (
@@ -420,7 +424,7 @@ function SkillCard({
 
           <Field label={t("fieldTriggers")}>
             <div className="flex flex-wrap gap-3">
-              {(["selection", "manual"] as const).map((x) => (
+              {(["selection", "manual", "section"] as const).map((x) => (
                 <label key={x} className="flex items-center gap-1.5 text-xs text-ink-muted">
                   <input
                     type="checkbox"
@@ -461,6 +465,30 @@ function SkillCard({
               ))}
             </div>
           </Field>
+
+          {draft.triggers.includes("section") && (
+            <Field label={t("fieldSectionLevels")}>
+              <div className="flex flex-wrap gap-3">
+                {[1, 2, 3].map((lv) => (
+                  <label key={lv} className="flex items-center gap-1.5 text-xs text-ink-muted">
+                    <input
+                      type="checkbox"
+                      checked={draft.section_levels.includes(lv)}
+                      onChange={(e) =>
+                        setDraft({
+                          ...draft,
+                          section_levels: e.target.checked
+                            ? [...draft.section_levels, lv]
+                            : draft.section_levels.filter((x) => x !== lv),
+                        })
+                      }
+                    />
+                    H{lv}
+                  </label>
+                ))}
+              </div>
+            </Field>
+          )}
 
           <Field label={t("fieldSystem")}>
             <textarea

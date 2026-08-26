@@ -20,6 +20,7 @@ interface Skill {
   description: string;
   triggers: string[];
   modes: string[];
+  section_levels: number[];
   system_prompt: string;
   user_template: string;
   model_key: string;
@@ -43,6 +44,7 @@ interface Resp {
     output_modes: string[];
     models: Array<{ key: string; label: string; tier: string; gated: boolean }>;
     modes: string[];
+    section_levels: number[];
     variables: Array<{ name: string; desc: string }>;
   };
 }
@@ -58,6 +60,7 @@ const MODE_LABEL: Record<string, string> = {
 const TRIGGER_LABEL: Record<string, string> = {
   selection: "选中文字",
   manual: "工具栏按钮",
+  section: "点章节标题",
   block: "块菜单",
   slash: "斜杠命令",
   empty: "空编辑器",
@@ -70,6 +73,7 @@ const FIELD_LABEL: Record<string, string> = {
   icon: "图标",
   description: "说明",
   triggers: "时机",
+  sectionLevels: "章节层级",
   modes: "模式",
   systemPrompt: "任务提示词",
   userTemplate: "用户消息模板",
@@ -210,6 +214,7 @@ function SkillCard({
     max_output_tokens: String(skill.max_output_tokens),
     sort_order: String(skill.sort_order),
     modes: skill.modes,
+    section_levels: skill.section_levels,
     model_key: skill.model_key,
     output_mode: skill.output_mode,
   });
@@ -228,6 +233,11 @@ function SkillCard({
         {skill.modes.length > 0 && (
           <span className="text-[10px] px-2 py-0.5 rounded-full bg-sky-500/15 text-sky-700">
             仅 {skill.modes.map((m) => MODE_LABEL[m] ?? m).join(" / ")}
+          </span>
+        )}
+        {skill.section_levels.length > 0 && (
+          <span className="text-[10px] px-2 py-0.5 rounded-full bg-violet-500/15 text-violet-700">
+            仅 {skill.section_levels.map((l) => `H${l}`).join(" / ")}
           </span>
         )}
         {skill.is_overridden && (
@@ -315,6 +325,30 @@ function SkillCard({
             </div>
           </Labeled>
 
+          {skill.triggers.includes("section") && (
+            <Labeled label="出现在哪几级标题上（都不勾 = 所有层级）">
+              <div className="flex flex-wrap gap-3">
+                {meta.section_levels.map((lv) => (
+                  <label key={lv} className="flex items-center gap-1.5 text-xs text-ink-muted">
+                    <input
+                      type="checkbox"
+                      checked={draft.section_levels.includes(lv)}
+                      onChange={(e) =>
+                        setDraft({
+                          ...draft,
+                          section_levels: e.target.checked
+                            ? [...draft.section_levels, lv]
+                            : draft.section_levels.filter((x) => x !== lv),
+                        })
+                      }
+                    />
+                    H{lv}
+                  </label>
+                ))}
+              </div>
+            </Labeled>
+          )}
+
           <Labeled label="任务提示词（system）">
             <textarea
               rows={5}
@@ -395,6 +429,7 @@ function SkillCard({
                   max_output_tokens: Number(draft.max_output_tokens),
                   sort_order: Number(draft.sort_order),
                   modes: draft.modes,
+                  section_levels: draft.section_levels,
                   model_key: draft.model_key,
                   output_mode: draft.output_mode,
                 })

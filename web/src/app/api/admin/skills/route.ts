@@ -5,6 +5,7 @@ import {
   OFFICIAL_SKILL_BY_KEY,
   SKILL_MODE_IDS,
   SKILL_OUTPUT_MODES,
+  SKILL_SECTION_LEVELS,
   SKILL_TRIGGERS,
 } from "@/lib/skills/definitions";
 import { diffFromFactory, ensureSkillsSeeded, skillFromRow } from "@/lib/skills/store";
@@ -34,6 +35,7 @@ export async function GET() {
         description: skill.description,
         triggers: skill.triggers,
         modes: skill.modes,
+        section_levels: skill.sectionLevels,
         system_prompt: skill.systemPrompt,
         user_template: skill.userTemplate,
         model_key: skill.modelKey,
@@ -56,9 +58,10 @@ export async function GET() {
     meta: {
       triggers: SKILL_TRIGGERS,
       /** S4 之前只有这两个时机真的有前端实现，其余勾了也不会触发 */
-      implemented_triggers: ["selection"],
+      implemented_triggers: ["selection", "manual", "section"],
       output_modes: SKILL_OUTPUT_MODES,
       modes: SKILL_MODE_IDS,
+      section_levels: SKILL_SECTION_LEVELS,
       variables: TEMPLATE_VARIABLES,
       /* 管理端不受 VIP / 成人验证限制，但绑了带门槛的模型，够不着的用户就看不到这条技能 */
       models: [
