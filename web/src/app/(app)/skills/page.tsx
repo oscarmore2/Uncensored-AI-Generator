@@ -28,6 +28,8 @@ interface MySkill {
   max_output_tokens: number;
   temperature: number;
   is_active: boolean;
+  /** 还在跟随官方吗。跟随中 = 官方一变它跟着变 */
+  linked: boolean;
   forked_from_key: string | null;
   forked_from_name: string | null;
   source_updated: boolean;
@@ -38,7 +40,14 @@ interface Resp {
   can_author: boolean;
   quota: { used: number; max: number };
   skills: MySkill[];
-  forkable: Array<{ key: string; name: string; icon: string; description: string }>;
+  forkable: Array<{
+    key: string;
+    name: string;
+    icon: string;
+    description: string;
+    /** 已经有一份跟随中的副本，按钮变灰；那份改过之后重新亮起来 */
+    has_linked_copy: boolean;
+  }>;
   meta: {
     triggers: string[];
     modes: string[];
@@ -164,8 +173,8 @@ export default function MySkillsPage() {
               <button
                 key={o.key}
                 type="button"
-                disabled={busy}
-                title={o.description}
+                disabled={busy || o.has_linked_copy}
+                title={o.has_linked_copy ? t("forkAlready") : o.description}
                 onClick={() =>
                   void run(async () => {
                     await api("/api/skills/mine", {
@@ -175,7 +184,7 @@ export default function MySkillsPage() {
                     setForking(false);
                   })
                 }
-                className="flex items-center gap-1.5 rounded-xl border border-line px-3 py-1.5 text-sm text-ink-muted hover:text-ink"
+                className="flex items-center gap-1.5 rounded-xl border border-line px-3 py-1.5 text-sm text-ink-muted enabled:hover:text-ink disabled:opacity-40"
               >
                 {o.icon && <i className={`fas ${o.icon} text-[12px]`} />}
                 {o.name}
@@ -249,14 +258,15 @@ export default function MySkillsPage() {
               busy={busy}
               onExport={() => download(skill)}
               onPatch={(body, msg) =>
-                void run(
-                  () =>
-                    api(`/api/skills/mine/${skill.id}`, {
-                      method: "PATCH",
-                      body: JSON.stringify(body),
-                    }),
-                  msg
-                )
+                void run(async () => {
+                  const r = await api<{ detached?: boolean }>(`/api/skills/mine/${skill.id}`, {
+                    method: "PATCH",
+                    body: JSON.stringify(body),
+                  });
+                  // 「跟随」变「独立」是一次不可逆的状态变化，得说一声
+                  if (r.detached) toast(t("detachedToast"));
+                  else if (msg) toast(msg);
+                })
               }
               onDelete={() => {
                 if (!confirm(t("removeConfirm"))) return;
@@ -319,6 +329,17 @@ function SkillCard({
             {skill.modes.map((m) => MODE_LABEL[m] ?? m).join(" / ")}
           </span>
         )}
+        {skill.linked ? (
+          <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] text-emerald-700">
+            {t("linked")}
+          </span>
+        ) : (
+          skill.forked_from_key && (
+            <span className="rounded-full bg-black/[0.06] px-2 py-0.5 text-[10px] text-ink-subtle">
+              {t("detached")}
+            </span>
+          )
+        )}
         <div className="ml-auto flex gap-2">
           <button
             type="button"
@@ -339,6 +360,11 @@ function SkillCard({
           </button>
         </div>
       </div>
+
+      {skill.linked && (
+        /* 跟随中的副本要说清楚它为什么会自己变，以及怎样才会停下来 */
+        <p className="mt-2 text-[11px] leading-relaxed text-ink-subtle">{t("linkedNote")}</p>
+      )}
 
       {skill.source_updated && (
         /* 只提示，**不自动合并**——用户已经改过自己这份，合并只能靠猜 */

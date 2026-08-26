@@ -12,33 +12,32 @@ type Row = Record<string, unknown> & { id: number; key: string };
 let rows: Row[] = [];
 let nextId = 1;
 
+/**
+ * 假库。`where` 的匹配写成通用的：加一个查询条件就要改一次桩，
+ * 改漏了测试会「通过」但测的是别的东西——这一节全是过滤条件，尤其危险。
+ */
+function matches(row: Row, where: Record<string, unknown> | undefined): boolean {
+  if (!where) return true;
+  return Object.entries(where).every(([field, cond]) => {
+    if (field === "OR") {
+      return (cond as Array<Record<string, unknown>>).some((c) => matches(row, c));
+    }
+    if (cond && typeof cond === "object" && "not" in cond) {
+      return row[field] !== (cond as { not: unknown }).not;
+    }
+    return row[field] === cond;
+  });
+}
+
 vi.mock("../db", () => ({
   db: {
     skill: {
-      findMany: async ({
-        where,
-      }: {
-        where?: { scope?: string; ownerId?: number; OR?: Array<{ scope: string; ownerId?: number }> };
-      }) => {
-        if (where?.OR) {
-          return rows.filter((r) =>
-            where.OR!.some(
-              (c) => r.scope === c.scope && (c.ownerId === undefined || r.ownerId === c.ownerId)
-            )
-          );
-        }
-        return rows.filter(
-          (r) =>
-            (!where?.scope || r.scope === where.scope) &&
-            (where?.ownerId === undefined || r.ownerId === where.ownerId)
-        );
-      },
+      findMany: async ({ where }: { where?: Record<string, unknown> }) =>
+        rows.filter((r) => matches(r, where)),
       findUnique: async ({ where }: { where: { key?: string; id?: number } }) =>
         rows.find((r) => (where.key ? r.key === where.key : r.id === where.id)) ?? null,
-      findFirst: async ({ where }: { where: { key?: string; scope?: string } }) =>
-        rows.find(
-          (r) => (!where.key || r.key === where.key) && (!where.scope || r.scope === where.scope)
-        ) ?? null,
+      findFirst: async ({ where }: { where?: Record<string, unknown> }) =>
+        rows.find((r) => matches(r, where)) ?? null,
       create: async ({ data }: { data: Record<string, unknown> }) => {
         const row = { id: nextId++, ...data } as Row;
         rows.push(row);
@@ -48,6 +47,17 @@ vi.mock("../db", () => ({
         const row = rows.find((r) => r.key === where.key)!;
         Object.assign(row, data);
         return row;
+      },
+      updateMany: async ({
+        where,
+        data,
+      }: {
+        where?: Record<string, unknown>;
+        data: Record<string, unknown>;
+      }) => {
+        const hit = rows.filter((r) => matches(r, where));
+        for (const r of hit) Object.assign(r, data);
+        return { count: hit.length };
       },
     },
   },
@@ -289,22 +299,33 @@ describe("用户技能的归属边界", () => {
 });
 
 describe("fork 之后来源更新的提示", () => {
-  it("来源改过就提示", async () => {
+  it("已独立的副本：来源改过就提示", async () => {
     const { sourceUpdated } = await freshStore();
     const forkedAt = new Date("2026-01-01");
-    expect(sourceUpdated({ forkedFromAt: forkedAt }, new Date("2026-02-01"))).toBe(true);
+    expect(sourceUpdated({ forkedFromAt: forkedAt, isOverridden: true }, new Date("2026-02-01"))).toBe(
+      true
+    );
   });
 
-  it("来源没动过就不提示", async () => {
+  it("已独立的副本：来源没动过就不提示", async () => {
     const { sourceUpdated } = await freshStore();
     const forkedAt = new Date("2026-02-01");
-    expect(sourceUpdated({ forkedFromAt: forkedAt }, new Date("2026-01-01"))).toBe(false);
-    expect(sourceUpdated({ forkedFromAt: forkedAt }, forkedAt)).toBe(false);
+    expect(sourceUpdated({ forkedFromAt: forkedAt, isOverridden: true }, new Date("2026-01-01"))).toBe(
+      false
+    );
+    expect(sourceUpdated({ forkedFromAt: forkedAt, isOverridden: true }, forkedAt)).toBe(false);
+  });
+
+  it("**跟随中的副本从不提示**——它本来就一直是最新的", async () => {
+    const { sourceUpdated } = await freshStore();
+    expect(
+      sourceUpdated({ forkedFromAt: new Date("2026-01-01"), isOverridden: false }, new Date("2026-02-01"))
+    ).toBe(false);
   });
 
   it("不是 fork 来的就没有来源可比", async () => {
     const { sourceUpdated } = await freshStore();
-    expect(sourceUpdated({ forkedFromAt: null }, new Date())).toBe(false);
+    expect(sourceUpdated({ forkedFromAt: null, isOverridden: true }, new Date())).toBe(false);
   });
 });
 
@@ -318,5 +339,165 @@ describe("用户技能的 key", () => {
     const { newUserSkillKey } = await freshStore();
     const keys = new Set(Array.from({ length: 200 }, () => newUserSkillKey()));
     expect(keys.size).toBe(200);
+  });
+});
+
+/** fork 出来的副本 */
+function pushFork(opts: { key: string; ownerId: number; from: string; overridden: boolean; prompt?: string }) {
+  rows.push({
+    id: nextId++,
+    scope: "user",
+    ownerId: opts.ownerId,
+    key: opts.key,
+    name: "副本",
+    nameEn: "",
+    icon: "",
+    description: "",
+    triggers: JSON.stringify(["selection"]),
+    modes: "[]",
+    systemPrompt: opts.prompt ?? "任务：按下列写作规则润色这个片段，保持原意与信息量，不新增设定。\n{{mode_rules}}",
+    userTemplate: "{{selection}}",
+    modelKey: "auto",
+    outputMode: "replace",
+    maxOutputTokens: 600,
+    temperature: 0.3,
+    requiresVipRank: 0,
+    isActive: true,
+    sortOrder: 100,
+    isOverridden: opts.overridden,
+    forkedFromKey: opts.from,
+    forkedFromAt: new Date("2026-01-01"),
+  });
+}
+
+describe("跟随中的副本", () => {
+  it("官方一改，跟随中的副本跟着改", async () => {
+    const { ensureSkillsSeeded, propagateToLinkedForks } = await freshStore();
+    await ensureSkillsSeeded();
+    pushFork({ key: "u_linked", ownerId: 1, from: "polish", overridden: false });
+
+    // 管理端改了官方那条
+    rows.find((r) => r.key === "polish" && r.scope === "official")!.systemPrompt = "任务：新版润色";
+    const count = await propagateToLinkedForks("polish");
+
+    expect(count).toBe(1);
+    expect(rows.find((r) => r.key === "u_linked")!.systemPrompt).toBe("任务：新版润色");
+  });
+
+  it("**已独立的副本一个字都不动**", async () => {
+    const { ensureSkillsSeeded, propagateToLinkedForks } = await freshStore();
+    await ensureSkillsSeeded();
+    pushFork({ key: "u_own", ownerId: 1, from: "polish", overridden: true, prompt: "我自己写的" });
+
+    rows.find((r) => r.key === "polish" && r.scope === "official")!.systemPrompt = "任务：新版润色";
+    await propagateToLinkedForks("polish");
+
+    expect(rows.find((r) => r.key === "u_own")!.systemPrompt).toBe("我自己写的");
+  });
+
+  it("从零建 / 导入的技能不受影响——它们没在跟随任何东西", async () => {
+    const { ensureSkillsSeeded, propagateToLinkedForks } = await freshStore();
+    await ensureSkillsSeeded();
+    rows.push({
+      id: nextId++,
+      scope: "user",
+      ownerId: 1,
+      key: "u_blank",
+      name: "从零建的",
+      nameEn: "",
+      icon: "",
+      description: "",
+      triggers: JSON.stringify(["selection"]),
+      modes: "[]",
+      systemPrompt: "任务：",
+      userTemplate: "{{selection}}",
+      modelKey: "auto",
+      outputMode: "replace",
+      maxOutputTokens: 600,
+      temperature: 0.4,
+      requiresVipRank: 0,
+      isActive: true,
+      sortOrder: 100,
+      isOverridden: true,
+      forkedFromKey: null,
+      forkedFromAt: null,
+    });
+
+    expect(await propagateToLinkedForks("polish")).toBe(0);
+    expect(rows.find((r) => r.key === "u_blank")!.systemPrompt).toBe("任务：");
+  });
+
+  it("有跟随中的副本时不许再复制一份", async () => {
+    const { hasLinkedFork } = await freshStore();
+    pushFork({ key: "u_linked", ownerId: 1, from: "polish", overridden: false });
+    expect(await hasLinkedFork(1, "polish")).toBe(true);
+    // 独立之后按钮重新亮起来
+    rows.find((r) => r.key === "u_linked")!.isOverridden = true;
+    expect(await hasLinkedFork(1, "polish")).toBe(false);
+  });
+
+  it("别人有跟随中的副本，不影响我能不能复制", async () => {
+    const { hasLinkedFork } = await freshStore();
+    pushFork({ key: "u_other", ownerId: 2, from: "polish", overridden: false });
+    expect(await hasLinkedFork(1, "polish")).toBe(false);
+  });
+
+  it("跟随中的官方 key 只列自己的", async () => {
+    const { linkedForkKeys } = await freshStore();
+    pushFork({ key: "u_a", ownerId: 1, from: "polish", overridden: false });
+    pushFork({ key: "u_b", ownerId: 1, from: "shorten", overridden: true });
+    pushFork({ key: "u_c", ownerId: 2, from: "emphasize", overridden: false });
+
+    const keys = await linkedForkKeys(1);
+    expect(keys.has("polish")).toBe(true);
+    expect(keys.has("shorten")).toBe(false);
+    expect(keys.has("emphasize")).toBe(false);
+  });
+
+  it("播种升级官方提示词时，跟随中的副本一起跟上", async () => {
+    const first = await freshStore();
+    await first.ensureSkillsSeeded();
+    pushFork({ key: "u_linked", ownerId: 1, from: "polish", overridden: false });
+    // 模拟上一版播下的旧内容
+    const official = rows.find((r) => r.key === "polish" && r.scope === "official")!;
+    official.systemPrompt = "上一版的老提示词";
+    rows.find((r) => r.key === "u_linked")!.systemPrompt = "上一版的老提示词";
+
+    const again = await freshStore();
+    await again.ensureSkillsSeeded();
+
+    expect(rows.find((r) => r.key === "u_linked")!.systemPrompt).toBe(
+      rows.find((r) => r.key === "polish" && r.scope === "official")!.systemPrompt
+    );
+  });
+});
+
+describe("内容是否与来源一致", () => {
+  const mirror = {
+    systemPrompt: "任务：润色",
+    userTemplate: "{{selection}}",
+    triggers: ["selection"],
+    modes: [],
+    outputMode: "replace" as const,
+    maxOutputTokens: 600,
+    temperature: 0.3,
+  };
+
+  it("一模一样就还算跟随", async () => {
+    const { sameAsSource } = await freshStore();
+    expect(sameAsSource({ ...mirror }, mirror)).toBe(true);
+  });
+
+  it("提示词改了就算独立", async () => {
+    const { sameAsSource } = await freshStore();
+    expect(sameAsSource({ ...mirror, systemPrompt: "任务：我的润色" }, mirror)).toBe(false);
+  });
+
+  it("时机、模式、温度、输出上限任一不同都算", async () => {
+    const { sameAsSource } = await freshStore();
+    expect(sameAsSource({ ...mirror, triggers: ["manual"] }, mirror)).toBe(false);
+    expect(sameAsSource({ ...mirror, modes: ["video_t2v"] }, mirror)).toBe(false);
+    expect(sameAsSource({ ...mirror, temperature: 0.9 }, mirror)).toBe(false);
+    expect(sameAsSource({ ...mirror, maxOutputTokens: 900 }, mirror)).toBe(false);
   });
 });

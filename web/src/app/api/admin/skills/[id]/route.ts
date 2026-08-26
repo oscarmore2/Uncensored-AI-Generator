@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { requireRole } from "@/lib/auth";
 import { logAdminAction } from "@/lib/admin-audit";
 import { SKILL_MODE_IDS, SKILL_OUTPUT_MODES, SKILL_TRIGGERS } from "@/lib/skills/definitions";
+import { propagateToLinkedForks } from "@/lib/skills/store";
 
 const patchSchema = z
   .object({
@@ -68,10 +69,17 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
     },
   });
 
+  /*
+   * 用户手里那些**还在跟随**这条官方技能的副本要一起跟上。
+   * 已经改过、落地成独立技能的那些一个字都不动。
+   */
+  const propagated = current.scope === "official" ? await propagateToLinkedForks(current.key) : 0;
+
   await logAdminAction(admin.id, "skill_edit", { type: "skill", id }, {
     key: current.key,
     fields: Object.keys(d),
+    propagated,
   });
 
-  return NextResponse.json({ ok: true, id: updated.id });
+  return NextResponse.json({ ok: true, id: updated.id, propagated });
 }

@@ -197,6 +197,8 @@ export async function ensureSkillsSeeded(): Promise<void> {
         where: { key: def.key },
         data: { ...factoryFields(def), isActive: true },
       });
+      // 官方这条变了，跟随中的用户副本要一起跟上
+      await propagateToLinkedForks(def.key);
     }
     /*
      * 出厂清单里没有、但库里还留着的官方技能**不删**：
@@ -209,6 +211,139 @@ export async function ensureSkillsSeeded(): Promise<void> {
   } finally {
     seeding = false;
   }
+}
+
+/**
+ * 「跟随」与「独立」——用户副本的两种状态。
+ *
+ * 点「复制官方技能」得到的**不是**一份当场拍下来的快照，而是一个**跟随中**的
+ * 副本：官方那条一变，它跟着变。只有当用户真的改了提示词、存下来之后，
+ * 它才「落地」成一份独立的技能，从此不再跟随。
+ *
+ * 这与官方技能自己的 `isOverridden` 是同一条规矩，只是层级不同：
+ * 官方跟随代码里的出厂值，用户副本跟随库里的官方行。复用同一个字段，
+ * 就不必再造第二套状态机。
+ *
+ * 判定「改没改」只看**提示词相关的字段**。名称、图标、说明、启用与否是
+ * 用户自己的东西：给副本改个名不该让它掉出升级链路，官方改了名也不该
+ * 把用户起的名字冲掉。
+ */
+const MIRRORED = [
+  "systemPrompt",
+  "userTemplate",
+  "triggers",
+  "modes",
+  "outputMode",
+  "maxOutputTokens",
+  "temperature",
+] as const;
+
+type MirroredField = (typeof MIRRORED)[number];
+export type MirroredValues = Pick<
+  ResolvedSkill,
+  "systemPrompt" | "userTemplate" | "outputMode" | "maxOutputTokens" | "temperature"
+> & { triggers: string[]; modes: string[] };
+
+export const MIRRORED_FIELDS: readonly MirroredField[] = MIRRORED;
+
+/** 用户副本能绑的时机只有已经有前端实现的那些，官方那份要先滤一道 */
+function forkableTriggers(triggers: string[]): string[] {
+  return triggers.filter((t) => t === "selection" || t === "manual");
+}
+
+function mirroredOf(skill: ResolvedSkill): MirroredValues {
+  return {
+    systemPrompt: skill.systemPrompt,
+    userTemplate: skill.userTemplate,
+    triggers: forkableTriggers(skill.triggers),
+    modes: skill.modes,
+    outputMode: skill.outputMode,
+    maxOutputTokens: Math.min(skill.maxOutputTokens, 1200),
+    temperature: skill.temperature,
+  };
+}
+
+/** 副本内容与官方当前的内容是否一致。一致就还能继续跟随 */
+export function sameAsSource(a: MirroredValues, b: MirroredValues): boolean {
+  return MIRRORED.every((f) => JSON.stringify(a[f]) === JSON.stringify(b[f]));
+}
+
+function mirroredWriteFields(v: MirroredValues) {
+  return {
+    systemPrompt: v.systemPrompt,
+    userTemplate: v.userTemplate,
+    triggers: JSON.stringify(v.triggers),
+    modes: JSON.stringify(v.modes),
+    outputMode: v.outputMode,
+    maxOutputTokens: v.maxOutputTokens,
+    temperature: v.temperature,
+  };
+}
+
+/**
+ * 官方技能当前的可镜像内容。fork 与传播都用它。
+ *
+ * **直接读库，不走 `getOfficialSkill`。** 那个函数会先确保播种完成，
+ * 而播种本身在升级一条官方技能之后就会调到这里来——于是内层等外层的
+ * `seeding` 标志放开，外层等内层返回，整个进程卡死。
+ * 这不是理论上的：改成 getOfficialSkill 的那一版被单测按住了。
+ */
+export async function sourceMirror(officialKey: string): Promise<MirroredValues | null> {
+  const row = await db.skill.findFirst({ where: { key: officialKey, scope: "official" } });
+  if (row) return mirroredOf(skillFromRow(row));
+  const def = OFFICIAL_SKILL_BY_KEY.get(officialKey);
+  return def ? mirroredOf(skillFromDefinition(def)) : null;
+}
+
+/**
+ * 把官方这条的改动推给所有**跟随中**的用户副本。
+ *
+ * 只碰 `isOverridden = false` 的行——已经落地成独立技能的那些一个字都不动。
+ * 同时把 `forkedFromAt` 对齐，这样「来源已更新」的提示不会对跟随中的副本
+ * 误报（它本来就一直是最新的）。
+ *
+ * 失败只记日志不抛：官方那条已经存好了，副本晚一步跟上不该让管理端的
+ * 保存操作整个失败。
+ */
+export async function propagateToLinkedForks(officialKey: string): Promise<number> {
+  try {
+    const row = await db.skill.findFirst({
+      where: { key: officialKey, scope: "official" },
+      select: { updatedAt: true },
+    });
+    const mirror = await sourceMirror(officialKey);
+    if (!mirror) return 0;
+
+    const result = await db.skill.updateMany({
+      where: { scope: "user", forkedFromKey: officialKey, isOverridden: false },
+      data: {
+        ...mirroredWriteFields(mirror),
+        forkedFromAt: row?.updatedAt ?? new Date(),
+      },
+    });
+    return result.count;
+  } catch (err) {
+    console.error("[skill-store] propagate failed:", err);
+    return 0;
+  }
+}
+
+/** 这个人有没有一份还在跟随这条官方技能的副本。有就不许再复制一份 */
+export async function hasLinkedFork(ownerId: number, officialKey: string): Promise<boolean> {
+  const found = await db.skill.findFirst({
+    where: { scope: "user", ownerId, forkedFromKey: officialKey, isOverridden: false },
+    select: { id: true },
+  });
+  return Boolean(found);
+}
+
+/** 这个人所有还在跟随的官方技能 key */
+export async function linkedForkKeys(ownerId: number): Promise<Set<string>> {
+  const rows = await db.skill.findMany({
+    where: { scope: "user", ownerId, isOverridden: false, forkedFromKey: { not: null } },
+    select: { forkedFromKey: true },
+  });
+  return new Set(rows.map((r) => r.forkedFromKey!).filter(Boolean));
 }
 
 /**
@@ -323,9 +458,11 @@ export function newUserSkillKey(): string {
  * 合并只能靠猜，猜错比不合并更糟。
  */
 export function sourceUpdated(
-  skill: Pick<ResolvedSkill, "forkedFromAt">,
+  skill: Pick<ResolvedSkill, "forkedFromAt" | "isOverridden">,
   officialUpdatedAt: Date | null | undefined
 ): boolean {
+  // 跟随中的副本本来就一直是最新的，对它提示「来源已更新」只会让人困惑
+  if (!skill.isOverridden) return false;
   if (!skill.forkedFromAt || !officialUpdatedAt) return false;
   return officialUpdatedAt.getTime() > skill.forkedFromAt.getTime();
 }

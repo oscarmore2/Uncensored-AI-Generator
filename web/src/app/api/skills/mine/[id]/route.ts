@@ -5,6 +5,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { hasSkillAuthoring } from "@/lib/skills/access";
 import { USER_TRIGGERS } from "@/lib/skills/portable";
 import { SKILL_MODE_IDS, SKILL_OUTPUT_MODES } from "@/lib/skills/definitions";
+import { sameAsSource, sourceMirror, type MirroredValues } from "@/lib/skills/store";
 
 const patchSchema = z
   .object({
@@ -24,6 +25,15 @@ const patchSchema = z
     acknowledge_source: z.boolean().optional(),
   })
   .refine((v) => Object.keys(v).length > 0, { message: "没有要修改的字段" });
+
+function parseList(raw: string): string[] {
+  try {
+    const v = JSON.parse(raw) as unknown;
+    return Array.isArray(v) ? v.filter((x): x is string => typeof x === "string") : [];
+  } catch {
+    return [];
+  }
+}
 
 /** 取一条**属于当前用户**的技能。找不到与不属于他，一律当作不存在 */
 async function ownOrNull(id: number, userId: number) {
@@ -68,6 +78,42 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
     forkedFromAt = official?.updatedAt ?? new Date();
   }
 
+  /*
+   * 「跟随」变「独立」就发生在这里。
+   *
+   * 复制官方技能得到的只是一个引用：官方一变它跟着变。用户把提示词真的改成
+   * 与官方**当前内容**不同的样子并保存下来，它才落地成一份独立的技能，
+   * 从此不再跟随，官方那条的复制按钮也重新亮起来。
+   *
+   * 改名字、换图标、写说明、停用都不算——那些是用户自己的东西，
+   * 不该让一份副本因为改了个名就掉出升级链路。
+   */
+  let isOverridden = current.isOverridden;
+  let detached = false;
+  if (!isOverridden && current.forkedFromKey) {
+    const next: MirroredValues = {
+      systemPrompt: d.system_prompt ?? current.systemPrompt,
+      userTemplate: d.user_template ?? current.userTemplate,
+      triggers: d.triggers ?? parseList(current.triggers),
+      modes: d.modes ?? parseList(current.modes),
+      outputMode: (d.output_mode ?? current.outputMode) as MirroredValues["outputMode"],
+      maxOutputTokens: d.max_output_tokens ?? current.maxOutputTokens,
+      temperature: d.temperature ?? current.temperature,
+    };
+    const mirror = await sourceMirror(current.forkedFromKey);
+    // 来源不见了也当作独立：一个跟随着不存在的东西的副本毫无意义
+    if (!mirror || !sameAsSource(next, mirror)) {
+      isOverridden = true;
+      detached = true;
+      const official = await db.skill.findFirst({
+        where: { key: current.forkedFromKey, scope: "official" },
+        select: { updatedAt: true },
+      });
+      // 从落地这一刻起算，之后官方再改才提示「来源已更新」
+      forkedFromAt = official?.updatedAt ?? new Date();
+    }
+  }
+
   await db.skill.update({
     where: { id },
     data: {
@@ -82,11 +128,12 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
       ...(d.max_output_tokens !== undefined ? { maxOutputTokens: d.max_output_tokens } : {}),
       ...(d.temperature !== undefined ? { temperature: d.temperature } : {}),
       ...(d.is_active !== undefined ? { isActive: d.is_active } : {}),
+      isOverridden,
       forkedFromAt,
     },
   });
 
-  return NextResponse.json({ ok: true });
+  return NextResponse.json({ ok: true, detached });
 }
 
 export async function DELETE(_req: Request, ctx: { params: Promise<{ id: string }> }) {

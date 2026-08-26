@@ -6,6 +6,8 @@ import { rateLimit } from "@/lib/rate-limit";
 import { hasSkillAuthoring, MAX_USER_SKILLS } from "@/lib/skills/access";
 import {
   getOfficialSkill,
+  hasLinkedFork,
+  linkedForkKeys,
   listUserSkills,
   newUserSkillKey,
   sourceUpdated,
@@ -38,6 +40,13 @@ function skillOut(skill: ResolvedSkill, officialUpdatedAt: Map<string, Date>) {
     max_output_tokens: skill.maxOutputTokens,
     temperature: skill.temperature,
     is_active: skill.isActive,
+    /**
+     * 还在跟随官方吗。
+     *
+     * 跟随中 = 这只是一个引用，官方一变它就跟着变；
+     * 已独立 = 用户改过提示词，它落地成了自己的东西，从此不再跟随。
+     */
+    linked: !skill.isOverridden && Boolean(skill.forkedFromKey),
     forked_from_key: skill.forkedFromKey,
     forked_from_name: skill.forkedFromKey
       ? (OFFICIAL_SKILL_BY_KEY.get(skill.forkedFromKey)?.name ?? skill.forkedFromKey)
@@ -56,9 +65,10 @@ export async function GET() {
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const canAuthor = hasSkillAuthoring(user);
-  const [skills, officials] = await Promise.all([
+  const [skills, officials, linked] = await Promise.all([
     listUserSkills(user.id),
     db.skill.findMany({ where: { scope: "official" }, select: { key: true, updatedAt: true } }),
+    linkedForkKeys(user.id),
   ]);
   const officialUpdatedAt = new Map(officials.map((o) => [o.key, o.updatedAt]));
 
@@ -73,7 +83,18 @@ export async function GET() {
         select: { key: true, name: true, icon: true, description: true },
         orderBy: [{ sortOrder: "asc" }],
       })
-    ).map((o) => ({ key: o.key, name: o.name, icon: o.icon, description: o.description })),
+    ).map((o) => ({
+      key: o.key,
+      name: o.name,
+      icon: o.icon,
+      description: o.description,
+      /*
+       * 已经有一份还在跟随的副本了，就不给再复制第二份——
+       * 两份内容完全一样、又都会自动跟着官方变，留着只会让列表变乱。
+       * 改过之后那份变成独立技能，这里会重新亮起来。
+       */
+      has_linked_copy: linked.has(o.key),
+    })),
     meta: {
       triggers: USER_TRIGGERS,
       modes: SKILL_MODE_IDS,
@@ -135,9 +156,23 @@ export async function POST(req: Request) {
     forkedFromAt: Date | null;
   };
 
+  /*
+   * 从零建与导入的技能**一出生就是独立的**：它们没有在跟随任何东西。
+   * 导入这条尤其要紧——导出文件里可能带着 forked_from_key，
+   * 若把它当成「跟随中」，下一次官方更新会把用户导进来的内容整个冲掉。
+   */
+  let independent = true;
+
   if (input.from === "fork") {
     const official = await getOfficialSkill(input.key);
     if (!official) return NextResponse.json({ error: "来源技能不存在" }, { status: 404 });
+    if (await hasLinkedFork(user.id, input.key)) {
+      return NextResponse.json(
+        { error: "已经有一份跟随中的副本了，改过之后才能再复制一份", code: "SKILL_ALREADY_FORKED" },
+        { status: 400 }
+      );
+    }
+    independent = false;
     const row = await db.skill.findFirst({
       where: { key: input.key, scope: "official" },
       select: { updatedAt: true },
@@ -216,7 +251,8 @@ export async function POST(req: Request) {
        */
       modelKey: "auto",
       isActive: true,
-      isOverridden: false,
+      /* 见上面 independent 的说明：fork 出来的是引用，其余都是实体 */
+      isOverridden: independent,
       sortOrder: 100,
     },
   });

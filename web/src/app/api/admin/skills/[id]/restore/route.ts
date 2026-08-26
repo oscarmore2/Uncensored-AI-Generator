@@ -3,7 +3,7 @@ import { db } from "@/lib/db";
 import { requireRole } from "@/lib/auth";
 import { logAdminAction } from "@/lib/admin-audit";
 import { OFFICIAL_SKILL_BY_KEY } from "@/lib/skills/definitions";
-import { factoryFields } from "@/lib/skills/store";
+import { factoryFields, propagateToLinkedForks } from "@/lib/skills/store";
 
 /**
  * 恢复出厂设置：回填出厂值 + `isOverridden = false`。
@@ -35,6 +35,12 @@ export async function POST(_req: Request, ctx: { params: Promise<{ id: string }>
     data: { ...factoryFields(factory), isActive: true, isOverridden: false },
   });
 
-  await logAdminAction(admin.id, "skill_restore", { type: "skill", id }, { key: current.key });
-  return NextResponse.json({ ok: true });
+  // 恢复出厂也是一次内容变更，跟随中的副本同样要跟上
+  const propagated = await propagateToLinkedForks(current.key);
+
+  await logAdminAction(admin.id, "skill_restore", { type: "skill", id }, {
+    key: current.key,
+    propagated,
+  });
+  return NextResponse.json({ ok: true, propagated });
 }
