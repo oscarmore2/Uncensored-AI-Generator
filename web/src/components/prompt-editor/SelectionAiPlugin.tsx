@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
 import {
@@ -11,6 +11,7 @@ import {
   $isRangeSelection,
 } from "lexical";
 import { $nodesFromText } from "./lexical-bridge";
+import { computePlacement, EDGE, MIN_CARD_HEIGHT, type Placement } from "./placement";
 
 /**
  * 选中一句 → 浮出动作 → 只替换这一句。
@@ -90,6 +91,9 @@ const CONTEXT_CHARS = 300;
 /** 窄于这个就把卡片钉到底部：浮在选区旁边会被选择手柄和键盘一起压住 */
 const DOCK_WIDTH = 640;
 
+/** 测不到实际宽度时的估值，与下面的 w-[min(21rem,…)] 对齐 */
+const FALLBACK_WIDTH = 336;
+
 type Phase =
   | { kind: "idle" }
   | { kind: "menu"; rect: DOMRect }
@@ -125,6 +129,7 @@ export function SelectionAiPlugin({
   /** 发起那一刻的选区文本与上下文。等结果期间编辑器是只读的，所以它不会失效 */
   const shotRef = useRef<{ selection: string; before: string; after: string } | null>(null);
   const abortRef = useRef<AbortController | null>(null);
+  const cardRef = useRef<HTMLDivElement | null>(null);
   const dock = useDockToBottom();
 
   /* 组件被卸载（切页 / 收起弹窗）时把还在跑的请求掐掉 */
@@ -283,22 +288,40 @@ export function SelectionAiPlugin({
     [editor, finish]
   );
 
+  const placement = useCardPlacement(phase.kind === "idle" ? null : phase.rect, cardRef);
+
   if (!enabled || skills.length === 0 || phase.kind === "idle") return null;
 
   const rect = phase.rect;
   const style: React.CSSProperties = dock
-    ? { left: 8, right: 8, bottom: dock.bottom, width: "auto" }
+    ? {
+        left: EDGE,
+        right: EDGE,
+        bottom: dock.bottom,
+        width: "auto",
+        /* 底栏也要封顶：结果很长时它会一路往上长，盖住整个编辑区。
+           bottom 已经让开了键盘，所以从布局视口高度里减掉那段就是可见高度 */
+        maxHeight: `calc(100vh - ${dock.bottom + EDGE}px)`,
+      }
     : {
-        left: Math.max(8, Math.min(rect.left, window.innerWidth - 340)),
-        top: rect.bottom + 8,
+        left: placement.left,
+        ...(placement.anchor === "below"
+          ? { top: placement.offset }
+          : /* 往上放时按**下边**定位：结果是流式吐出来的，卡片会一直变高，
+               按上边定位的话它会一路长下来盖住选区本身 */
+            { bottom: placement.offset }),
+        maxHeight: placement.maxHeight,
       };
 
   return createPortal(
     <div
+      ref={cardRef}
       style={style}
       /* 不能让点击把编辑器的选区抢走，否则替换时找不到该替换哪一段 */
       onMouseDown={(e) => e.preventDefault()}
-      className={`fixed z-[240] overflow-hidden rounded-2xl border border-line bg-surface shadow-xl ${
+      /* flex 列 + 下面那些 min-h-0，是为了空间不够时**先压扁正文而不是挤掉按钮**。
+         按钮被挤出视口就等于这次改写作废了，用户点不到「替换」 */
+      className={`fixed z-[240] flex flex-col overflow-hidden rounded-2xl border border-line bg-surface shadow-xl ${
         dock ? "" : "w-[min(21rem,calc(100vw-1rem))]"
       }`}
     >
@@ -323,11 +346,11 @@ export function SelectionAiPlugin({
       )}
 
       {phase.kind === "pending" && (
-        <div>
+        <div className="flex min-h-0 flex-1 flex-col">
           {/* 边写边看。**这里不给替换按钮**：出口审查要等全文才能做，
               在那之前这段文字还没被判过，不能让用户提前放进正文 */}
           {phase.text && <ResultText text={phase.text} streaming />}
-          <div className="flex items-center gap-2 px-3 py-2.5 text-[12px] text-ink-muted">
+          <div className="flex shrink-0 items-center gap-2 px-3 py-2.5 text-[12px] text-ink-muted">
             <i className="fas fa-circle-notch fa-spin text-[11px]" />
             <span className="flex-1">{labels.working}</span>
             <button
@@ -361,15 +384,15 @@ export function SelectionAiPlugin({
       )}
 
       {phase.kind === "preview" && (
-        <div>
+        <div className="flex min-h-0 flex-1 flex-col">
           {/* 决定之前原文一字不动，这里只是预览 */}
           <ResultText text={phase.text} />
           {phase.dropped.length > 0 && (
-            <p className="border-b border-line bg-amber-500/10 px-3 py-1.5 text-[11px] text-amber-800">
+            <p className="shrink-0 border-b border-line bg-amber-500/10 px-3 py-1.5 text-[11px] text-amber-800">
               {labels.droppedRefs}：{phase.dropped.join("、")}
             </p>
           )}
-          <div className="flex flex-wrap items-center gap-1 p-1.5">
+          <div className="flex shrink-0 flex-wrap items-center gap-1 p-1.5">
             {/* 只读结果不给落地按钮：它回的不是用来顶替原文的东西 */}
             {!phase.readOnly && (
               <>
@@ -403,12 +426,78 @@ function ResultText({ text, streaming }: { text: string; streaming?: boolean }) 
   return (
     <div
       ref={ref}
-      className="max-h-48 overflow-y-auto overscroll-contain border-b border-line px-3 py-2.5 text-[12px] leading-relaxed whitespace-pre-wrap break-words"
+      className="min-h-0 flex-1 max-h-48 overflow-y-auto overscroll-contain border-b border-line px-3 py-2.5 text-[12px] leading-relaxed whitespace-pre-wrap break-words"
     >
       {text}
       {streaming && <span className="ml-0.5 inline-block h-3 w-[2px] animate-pulse bg-ink-muted align-middle" />}
     </div>
   );
+}
+
+/**
+ * 算卡片放哪儿，并且**保证它整个在视口里**。
+ *
+ * 原来是死板的「永远放选区下方」：选区一靠近视口底部，整张卡就掉出去了，
+ * 正文还能看见一点，按钮已经在屏幕外——这次改写就等于作废，用户点不到「替换」。
+ *
+ * 算法在 `placement.ts` 里（纯函数，有单测）。这里只负责取实时坐标、
+ * 挂监听、以及不必要时别 setState。
+ */
+function useCardPlacement(
+  rect: DOMRect | null,
+  cardRef: React.RefObject<HTMLDivElement | null>
+): Placement {
+  const [placement, setPlacement] = useState<Placement>({
+    left: EDGE,
+    anchor: "below",
+    offset: EDGE,
+    maxHeight: MIN_CARD_HEIGHT,
+  });
+
+  useLayoutEffect(() => {
+    if (!rect) return;
+
+    const compute = () => {
+      /*
+       * 每次都重新问一遍实时选区，而不是只用发起时存下的那个 rect：
+       * 弹窗里的正文是可以滚动的，滚过之后存下来的坐标就指向别处了。
+       * 问不到（选区没了）就退回存下的那份。
+       */
+      const selection = window.getSelection();
+      const live =
+        selection && selection.rangeCount > 0
+          ? selection.getRangeAt(0).getBoundingClientRect()
+          : null;
+      const anchor = live && live.width + live.height > 0 ? live : rect;
+
+      const next = computePlacement({
+        anchor: { left: anchor.left, top: anchor.top, bottom: anchor.bottom },
+        /* 固定定位是相对布局视口的，这里不能混用 visualViewport——那个留给窄屏底栏 */
+        viewport: { width: window.innerWidth, height: window.innerHeight },
+        cardWidth: cardRef.current?.offsetWidth || FALLBACK_WIDTH,
+      });
+
+      setPlacement((current) =>
+        current.left === next.left &&
+        current.anchor === next.anchor &&
+        current.offset === next.offset &&
+        current.maxHeight === next.maxHeight
+          ? current
+          : next
+      );
+    };
+
+    compute();
+    window.addEventListener("resize", compute);
+    // capture：正文是在某个内层容器里滚的，冒泡阶段收不到它的 scroll
+    window.addEventListener("scroll", compute, true);
+    return () => {
+      window.removeEventListener("resize", compute);
+      window.removeEventListener("scroll", compute, true);
+    };
+  }, [rect, cardRef]);
+
+  return placement;
 }
 
 /**
