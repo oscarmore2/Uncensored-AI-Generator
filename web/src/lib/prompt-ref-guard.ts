@@ -18,7 +18,8 @@ import { formatRefToken, refNeedsSeparator, type RefKind } from "./prompt-doc";
  */
 
 /** 第 n 个引用的占位写法。从 1 开始，和用户看到的编号无关 */
-function placeholder(index: number): string {
+/** 占位符写法。vision.ts 要用同一份，两处各写一份迟早对不上 */
+export function placeholder(index: number): string {
   return `[[REF${index}]]`;
 }
 

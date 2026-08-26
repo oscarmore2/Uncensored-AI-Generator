@@ -49,6 +49,8 @@ export type SelectionAiLabels = {
   droppedRefs: string;
   /** 只读结果的收起按钮 */
   done: string;
+  /** 带了几张参考图。模型看没看见图，直接决定这次结果该怎么读 */
+  images(count: number): string;
   /**
    * 本次消耗与累计零头。
    *
@@ -83,7 +85,13 @@ export type SelectionAiRequest = (
     /** 流式增量。**追加**显示，收到最终结果时整体替换 */
     onDelta(text: string): void;
   }
-) => Promise<{ text: string; dropped: string[]; charge?: SelectionAiCharge }>;
+) => Promise<{
+  text: string;
+  dropped: string[];
+  charge?: SelectionAiCharge;
+  /** 这次实际带上去的参考图张数 */
+  images?: number;
+}>;
 
 /** 上下文各截多少字，与服务端 CONTEXT_CHARS 保持一致 */
 const CONTEXT_CHARS = 300;
@@ -108,6 +116,7 @@ type Phase =
       text: string;
       dropped: string[];
       charge?: SelectionAiCharge;
+      images: number;
     }
   | { kind: "error"; rect: DOMRect; message: string };
 
@@ -225,6 +234,7 @@ export function SelectionAiPlugin({
           text: result.text,
           dropped: result.dropped,
           charge: result.charge,
+          images: result.images ?? 0,
         });
       } catch (e) {
         if (controller.signal.aborted) return;
@@ -387,6 +397,13 @@ export function SelectionAiPlugin({
         <div className="flex min-h-0 flex-1 flex-col">
           {/* 决定之前原文一字不动，这里只是预览 */}
           <ResultText text={phase.text} />
+          {phase.images > 0 && (
+            /* 模型这次是照着图写的，还是全凭文字猜的——两种结果读法完全不同 */
+            <p className="shrink-0 border-b border-line bg-sky-500/10 px-3 py-1.5 text-[11px] text-sky-800">
+              <i className="fas fa-image mr-1" />
+              {labels.images(phase.images)}
+            </p>
+          )}
           {phase.dropped.length > 0 && (
             <p className="shrink-0 border-b border-line bg-amber-500/10 px-3 py-1.5 text-[11px] text-amber-800">
               {labels.droppedRefs}：{phase.dropped.join("、")}

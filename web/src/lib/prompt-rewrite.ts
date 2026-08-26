@@ -7,6 +7,7 @@ import { maskPromptRefs, unmaskPromptRefs } from "./prompt-ref-guard";
 import { PROMPT_FORMAT_RULES, resolvePromptTarget } from "./prompt-targets";
 import { looksChinese, stripWrapper } from "./prompt-rewrite-text";
 import { renderTemplate, type TemplateVars } from "./skills/template";
+import { resolveVisionImages, visionHint, type VisionImage } from "./skills/vision";
 import { SELECTION_OUTPUT_RULES, wrapSystem } from "./skills/envelope";
 import type { ResolvedSkill } from "./skills/store";
 
@@ -33,6 +34,8 @@ export type RewriteInput = {
   contextAfter: string;
   /** 全文 canonical。选区时机下由前端一并送来，用于 {{full_text}} */
   fullText?: string;
+  /** 前端给的 token → 素材 URL。用来把选区里引用到的参考图一起发给模型 */
+  refs?: Array<{ token: string; url: string }>;
   mode: string;
   tier?: string;
   spicy?: boolean;
@@ -46,6 +49,8 @@ export type RewriteOutput = {
   text: string;
   tokens?: number;
   droppedRefs: string[];
+  /** 这次实际随请求发出去的参考图张数。模型看没看见图，直接决定结果该怎么读 */
+  images: number;
   usage?: ChatUsage;
   /** 这次实际用的模型。计费要它的倍率，台账要它的 key */
   model: LlmModelSpec;
@@ -117,12 +122,19 @@ function maxTokensFor(input: RewriteInput): number {
   return Math.min(Math.max(input.skill.maxOutputTokens, bySelection), 1200);
 }
 
-function requestFor(input: RewriteInput, masked: string, model: LlmModelSpec) {
+function requestFor(
+  input: RewriteInput,
+  masked: string,
+  model: LlmModelSpec,
+  images: VisionImage[]
+) {
   const vars = buildVars(input);
   return {
     system: buildSystem(input, vars),
-    user: buildUser(input, vars, masked),
+    // 提示模型这几张图分别是谁，否则两张参考图时它会张冠李戴
+    user: buildUser(input, vars, masked) + visionHint(images),
     model,
+    images: images.map((i) => i.url),
     maxTokens: maxTokensFor(input),
     temperature: input.skill.temperature,
     tag: "prompt-rewrite" as const,
@@ -148,6 +160,21 @@ export function newRewriteProgress(): RewriteProgress {
   return { raw: "", promptText: "", model: null, usage: {} };
 }
 
+/**
+ * 这次带哪几张参考图。
+ *
+ * 模型读不了图就一张都不带——发给纯文本模型只会报错或被无声忽略，
+ * 而无声忽略更糟：用户以为模型看过图了。
+ */
+async function visionFor(
+  input: RewriteInput,
+  model: LlmModelSpec,
+  refTokens: string[]
+): Promise<VisionImage[]> {
+  if (!model.supportsVision || !input.refs?.length) return [];
+  return resolveVisionImages(refTokens, input.refs);
+}
+
 /** 收尾：去壳 + 还原引用。流式与非流式共用，两条路的结果必须一模一样 */
 function finalize(raw: string, refTokens: string[]): { text: string; droppedRefs: string[] } | null {
   const body = stripWrapper(raw);
@@ -166,7 +193,8 @@ export async function rewriteSelection(
   const { model } = await resolveSkillModel(input.skill.modelKey, {
     allowSensitive: input.allowSensitive,
   });
-  const request = requestFor(input, masked, model);
+  const images = await visionFor(input, model, refTokens);
+  const request = requestFor(input, masked, model, images);
   if (opts?.progress) {
     opts.progress.model = model;
     opts.progress.promptText = `${request.system}\n${request.user}`;
@@ -178,7 +206,13 @@ export async function rewriteSelection(
   const done = finalize(called.text, refTokens);
   if (!done) return null;
 
-  return { ...done, tokens: called.usage.totalTokens, usage: called.usage, model };
+  return {
+    ...done,
+    images: images.length,
+    tokens: called.usage.totalTokens,
+    usage: called.usage,
+    model,
+  };
 }
 
 export type RewriteStreamEvent =
@@ -202,7 +236,8 @@ export async function* streamRewriteSelection(
   const { model } = await resolveSkillModel(input.skill.modelKey, {
     allowSensitive: input.allowSensitive,
   });
-  const request = requestFor(input, masked, model);
+  const images = await visionFor(input, model, refTokens);
+  const request = requestFor(input, masked, model, images);
   const progress = opts?.progress;
   if (progress) {
     progress.model = model;
@@ -240,5 +275,8 @@ export async function* streamRewriteSelection(
 
   const done = finalize(raw, refTokens);
   if (!done) return;
-  yield { type: "done", result: { ...done, tokens: usage.totalTokens, usage, model } };
+  yield {
+    type: "done",
+    result: { ...done, images: images.length, tokens: usage.totalTokens, usage, model },
+  };
 }

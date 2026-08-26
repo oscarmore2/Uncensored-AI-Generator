@@ -8,7 +8,7 @@
     "start": "next start",
     "postinstall": "prisma generate",
     "db:push": "prisma db push",
-    "db:deploy": "node scripts/migrate-wavespeed-bridge.mjs && node scripts/migrate-provider-dimension.mjs && node scripts/migrate-share-token.mjs && node scripts/migrate-skill-fork-link.mjs && prisma db push",
+    "db:deploy": "node scripts/migrate-wavespeed-bridge.mjs && node scripts/migrate-provider-dimension.mjs && node scripts/migrate-share-token.mjs && node scripts/migrate-skill-fork-link.mjs && prisma db push && node scripts/migrate-llm-vision.mjs",
     "cleanup:media": "node scripts/media-cleanup.mjs",
     "backfill:media": "node scripts/media-backfill.mjs",
     "backfill:media:apply": "node scripts/media-backfill.mjs --apply",

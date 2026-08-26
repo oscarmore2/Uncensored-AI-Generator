@@ -15,6 +15,7 @@ const patchSchema = z
     price_multiplier_bps: z.number().int().min(10000).max(100000).optional(),
     context_tokens: z.number().int().min(1000).max(2_000_000).optional(),
     supports_streaming: z.boolean().optional(),
+    supports_vision: z.boolean().optional(),
     uncensored: z.boolean().optional(),
     requires_vip_rank: z.number().int().min(0).max(10).optional(),
     requires_adult: z.boolean().optional(),
@@ -70,6 +71,7 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
       ...(data.supports_streaming !== undefined
         ? { supportsStreaming: data.supports_streaming }
         : {}),
+      ...(data.supports_vision !== undefined ? { supportsVision: data.supports_vision } : {}),
       ...(data.uncensored !== undefined ? { uncensored: data.uncensored } : {}),
       ...(data.requires_vip_rank !== undefined ? { requiresVipRank: data.requires_vip_rank } : {}),
       ...(data.requires_adult !== undefined ? { requiresAdult: data.requires_adult } : {}),

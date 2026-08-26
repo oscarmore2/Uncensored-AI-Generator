@@ -45,6 +45,7 @@ export async function GET() {
         price_multiplier_bps: m.priceMultiplierBps,
         context_tokens: m.contextTokens,
         supports_streaming: m.supportsStreaming,
+        supports_vision: m.supportsVision,
         uncensored: m.uncensored,
         requires_vip_rank: m.requiresVipRank,
         requires_adult: m.requiresAdult,

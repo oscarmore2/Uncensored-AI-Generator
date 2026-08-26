@@ -570,6 +570,7 @@
     "aiRetry": "重试",
     "aiDiscard": "放弃",
     "aiDone": "知道了",
+    "aiImages": "已参考 {count} 张图",
     "aiDroppedRefs": "模型弄丢的引用",
     "aiCharged": "本次 {cost} 点 · 累计 {debt} 点",
     "aiSettled": "已扣 {credits} 点",

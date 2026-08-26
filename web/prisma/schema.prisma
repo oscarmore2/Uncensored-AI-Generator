@@ -461,6 +461,9 @@ model LlmModel {
   priceMultiplierBps Int     @default(13000)
   contextTokens      Int     @default(8000)
   supportsStreaming  Boolean @default(true)
+  /// 能不能读图。提示词里 @ 引用了参考图时，会把图一起发给它当上下文。
+  /// 关着的话那些图直接不发——发给读不了图的模型只会报错或被无声忽略。
+  supportsVision     Boolean @default(false)
   /// true 时 requiresAdult 必须也为 true，管理端保存时强制校验
   uncensored         Boolean @default(false)
   requiresVipRank    Int     @default(0)

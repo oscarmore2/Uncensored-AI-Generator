@@ -114,6 +114,28 @@ describe("流式调用上游", () => {
     expect(lastBody.model).toBe("openai/gpt-4o-mini");
   });
 
+  it("带参考图时用多模态数组写法，不带时还是纯字符串", async () => {
+    const { streamChat } = await import("./chat");
+    respond = ({ res }) => sse(res, [delta("ok")]);
+
+    for await (const _ of streamChat({
+      system: "s",
+      user: "u",
+      model: LLM_MODELS.basic,
+      images: ["https://cdn.example.com/a.png"],
+    })) void _;
+
+    const messages = lastBody.messages as Array<{ role: string; content: unknown }>;
+    expect(messages[1].content).toEqual([
+      { type: "text", text: "u" },
+      // low：约 512px 的视图，够认出主体/色调/光线/构图，而开高精度一张图能顶两三千 token
+      { type: "image_url", image_url: { url: "https://cdn.example.com/a.png", detail: "low" } },
+    ]);
+
+    for await (const _ of streamChat({ system: "s", user: "u", model: LLM_MODELS.basic })) void _;
+    expect((lastBody.messages as Array<{ content: unknown }>)[1].content).toBe("u");
+  });
+
   it("上游没给成本就按本地单价估，并标记出来", async () => {
     const { streamChat } = await import("./chat");
     respond = ({ res }) =>

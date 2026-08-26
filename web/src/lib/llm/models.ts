@@ -32,6 +32,8 @@ export type LlmModelSpec = {
   priceMultiplierBps: number;
   contextTokens: number;
   supportsStreaming: boolean;
+  /** 能不能读图。见 skills/vision.ts */
+  supportsVision: boolean;
   /** true 时必须 requiresAdult 也为 true（规划 7.3） */
   uncensored: boolean;
   requiresVipRank: number;
@@ -54,6 +56,7 @@ export const LLM_MODELS: Record<LlmTier, LlmModelSpec> = {
     priceMultiplierBps: 13000,
     contextTokens: 128000,
     supportsStreaming: true,
+    supportsVision: true,
     uncensored: false,
     requiresVipRank: 0,
     requiresAdult: false,
@@ -68,6 +71,7 @@ export const LLM_MODELS: Record<LlmTier, LlmModelSpec> = {
     priceMultiplierBps: 13000,
     contextTokens: 128000,
     supportsStreaming: true,
+    supportsVision: true,
     uncensored: false,
     requiresVipRank: 1,
     requiresAdult: false,
@@ -87,6 +91,14 @@ export const LLM_MODELS: Record<LlmTier, LlmModelSpec> = {
     priceMultiplierBps: 15000,
     contextTokens: 128000,
     supportsStreaming: true,
+    /*
+     * Dolphin-Venice 是纯文本模型，**读不了图**（2026-08 在 OpenRouter 上核对过
+     * input_modalities）。于是成人模式下 @ 引用的参考图不会被送上去。
+     * 想要的话可以在管理端把这一档换成带视觉的模型再打开这个开关——
+     * 同族里最接近的是 mistralai/mistral-small-3.2-24b-instruct（Dolphin 的底模），
+     * 但那是产品决定，不该由代码替运营做。
+     */
+    supportsVision: false,
     uncensored: true,
     requiresVipRank: 0,
     requiresAdult: true,

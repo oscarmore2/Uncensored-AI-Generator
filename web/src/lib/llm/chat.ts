@@ -85,6 +85,13 @@ export type ChatRequest = {
   temperature?: number;
   /** 用户点取消时中止。已产生的 token 照样算上游花过的钱 */
   signal?: AbortSignal;
+  /**
+   * 随请求一起发出去的参考图 URL。
+   *
+   * 模型读不了图（`model.supportsVision` 为假）时由**调用方**负责不传，
+   * 这一层不做判断——它不该知道「为什么这次没有图」，那是业务问题。
+   */
+  images?: string[];
   /** 出错日志前缀 */
   tag?: string;
 };
@@ -121,6 +128,24 @@ function headersFor(creds: LlmCredentials): Record<string, string> {
   return base;
 }
 
+/**
+ * 用户消息。带图时用 OpenAI 那套多模态数组写法。
+ *
+ * `detail: "low"` 是刻意的：低精度视图（约 512px）足够让模型认出主体、色调、
+ * 光线和构图——写提示词要的就是这些。开高精度一张图能顶两三千 token，
+ * 比整次改写的其余部分加起来还贵，而多出来的那点材质细节对提示词帮助有限。
+ */
+function userContent(req: ChatRequest) {
+  if (!req.images?.length) return req.user;
+  return [
+    { type: "text", text: req.user },
+    ...req.images.map((url) => ({
+      type: "image_url",
+      image_url: { url, detail: "low" },
+    })),
+  ];
+}
+
 function bodyFor(creds: LlmCredentials, req: ChatRequest, stream: boolean) {
   return {
     model: creds.modelIdFor(req.model),
@@ -128,7 +153,7 @@ function bodyFor(creds: LlmCredentials, req: ChatRequest, stream: boolean) {
     max_tokens: req.maxTokens ?? 500,
     messages: [
       { role: "system", content: req.system },
-      { role: "user", content: req.user },
+      { role: "user", content: userContent(req) },
     ],
     ...(stream
       ? {

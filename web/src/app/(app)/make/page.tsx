@@ -697,6 +697,20 @@ function MakePageInner() {
    * 出片不对且无从排查。编辑器里那颗胶囊会标红，这里再给一句总结，
    * 因为常态下编辑框只有几行高，出问题的那句可能根本不在视野里。
    */
+  /**
+   * 随 AI 请求一起发出去的参考图。
+   *
+   * **只发图**：视频要抽帧、要决定抽哪几帧，是独立的一件事；音频得先转写。
+   * URL 服务端还会再复核一遍，这里过滤只是别白发。
+   */
+  const promptRefs = useMemo(
+    () =>
+      mentionTargets
+        .filter((x) => x.kind === "image")
+        .map((x) => ({ token: x.token, url: x.url })),
+    [mentionTargets]
+  );
+
   const orphanRefs = useMemo(() => {
     const have = new Set(mentionTargets.map((x) => x.token));
     return [...new Set(refTokensInText(prompt))].filter((token) => !have.has(token));
@@ -863,7 +877,12 @@ function MakePageInner() {
    */
   const rewriteSelection = useCallback<SelectionAiRequest>(
     async (args, { signal, onDelta }) => {
-      let result: { text: string; dropped: string[]; charge?: SelectionAiCharge } | null = null;
+      let result: {
+        text: string;
+        dropped: string[];
+        charge?: SelectionAiCharge;
+        images?: number;
+      } | null = null;
       /*
        * 失败先攒着、流走完再抛。
        *
@@ -886,6 +905,7 @@ function MakePageInner() {
             /* {{full_text}} 用。技能没引用它就白送几百字节，值得——
                让技能作者能拿到全文，比省这点流量重要 */
             full_text: prompt,
+            refs: promptRefs,
             mode,
             tier,
             spicy,
@@ -902,6 +922,7 @@ function MakePageInner() {
               text: String(event.text ?? ""),
               dropped: Array.isArray(event.dropped_refs) ? (event.dropped_refs as string[]) : [],
               charge: chargeOf(event),
+              images: typeof event.images === "number" ? event.images : 0,
             };
             return;
           }
@@ -925,7 +946,7 @@ function MakePageInner() {
       if (!result) throw new ApiError(503, t("magicFailed"), "REWRITE_UNAVAILABLE");
       return result;
     },
-    [mode, tier, spicy, prompt, t, chargeOf]
+    [mode, tier, spicy, prompt, promptRefs, t, chargeOf]
   );
 
   async function runMagicPrompt(skill: SelectionAiSkill) {
@@ -945,6 +966,7 @@ function MakePageInner() {
           method: "POST",
           body: JSON.stringify({
             skill: skill.key,
+            refs: promptRefs,
             prompt: prompt.trim(),
             mode,
             tier,

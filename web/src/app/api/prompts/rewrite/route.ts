@@ -33,6 +33,17 @@ const bodySchema = z.object({
   selection: z.string().min(1).max(2000),
   /** 全文 canonical，给 {{full_text}} 用。技能没用到就白送，所以是选填 */
   full_text: z.string().max(8000).optional(),
+  /**
+   * 提示词里 @ 引用的素材：token → URL。
+   *
+   * URL 服务端会复核只放行自家对象存储上的，见 skills/vision.ts——
+   * 前端传什么就发什么，等于开了个「让我们的 LLM 账户去取任意 URL」的口子。
+   */
+  refs: z
+    .array(z.object({ token: z.string().min(1).max(32), url: z.string().url().max(2000) }))
+    .max(20)
+    .optional(),
+
   context_before: z.string().max(CONTEXT_CHARS).default(""),
   context_after: z.string().max(CONTEXT_CHARS).default(""),
   mode: z.enum(GENERATION_MODES).optional(),
@@ -130,6 +141,7 @@ export async function POST(req: Request) {
     contextBefore: input.context_before,
     contextAfter: input.context_after,
     fullText: input.full_text,
+    refs: input.refs,
     mode,
     tier: input.tier,
     spicy: input.spicy,
@@ -201,6 +213,7 @@ export async function POST(req: Request) {
           /** 只回改写后的片段，替换由前端在原选区上做 */
           text: result.text,
           dropped_refs: result.droppedRefs,
+          images: result.images,
           ...chargeFields(settled),
         });
       } finally {
@@ -327,6 +340,7 @@ function streamResponse(args: {
           type: "done",
           text: result.text,
           dropped_refs: result.droppedRefs,
+          images: result.images,
           ...chargeFields(settled),
         });
       } catch (err) {

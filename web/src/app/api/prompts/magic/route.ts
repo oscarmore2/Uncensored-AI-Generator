@@ -23,6 +23,17 @@ const bodySchema = z.object({
   negative_prompt: z.string().max(1000).optional(),
   /** 要跑哪个 manual 技能。不传就是那个官方的「魔法指令」 */
   skill: z.string().min(1).max(64).optional(),
+  /**
+   * 提示词里 @ 引用的素材：token → URL。
+   *
+   * URL 服务端会复核只放行自家对象存储上的，见 skills/vision.ts——
+   * 前端传什么就发什么，等于开了个「让我们的 LLM 账户去取任意 URL」的口子。
+   */
+  refs: z
+    .array(z.object({ token: z.string().min(1).max(32), url: z.string().url().max(2000) }))
+    .max(20)
+    .optional(),
+
 });
 
 const LOCK_TTL_MS = LLM_TIMEOUT_MS + 10_000;
@@ -143,6 +154,7 @@ export async function POST(req: Request) {
       negative_prompt: result.negative_prompt ?? null,
       source: result.source,
       target: result.target ?? null,
+      images: result.images ?? 0,
       /* 模型弄丢的素材引用。不猜着补回原文，交给界面提醒用户自己放回去 */
       dropped_refs: result.dropped_refs ?? [],
       ...(settled ? chargeFieldsOf(settled) : {}),

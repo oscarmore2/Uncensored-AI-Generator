@@ -570,6 +570,7 @@
     "aiRetry": "Retry",
     "aiDiscard": "Discard",
     "aiDone": "Got it",
+    "aiImages": "Used {count} reference image(s)",
     "aiDroppedRefs": "References the model dropped",
     "aiCharged": "{cost} credits · {debt} pending",
     "aiSettled": "{credits} deducted",

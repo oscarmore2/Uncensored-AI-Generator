@@ -24,6 +24,7 @@ type LlmModelRow = {
   priceMultiplierBps: number;
   contextTokens: number;
   supportsStreaming: boolean;
+  supportsVision: boolean;
   uncensored: boolean;
   requiresVipRank: number;
   requiresAdult: boolean;
@@ -40,6 +41,7 @@ export function specFromRow(row: LlmModelRow): LlmModelSpec {
     priceMultiplierBps: row.priceMultiplierBps,
     contextTokens: row.contextTokens,
     supportsStreaming: row.supportsStreaming,
+    supportsVision: row.supportsVision,
     uncensored: row.uncensored,
     requiresVipRank: row.requiresVipRank,
     requiresAdult: row.requiresAdult,
@@ -74,6 +76,7 @@ export async function ensureLlmModelsSeeded(): Promise<void> {
           priceMultiplierBps: spec.priceMultiplierBps,
           contextTokens: spec.contextTokens,
           supportsStreaming: spec.supportsStreaming,
+          supportsVision: spec.supportsVision,
           uncensored: spec.uncensored,
           requiresVipRank: spec.requiresVipRank,
           requiresAdult: spec.requiresAdult,

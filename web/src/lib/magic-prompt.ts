@@ -5,6 +5,7 @@ import type { LlmModelSpec } from "./llm/models";
 import { resolveSkillModel } from "./llm/model-store";
 import { manualOutputRules, wrapSystem } from "./skills/envelope";
 import { renderTemplate, type TemplateVars } from "./skills/template";
+import { resolveVisionImages, visionHint } from "./skills/vision";
 import type { ResolvedSkill } from "./skills/store";
 import { buildLocalNegative, type NegativeKind } from "./negative-prompt";
 import {
@@ -22,6 +23,8 @@ export type MagicPromptInput = {
   ratio?: string;
   negative_prompt?: string;
   allow_sensitive?: boolean;
+  /** 前端给的 token → 素材 URL。用来把提示词里引用到的参考图一起发给模型 */
+  refs?: Array<{ token: string; url: string }>;
 };
 
 export type MagicPromptResult = {
@@ -40,6 +43,8 @@ export type MagicPromptResult = {
   /** 计费要它：倍率来自模型，台账要模型 key */
   usage?: ChatUsage;
   model?: LlmModelSpec;
+  /** 这次实际随请求发出去的参考图张数 */
+  images?: number;
   /**
    * 改写过程中被模型弄丢的素材引用。
    *
@@ -294,13 +299,21 @@ export function enhancePromptLocal(input: MagicPromptInput): MagicPromptResult {
 async function enhancePromptWithSkill(
   input: MagicPromptInput,
   target: PromptTarget,
-  skill: ResolvedSkill
+  skill: ResolvedSkill,
+  /** 遮罩时记下的 token 顺序，[[REF1]] 对应第 0 个 */
+  refTokens: string[]
 ): Promise<MagicPromptResult | null> {
   const meta = buildTaskMetadata(input, target);
   const vars = buildVars(input, target, meta);
   const { model } = await resolveSkillModel(skill.modelKey, {
     allowSensitive: input.allow_sensitive,
   });
+
+  /* 模型读不了图就一张都不带——无声忽略比报错更糟，用户会以为模型看过图了 */
+  const images =
+    model.supportsVision && input.refs?.length
+      ? await resolveVisionImages(refTokens, input.refs)
+      : [];
 
   const called = await chat({
     system: wrapSystem({
@@ -312,8 +325,9 @@ async function enhancePromptWithSkill(
         promptField: target.promptField,
       }),
     }),
-    user: renderTemplate(skill.userTemplate, vars),
+    user: renderTemplate(skill.userTemplate, vars) + visionHint(images),
     model,
+    images: images.map((i) => i.url),
     maxTokens: skill.maxOutputTokens,
     temperature: skill.temperature,
     tag: "magic-prompt",
@@ -332,6 +346,7 @@ async function enhancePromptWithSkill(
       ...(called.usage.totalTokens != null ? { tokens: called.usage.totalTokens } : {}),
       usage: called.usage,
       model,
+      images: images.length,
     },
     target
   );
@@ -380,7 +395,7 @@ export async function enhancePrompt(
   };
 
   try {
-    const viaLlm = await enhancePromptWithSkill(guarded, target, skill);
+    const viaLlm = await enhancePromptWithSkill(guarded, target, skill, tokens);
     if (viaLlm) return restore(viaLlm);
   } catch (err) {
     console.warn("[magic-prompt] upstream error, fallback local:", err);

@@ -35,6 +35,7 @@ interface Model {
   input_usd_per_mtok: number;
   output_usd_per_mtok: number;
   price_multiplier_bps: number;
+  supports_vision: boolean;
   uncensored: boolean;
   requires_vip_rank: number;
   requires_adult: boolean;
@@ -530,6 +531,19 @@ function ModelRow({
             uncensored · 需成人验证
           </span>
         )}
+        <button
+          type="button"
+          disabled={busy}
+          onClick={() => onPatch(model.id, { supports_vision: !model.supports_vision }, "已保存")}
+          title="提示词里 @ 引用了参考图时，是否把图一起发给它。读不了图的模型必须关着——发上去只会报错或被无声忽略"
+          className={`text-[10px] px-2 py-0.5 rounded-full ${
+            model.supports_vision
+              ? "bg-sky-500/20 text-sky-700"
+              : "bg-black/[0.06] text-ink-subtle"
+          }`}
+        >
+          {model.supports_vision ? "可读图" : "不读图"}
+        </button>
         {model.requires_vip_rank > 0 && (
           <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-800">
             VIP{model.requires_vip_rank}+
