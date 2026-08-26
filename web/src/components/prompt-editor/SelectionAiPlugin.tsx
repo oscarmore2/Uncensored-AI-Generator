@@ -305,11 +305,11 @@ export function SelectionAiPlugin({
       }
     : {
         left: placement.left,
-        ...(placement.anchor === "below"
-          ? { top: placement.offset }
-          : /* 往上放时按**下边**定位：结果是流式吐出来的，卡片会一直变高，
-               按上边定位的话它会一路长下来盖住选区本身 */
-            { bottom: placement.offset }),
+        /* above 按下边定位（卡片会随流式变高，按上边会一路长下来盖住选区）；
+           below 与 viewport 都按上边 */
+        ...(placement.anchor === "above"
+          ? { bottom: placement.offset }
+          : { top: placement.offset }),
         maxHeight: placement.maxHeight,
       };
 
