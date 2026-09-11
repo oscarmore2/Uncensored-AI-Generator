@@ -150,7 +150,7 @@ export async function markTimeout(genId: number, note?: string): Promise<void> {
 }
 
 export async function failAndRefund(genId: number, reason?: string) {
-  // 原子抢占：只有第一个把状态转为 failed 的调用会退款
+  // 原子抢占：只有第一个把状态转为 failed 的调用会往下走
   const claimed = await db.generation.updateMany({
     where: { id: genId, status: { not: "failed" } },
     data: { status: "failed", providerError: reason?.slice(0, 500) },
@@ -160,9 +160,24 @@ export async function failAndRefund(genId: number, reason?: string) {
   const gen = await db.generation.findUnique({ where: { id: genId } });
   if (!gen) return;
 
+  /*
+   * 退款要按「这条记录退过没有」去重，不能只靠上面那次状态抢占。
+   *
+   * 状态抢占的前提是「一旦 failed 就永远 failed」，而这个前提已经不成立了：
+   * 被超时误判过的旧记录会被翻回 timeout 再走一遍收尾
+   * （scripts/recover-timeout-generations.mjs），那时状态抢占会放行，
+   * 于是同一个任务退两次款。
+   */
+  const params = safeParams(gen.params);
+  if (params.refunded_at) return;
+
   await db.$transaction([
     db.user.update({ where: { id: gen.userId }, data: { balance: { increment: gen.cost } } }),
     db.transaction.create({ data: { userId: gen.userId, type: "refund", amount: gen.cost } }),
+    db.generation.update({
+      where: { id: genId },
+      data: { params: JSON.stringify({ ...params, refunded_at: new Date().toISOString() }) },
+    }),
   ]);
   sendTelegram(
     `⚠️ 生成失败已退款\n任务 #${genId} (${gen.mode} / ${gen.tier}${gen.spicy ? " spicy" : ""})\n用户 ID: ${gen.userId}\n退回点数: ${gen.cost}${

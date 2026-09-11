@@ -14,6 +14,7 @@
     "backfill:media:apply": "node scripts/media-backfill.mjs --apply",
     "db:preflight": "node scripts/preflight-migration.mjs",
     "db:migrate:providers": "node scripts/migrate-provider-dimension.mjs",
+    "recover:timeouts": "node scripts/recover-timeout-generations.mjs",
     "test": "vitest run",
     "test:watch": "vitest"
   },
