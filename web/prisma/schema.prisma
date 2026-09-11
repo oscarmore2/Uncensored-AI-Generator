@@ -153,7 +153,9 @@ model Generation {
   provider           String    @default("wavespeed") // 下单时命中的档位所属渠道
   providerJobId      String?   @map("zenJobId") // 上游任务 ID（prediction id）
   wsAccountId        Int? // 创建该任务时使用的 ProviderAccount
-  status             String    @default("pending") // pending|queued|processing|succeeded|partial|failed
+  /// pending|queued|processing|timeout|succeeded|partial|failed
+  /// timeout 不是结论，是「我们这轮没等到」——不退款，打开历史记录时会回上游重新确认
+  status             String    @default("pending")
   progress           Int       @default(0) // 0-100，来自上游轮询
   providerError      String?   @map("zenError") // 上游返回的失败原因
   resultUrls         String?

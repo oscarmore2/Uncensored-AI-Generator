@@ -1,9 +1,15 @@
 import "server-only";
 import { randomUUID } from "crypto";
 import { db } from "./db";
+import {
+  failAndRefund,
+  markTimeout,
+  recordSafetyBlock,
+  settleSuccess,
+} from "./generation-settle";
 import { env } from "./env";
 import { sendTelegram } from "./telegram";
-import { mirrorRemoteUrls, ossConfigured, uploadBufferWithMeta } from "./oss";
+import { ossConfigured, uploadBufferWithMeta } from "./oss";
 import {
   anyProviderConfigured,
   estimateUnitPrice,
@@ -15,7 +21,7 @@ import {
 import { buildProviderInputs, inputsForPricing, parseRequestSchema } from "./generation-bridge";
 import { pickRefSyntax, renderPromptRefs } from "./model-ref-syntax";
 import { modeNeedsMedia } from "./generation-modes";
-import { isAdultContent, reviewImages, safetyAudit } from "./content-safety";
+import { isAdultContent, reviewImages } from "./content-safety";
 import {
   applySourceAspectToInputs,
   readImageDimsFromDataUrl,
@@ -26,6 +32,30 @@ import { contentAddressedPath, findReusableUpload, sha256OfBuffer } from "./medi
 import { uploadMediaExpiryForUser } from "./media-retention";
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+/**
+ * 这一轮最多守多久。
+ *
+ * 以前是「90 次 × 固定间隔」≈ 6.4 分钟，视频类任务经常不够，超时就被判成失败
+ * 并退款——而上游那边还在跑，后来真出片了也没人把记录改回来。
+ *
+ * 现在放宽到 20 分钟，而且**超了也只标超时不判失败**，真结论交给重查
+ * （generation-recheck.ts）。所以这个数字不再是「对不对」的问题，
+ * 只是「守多久算划算」——守着能让用户当场看到结果，守不到也不会写错记录。
+ */
+const POLL_BUDGET_MS = 20 * 60_000;
+
+/**
+ * 轮询间隔逐级放宽。
+ *
+ * 图片通常几十秒内就出，前十次密一点能让进度条跟手；长任务每 5 秒问一次
+ * 纯属浪费上游配额，20 分钟能问出两百多次。
+ */
+function pollDelay(i: number): number {
+  if (i < 10) return 2_500;
+  if (i < 40) return 5_000;
+  return 15_000;
+}
 
 export async function generationProviderConfigured(): Promise<boolean> {
   return anyProviderConfigured();
@@ -279,8 +309,9 @@ export async function processGeneration(genId: number): Promise<void> {
     let thumbnails: string[] = [];
     let lastError: string | undefined;
 
-    for (let i = 0; i < 90; i++) {
-      await sleep(i < 10 ? 2500 : 4500);
+    const startedAt = Date.now();
+    for (let i = 0; Date.now() - startedAt < POLL_BUDGET_MS; i++) {
+      await sleep(pollDelay(i));
       const result = await adapter.poll(creds.apiKey, task.id);
       mapped = mapProviderStatus(result.status);
       outputs = result.outputs;
@@ -299,49 +330,29 @@ export async function processGeneration(genId: number): Promise<void> {
     }
 
     if (mapped === "succeeded" && outputs.length > 0) {
-      // 结果落库前先过闸：模型可能产出提示词里没有的内容，
-      // 这是纯提示词审查抓不到的一层，也是 CSAM 的最后一道防线
-      const outSafety = await reviewImages({ urls: outputs, prompt: gen.prompt });
-      if (outSafety.level === "prohibited") {
-        await recordSafetyBlock(genId, gen.userId, "生成结果", outSafety);
-        await failAndRefund(genId, `生成结果内容审查未通过：${outSafety.reason}`);
-        return;
-      }
-      const resultIsAdult = gen.isAdult || isAdultContent(outSafety);
-
-      const finalUrls = await mirrorRemoteUrls(outputs, `generations/${genId}`);
       // 拿不到实时单价（Atlas 没有这个接口）时留空，成本看板会退回目录基准价
       const costUsd = await estimateUnitPrice(
         provider,
         product.providerModelId,
         inputsForPricing(inputs, catalogModel?.apiSchema ?? null)
       ).catch(() => null);
-
-      await db.generation.update({
-        where: { id: genId },
-        data: {
-          status: "succeeded",
-          progress: 100,
-          resultUrls: JSON.stringify(finalUrls.length ? finalUrls : outputs),
-          isAdult: resultIsAdult,
-          safetyCategories: JSON.stringify(
-            Array.from(new Set([...safeCategories(gen.safetyCategories), ...safetyAudit(outSafety)]))
-          ),
-          ...(costUsd != null ? { providerCostUsd: costUsd } : {}),
-          // 清掉大体积 base64，其余原样留着：
-          // 「套用」要靠它复原 gender / undress_options / 模型额外参数，
-          // input_urls 则是参考图被 base64 清掉后唯一的线索
-          params: JSON.stringify(reproducibleParams(params, {
-            tier: gen.tier,
-            spicy: gen.spicy,
-            productId: product.id,
-            inputUrls: imageUrl ? [imageUrl] : [],
-            thumbUrls: thumbnails,
-          })),
-        },
+      await settleSuccess({
+        genId,
+        outputs,
+        thumbnails,
+        costUsd,
+        inputUrls: imageUrl ? [imageUrl] : [],
       });
+    } else if (mapped === "failed") {
+      // 上游给了明确的失败结论，这才是真失败
+      await failAndRefund(genId, lastError || "上游返回失败");
     } else {
-      await failAndRefund(genId, lastError || "生成超时或未返回结果");
+      /*
+       * 预算用完但上游还没给结论。**不判失败、不退款**——判了之后它成功了
+       * 也没人改回来，用户看到的会是一条永久错的「失败」。
+       * 打开历史记录时会回上游重新确认。
+       */
+      await markTimeout(genId, lastError);
     }
   } catch (err) {
     console.error(`[generation] ${genId} error:`, err);
@@ -365,73 +376,6 @@ function parseMediaFields(raw: unknown): Record<string, string[]> {
   return out;
 }
 
-/** 解析已存的审查留痕，损坏时按空处理 */
-function safeCategories(raw: string): string[] {
-  try {
-    const v = JSON.parse(raw) as unknown;
-    return Array.isArray(v) ? v.filter((x): x is string => typeof x === "string") : [];
-  } catch {
-    return [];
-  }
-}
-
-/**
- * 图像审查判定为绝对红线时留痕并告警。
- * 这类命中极少但性质严重，必须让管理员当场看到、能立刻处置账号。
- */
-async function recordSafetyBlock(
-  genId: number,
-  userId: number,
-  stage: string,
-  safety: { level: string; categories: string[]; reason: string; source: string }
-): Promise<void> {
-  await db.generation
-    .update({
-      where: { id: genId },
-      data: {
-        isAdult: true,
-        visibility: "hidden",
-        safetyCategories: JSON.stringify([
-          ...safety.categories,
-          `level:${safety.level}`,
-          `source:${safety.source}`,
-          `blocked_at:${stage}`,
-        ]),
-      },
-    })
-    .catch(() => undefined);
-
-  sendTelegram(
-    `🚨 内容审查拦截（${stage}）\n任务 #${genId}\n用户 ID: ${userId}\n判定: ${safety.level} / ${safety.categories.join("、") || "—"}\n来源: ${safety.source}\n${safety.reason}`
-  );
-}
-
-/**
- * 成功收尾时要落库的参数：原样保留用户可复现的选择，只丢掉大体积的 base64。
- * 早期实现只留 ratio/duration/batch，导致脱衣的性别与高级选项、
- * 以及模型专属的额外参数在任务结束后就查不到了，「套用」也就复原不出来。
- */
-function reproducibleParams(
-  params: Record<string, unknown>,
-  extra: {
-    tier: string;
-    spicy: boolean;
-    productId: number;
-    inputUrls: string[];
-    thumbUrls: string[];
-  }
-): Record<string, unknown> {
-  const out: Record<string, unknown> = { ...params };
-  delete out.image_base64;
-  out.tier = extra.tier;
-  out.spicy = extra.spicy;
-  out.product_id = extra.productId;
-  if (extra.inputUrls.length) out.input_urls = extra.inputUrls;
-  if (extra.thumbUrls.length) out.result_thumb_urls = extra.thumbUrls;
-  return out;
-}
-
-/** 把参考图的 OSS URL 写进 params.input_urls，供作品页缩略图与「套用」使用 */
 async function persistInputUrls(genId: number, urls: string[]): Promise<void> {
   if (!urls.length) return;
   const current = await db.generation
@@ -467,26 +411,4 @@ async function stripReferenceImage(genId: number): Promise<void> {
   } catch {
     // 参数损坏不阻断收尾
   }
-}
-
-async function failAndRefund(genId: number, reason?: string) {
-  // 原子抢占：只有第一个把状态转为 failed 的调用会退款
-  const claimed = await db.generation.updateMany({
-    where: { id: genId, status: { not: "failed" } },
-    data: { status: "failed", providerError: reason?.slice(0, 500) },
-  });
-  if (claimed.count === 0) return;
-
-  const gen = await db.generation.findUnique({ where: { id: genId } });
-  if (!gen) return;
-
-  await db.$transaction([
-    db.user.update({ where: { id: gen.userId }, data: { balance: { increment: gen.cost } } }),
-    db.transaction.create({ data: { userId: gen.userId, type: "refund", amount: gen.cost } }),
-  ]);
-  sendTelegram(
-    `⚠️ 生成失败已退款\n任务 #${genId} (${gen.mode} / ${gen.tier}${gen.spicy ? " spicy" : ""})\n用户 ID: ${gen.userId}\n退回点数: ${gen.cost}${
-      reason ? `\n原因: ${reason.slice(0, 120)}` : ""
-    }`
-  );
 }

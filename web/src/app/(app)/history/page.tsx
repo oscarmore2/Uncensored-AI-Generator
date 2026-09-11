@@ -37,6 +37,20 @@ export default function HistoryPage() {
     void load();
   }, [load]);
 
+  /*
+   * 打开历史记录时回上游确认一遍还没有终局的任务。
+   *
+   * 放在列表之后、不阻塞首屏：列表先画出来，确认完真有变化再刷新那几条。
+   * 失败就算了——问不通不是结论，下次打开再问。
+   */
+  useEffect(() => {
+    void api<{ settled: number }>("/api/generations/recheck", { method: "POST" })
+      .then((r) => {
+        if (r.settled > 0) void load();
+      })
+      .catch(() => {});
+  }, [load]);
+
   const filtered = search
     ? items.filter((i) => i.prompt.toLowerCase().includes(search.toLowerCase()))
     : items;
@@ -116,7 +130,13 @@ export default function HistoryPage() {
                 ) : (
                   <div className="fake-image w-full h-full flex items-center justify-center">
                     <i
-                      className={`fas ${item.status === "failed" ? "fa-triangle-exclamation text-red-700" : "fa-spinner fa-spin"} text-3xl`}
+                      className={`fas ${
+                        item.status === "failed"
+                          ? "fa-triangle-exclamation text-red-700"
+                          : item.status === "timeout"
+                            ? "fa-hourglass-half text-amber-700"
+                            : "fa-spinner fa-spin"
+                      } text-3xl`}
                     />
                   </div>
                 )}
@@ -146,7 +166,13 @@ export default function HistoryPage() {
                 </div>
                 <div className="text-sm line-clamp-2">{item.prompt}</div>
                 <div
-                  className={`mt-3 text-xs ${item.status === "failed" ? "text-red-700" : "text-emerald-700"}`}
+                  className={`mt-3 text-xs ${
+                    item.status === "failed"
+                      ? "text-red-700"
+                      : item.status === "timeout"
+                        ? "text-amber-700"
+                        : "text-emerald-700"
+                  }`}
                 >
                   {t.has(`statuses.${item.status}`) ? t(`statuses.${item.status}` as "statuses.pending") : item.status}
                 </div>

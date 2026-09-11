@@ -267,7 +267,8 @@
       "processing": "Processing",
       "succeeded": "Completed",
       "partial": "Partially completed",
-      "failed": "Failed"
+      "failed": "Failed",
+      "timeout": "Waiting on provider"
     },
     "reuse": "Reuse settings",
     "retry": "Retry task",

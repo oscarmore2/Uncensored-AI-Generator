@@ -267,7 +267,8 @@
       "processing": "生成中",
       "succeeded": "已完成",
       "partial": "部分完成",
-      "failed": "失败"
+      "failed": "失败",
+      "timeout": "等待上游结果"
     },
     "reuse": "套用参数",
     "retry": "重新生成",
