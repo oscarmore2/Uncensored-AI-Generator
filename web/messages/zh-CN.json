@@ -508,6 +508,8 @@
     "mentionKindImage": "参考图",
     "mentionKindVideo": "参考视频",
     "mentionKindAudio": "参考音频",
+    "promptCount": "{count} / {limit} 字",
+    "promptOverHint": "超出无法提交，或切到 Spicy 档",
     "promptExpand": "放大编辑",
     "promptExpandTitle": "提示词编辑",
     "promptCollapse": "收起",

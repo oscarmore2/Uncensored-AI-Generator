@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import type { RefTarget } from "./prompt-editor/targets";
+import { promptCountState } from "@/lib/prompt-limits";
 import { useBodyScrollLock } from "@/lib/use-body-scroll-lock";
 import dynamic from "next/dynamic";
 import type { PromptEditorHandle } from "./prompt-editor/PromptEditor";
@@ -74,6 +75,7 @@ export function PromptComposer({
   onRewrite,
   skills,
   sectionSkills,
+  limit = null,
 }: {
   value: string;
   onChange: (next: string) => void;
@@ -106,6 +108,13 @@ export function PromptComposer({
   skills?: SelectionAiSkill[];
   /** 章节级技能（点标题触发，也画在编辑器上方那排） */
   sectionSkills?: SelectionAiSkill[];
+  /**
+   * 当前档位的字数上限。**null = 不限**（Spicy 档），那时一个字都不显示。
+   *
+   * 由 make 页按「实际会提交的那个档位」算，不是按页面上的 spicy 状态——
+   * 提交时用的是 selectedProduct.spicy，两者应当一致，但以真正上行的那个为准。
+   */
+  limit?: number | null;
 }) {
   const t = useTranslations("Make");
   const [expanded, setExpanded] = useState(false);
@@ -264,6 +273,7 @@ export function PromptComposer({
             className="min-h-[88px]"
           />
         </div>
+        <PromptCount value={value} limit={limit} />
         <button
           type="button"
           onClick={() => setExpanded(true)}
@@ -311,6 +321,7 @@ export function PromptComposer({
                 <div className="truncate text-[11px] text-ink-subtle">
                   {targets.length ? t("mentionHint") : t("mentionUploadFirst")}
                 </div>
+                <PromptCount value={value} limit={limit} inline />
               </div>
               <button
                 type="button"
@@ -543,6 +554,42 @@ function MediaPreviewDialog({
         </div>
       </div>
     </div>
+  );
+}
+
+/**
+ * 字数提示。
+ *
+ * 只在**接近上限时**才出现：短提示词下显示字数是纯噪音，而这个功能的价值
+ * 全在「快撞上了」那一刻。Spicy 档不限，一个字都不显示——挂个「1234 字」
+ * 在那里只会让人以为也有上限。
+ *
+ * 数的是 `trim()` 之后的长度，与提交时上行的那份一致（make 页发的是
+ * `prompt.trim()`），否则末尾几个换行就能让提示和服务端的判断对不上。
+ */
+function PromptCount({
+  value,
+  limit,
+  inline,
+}: {
+  value: string;
+  limit: number | null;
+  /** 弹窗头部那份跟别的文字排一行，不要外边距 */
+  inline?: boolean;
+}) {
+  const t = useTranslations("Make");
+  const length = value.trim().length;
+  const state = promptCountState(length, limit);
+  if (state === "hidden" || limit === null) return null;
+
+  const tone =
+    state === "over" ? "text-red-700" : state === "warn" ? "text-amber-700" : "text-ink-subtle";
+
+  return (
+    <p className={`${inline ? "" : "mt-1.5 text-right"} text-[11px] tabular-nums ${tone}`}>
+      {t("promptCount", { count: length, limit })}
+      {state === "over" && ` · ${t("promptOverHint")}`}
+    </p>
   );
 }
 

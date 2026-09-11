@@ -508,6 +508,8 @@
     "mentionKindImage": "Reference images",
     "mentionKindVideo": "Reference video",
     "mentionKindAudio": "Reference audio",
+    "promptCount": "{count} / {limit}",
+    "promptOverHint": "too long to submit — or switch to the Spicy tier",
     "promptExpand": "Expand editor",
     "promptExpandTitle": "Prompt editor",
     "promptCollapse": "Collapse",

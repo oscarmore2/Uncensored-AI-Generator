@@ -52,6 +52,7 @@ import {
 } from "@/components/MediaInputFields";
 import { buildMentionTargets } from "@/components/prompt-editor/targets";
 import { normalizePrompt, refTokensInText } from "@/lib/prompt-doc";
+import { NORMAL_PROMPT_MAX } from "@/lib/prompt-limits";
 import { PromptComposer } from "@/components/PromptComposer";
 import type {
   SelectionAiCharge,
@@ -1471,6 +1472,8 @@ function MakePageInner() {
                 onRewrite={aiText ? rewriteSelection : undefined}
                 skills={skills}
                 sectionSkills={sectionSkills}
+                /* Spicy 档不限字数。按真正会上行的那个档位算，不是页面上的 spicy 状态 */
+                limit={selectedProduct?.spicy ? null : NORMAL_PROMPT_MAX}
                 /* 文生图那套规则明写「避免长段落叙事」，
                  * 给标题和列表等于鼓励用户写出会让出图变差的东西 */
                 structure={activeGroup !== "image"}

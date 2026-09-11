@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { NORMAL_PROMPT_MAX, PROMPT_HARD_MAX } from "./prompt-limits";
 import { GENERATION_MODES, GENERATION_TIERS, MODE_META } from "./generation-modes";
 import { UNDRESS_GENDERS } from "./undress-prompts";
 import {
@@ -47,24 +48,7 @@ export const undressAdvancedSchema = z
   })
   .optional();
 
-/**
- * 非 Spicy 档的提示词上限。
- *
- * 4000 这个数原本是全局的，而且没有依据——**不是上游要求的**（Atlas 的参考生视频
- * schema 里 prompt 只有 type/default/description，整份文件一个 maxLength 都没有）。
- * 现在它只留给非 Spicy 档，Spicy 档不限（除了下面那个防滥用硬顶）。
- */
-export const NORMAL_PROMPT_MAX = 4_000;
-
-/**
- * 两档共用的硬顶，**不是产品限制**，纯粹挡住明显异常的请求体。
- *
- * 长度之所以还需要一个上限，是因为它会影响内容审查：太长会让 moderations 接口
- * 报错、降级到 HF 也顶爆上下文，最后落到「两级都失效按本地正则放行」，
- * 等于给了一条靠写得长绕过审查的路。审查那边已经改成分片送审
- * （content-safety.ts 的 chunksForModeration），所以这个数只需要大到没人碰得到。
- */
-export const PROMPT_HARD_MAX = 50_000;
+export { NORMAL_PROMPT_MAX, PROMPT_HARD_MAX };
 
 export const generationSchema = z
   .object({
