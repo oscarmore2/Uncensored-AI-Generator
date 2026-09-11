@@ -52,7 +52,20 @@ export const generationSchema = z
     mode: z.enum(GENERATION_MODES),
     tier: z.enum(GENERATION_TIERS).optional().default("low"),
     spicy: z.boolean().optional().default(false),
-    prompt: z.string().max(4000).optional().default(""),
+    /*
+     * 上限**不是产品限制，是防滥用的兜底**。
+     *
+     * 原来是 4000，那个数字既不是上游要求的（Atlas 的参考生视频 schema 里
+     * prompt 只有 type/default/description，整份文件一个 maxLength 都没有），
+     * 也没有任何推导依据——写分镜稿的人很容易就撞上。
+     *
+     * 留一个大数是因为长度确实会影响一件事：内容审查。太长会让 moderations
+     * 接口报错、降级到 HF 也顶爆上下文，最后落到「两级都失效按本地正则放行」，
+     * 等于给了一条靠写得长绕过审查的路。现在审查那边改成分片送审
+     * （content-safety.ts 的 chunksForModeration），这一条不再是问题，
+     * 于是这个数只需要挡住明显异常的请求体。
+     */
+    prompt: z.string().max(50_000, "提示词过长（上限 5 万字）").optional().default(""),
     negative_prompt: z.string().max(2000).optional().default(""),
     gender: z.enum(UNDRESS_GENDERS).optional(),
     undress_options: undressAdvancedSchema,
