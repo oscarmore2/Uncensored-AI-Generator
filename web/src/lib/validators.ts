@@ -47,25 +47,39 @@ export const undressAdvancedSchema = z
   })
   .optional();
 
+/**
+ * 非 Spicy 档的提示词上限。
+ *
+ * 4000 这个数原本是全局的，而且没有依据——**不是上游要求的**（Atlas 的参考生视频
+ * schema 里 prompt 只有 type/default/description，整份文件一个 maxLength 都没有）。
+ * 现在它只留给非 Spicy 档，Spicy 档不限（除了下面那个防滥用硬顶）。
+ */
+export const NORMAL_PROMPT_MAX = 4_000;
+
+/**
+ * 两档共用的硬顶，**不是产品限制**，纯粹挡住明显异常的请求体。
+ *
+ * 长度之所以还需要一个上限，是因为它会影响内容审查：太长会让 moderations 接口
+ * 报错、降级到 HF 也顶爆上下文，最后落到「两级都失效按本地正则放行」，
+ * 等于给了一条靠写得长绕过审查的路。审查那边已经改成分片送审
+ * （content-safety.ts 的 chunksForModeration），所以这个数只需要大到没人碰得到。
+ */
+export const PROMPT_HARD_MAX = 50_000;
+
 export const generationSchema = z
   .object({
     mode: z.enum(GENERATION_MODES),
     tier: z.enum(GENERATION_TIERS).optional().default("low"),
     spicy: z.boolean().optional().default(false),
     /*
-     * 上限**不是产品限制，是防滥用的兜底**。
-     *
-     * 原来是 4000，那个数字既不是上游要求的（Atlas 的参考生视频 schema 里
-     * prompt 只有 type/default/description，整份文件一个 maxLength 都没有），
-     * 也没有任何推导依据——写分镜稿的人很容易就撞上。
-     *
-     * 留一个大数是因为长度确实会影响一件事：内容审查。太长会让 moderations
-     * 接口报错、降级到 HF 也顶爆上下文，最后落到「两级都失效按本地正则放行」，
-     * 等于给了一条靠写得长绕过审查的路。现在审查那边改成分片送审
-     * （content-safety.ts 的 chunksForModeration），这一条不再是问题，
-     * 于是这个数只需要挡住明显异常的请求体。
+     * 这里只卡**防滥用的硬顶**，两档共用。真正的产品限制按档位分，见下面的
+     * superRefine——写在那里是因为它依赖 spicy，字段级的 max 看不到别的字段。
      */
-    prompt: z.string().max(50_000, "提示词过长（上限 5 万字）").optional().default(""),
+    prompt: z
+      .string()
+      .max(PROMPT_HARD_MAX, `提示词过长（上限 ${PROMPT_HARD_MAX / 10000} 万字）`)
+      .optional()
+      .default(""),
     negative_prompt: z.string().max(2000).optional().default(""),
     gender: z.enum(UNDRESS_GENDERS).optional(),
     undress_options: undressAdvancedSchema,
@@ -114,6 +128,19 @@ export const generationSchema = z
     const meta = MODE_META[v.mode];
     if (meta.needsPrompt && !v.prompt?.trim()) {
       ctx.addIssue({ code: "custom", message: "请输入提示词", path: ["prompt"] });
+    }
+    /*
+     * 长度上限按档位分：Spicy 不限，其余仍是 4000。
+     *
+     * 谎报 spicy 换长度是走不通的：resolveGenerationProduct 对 spicy 请求
+     * 要么命中 Spicy 档（那就要过 VIP 判定），要么直接抛，没有静默降级那条路。
+     */
+    if (!v.spicy && (v.prompt?.length ?? 0) > NORMAL_PROMPT_MAX) {
+      ctx.addIssue({
+        code: "custom",
+        message: `提示词最多 ${NORMAL_PROMPT_MAX} 字（Spicy 档不限）`,
+        path: ["prompt"],
+      });
     }
     const hasMedia =
       Boolean(v.image_base64) ||
