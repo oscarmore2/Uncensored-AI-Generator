@@ -52,6 +52,7 @@ import {
 } from "@/components/MediaInputFields";
 import { buildMentionTargets } from "@/components/prompt-editor/targets";
 import { normalizePrompt, refTokensInText } from "@/lib/prompt-doc";
+import { stripDraftMedia, type MakeDraft, type ModeSlot } from "@/lib/make-draft";
 import { NORMAL_PROMPT_MAX } from "@/lib/prompt-limits";
 import { PromptComposer } from "@/components/PromptComposer";
 import type {
@@ -68,25 +69,6 @@ import { useLocale, useTranslations } from "next-intl";
 type Phase = "idle" | "submitting" | "polling";
 
 /** 刷新后要原样带回来的编辑内容 */
-type MakeDraft = {
-  mode: string;
-  tier: string;
-  spicy: boolean;
-  prompt: string;
-  negative: string;
-  gender: string;
-  undressOptions: UndressAdvancedOptions;
-  ratio: string;
-  batch: number;
-  duration: string;
-  advancedOpen: boolean;
-  imageBase64: string | null;
-  imageFilename: string | null;
-  extraParams: Record<string, string>;
-  /** 按字段分组的输入媒体；已经是 OSS URL，刷新后可直接复用 */
-  media: Record<string, UploadedMedia[]>;
-};
-
 function MakePageInner() {
   const t = useTranslations("Make");
   const locale = useLocale();
@@ -185,9 +167,99 @@ function MakePageInner() {
   const draftParam = searchParams.get("draft");
   const openDraftId = draftParam && /^\d+$/.test(draftParam) ? Number(draftParam) : null;
 
+  /**
+   * 每个生成类型各自的编辑状态。
+   *
+   * 只存在 ref 里、不进 state：它不参与渲染，进了 state 只会让整页跟着重渲染。
+   * 真正在屏幕上的那一份始终是上面那些 useState，切类型时在两者之间搬。
+   */
+  const modeSlots = useRef<Record<string, ModeSlot>>({});
+
+  /** 把当前屏幕上这一份收进一个槽 */
+  const captureSlot = useCallback(
+    (): ModeSlot => ({
+      tier,
+      spicy,
+      prompt,
+      negative,
+      gender,
+      undressOptions,
+      ratio,
+      batch,
+      duration,
+      advancedOpen,
+      imageBase64,
+      imageFilename,
+      extraParams,
+      media,
+    }),
+    [
+      tier,
+      spicy,
+      prompt,
+      negative,
+      gender,
+      undressOptions,
+      ratio,
+      batch,
+      duration,
+      advancedOpen,
+      imageBase64,
+      imageFilename,
+      extraParams,
+      media,
+    ]
+  );
+
+  /**
+   * 把一个槽铺回屏幕。传 undefined 表示这个类型还没写过，恢复成初始值——
+   * **不能沿用上一个类型的内容**，那正是要修的毛病。
+   */
+  const applySlot = useCallback(
+    (slot: ModeSlot | undefined) => {
+      setTier(slot?.tier ?? "low");
+      setSpicy(slot?.spicy ?? false);
+      setPromptFromExternal(slot?.prompt ?? "");
+      setNegative(slot?.negative ?? t("defaultNegative"));
+      setGender(((slot?.gender ?? "female") as UndressGender));
+      setUndressOptions(slot?.undressOptions ?? DEFAULT_UNDRESS_ADVANCED);
+      setRatio(slot?.ratio ?? "1:1");
+      setBatch(slot?.batch === 1 || slot?.batch === 2 || slot?.batch === 4 ? slot.batch : 1);
+      setDuration(slot?.duration ?? "5");
+      setAdvancedOpen(Boolean(slot?.advancedOpen));
+      setImageBase64(slot?.imageBase64 ?? null);
+      setImageFilename(slot?.imageFilename ?? null);
+      setExtraParams(slot?.extraParams ?? {});
+      setMedia(withMediaIds(slot?.media ?? {}));
+    },
+    [setPromptFromExternal, t]
+  );
+
+  /**
+   * 换生成类型。
+   *
+   * **只有真正的「换类型」才走这里**——深链（套用作品、二次创作、打开某条草稿、
+   * 恢复草稿）是自带内容的，它们直接 setMode，不该触发搬运：那会把刚填好的
+   * 内容当成上一个类型的存进去，再用目标类型的旧内容盖掉它。
+   */
+  const switchMode = useCallback(
+    (next: GenerationMode) => {
+      if (next === mode) return;
+      // 收当前这份、铺目标那份，最后才换 mode——顺序反了的话
+      // captureSlot 读到的会是新类型下的一堆半成品
+      modeSlots.current[mode] = captureSlot();
+      applySlot(modeSlots.current[next]);
+      setMode(next);
+    },
+    [mode, captureSlot, applySlot]
+  );
+
   const { save: saveDraft, localSavedAt } = useDraft<MakeDraft>(
     "make",
     (d) => {
+      /* 先接住各类型的槽，再铺开当前这一份。平铺字段是「上次停在哪个类型」
+         的那一份，老草稿没有 slots 时它就是全部内容 */
+      modeSlots.current = d.slots ?? {};
       if (isGenerationMode(d.mode)) setMode(d.mode);
       if (typeof d.tier === "string") setTier(d.tier);
       setSpicy(Boolean(d.spicy));
@@ -211,7 +283,7 @@ function MakePageInner() {
       // 明确点开了某条草稿时，本地那份要让路，否则会盖掉用户点开的内容
       enabled: !deepLinked && openDraftId === null,
       // 参考图是 base64 大字符串，配额写满时先保住提示词
-      stripMedia: (d) => ({ ...d, imageBase64: null }),
+      stripMedia: stripDraftMedia,
     }
   );
 
@@ -379,8 +451,17 @@ function MakePageInner() {
   ]);
 
   useEffect(() => {
+    /*
+     * 顺手把当前这一份也收回 ref。
+     *
+     * 不收的话 ref 只在 switchMode 时更新，而深链（套用作品、打开草稿）是直接
+     * setMode 的——那之后 ref 里没有旧类型那一份，下一次保存就会把库里
+     * 已经存好的那份挤掉。用户那边的表现是「切回去发现前面写的没了」。
+     */
+    modeSlots.current[mode] = captureSlot();
     saveDraft({
       mode,
+      slots: { ...modeSlots.current },
       tier,
       spicy,
       prompt,
@@ -398,6 +479,7 @@ function MakePageInner() {
     });
   }, [
     saveDraft,
+    captureSlot,
     media,
     mode,
     tier,
@@ -465,7 +547,7 @@ function MakePageInner() {
 
   // 关闭成人模式后若仍停在脱衣 Tab，回退到文字生图
   useEffect(() => {
-    if (mode === "undress" && !adultEnabled) setMode("txt2img");
+    if (mode === "undress" && !adultEnabled) switchMode("txt2img");
   }, [mode, adultEnabled]);
 
   useEffect(() => {
@@ -1229,7 +1311,7 @@ function MakePageInner() {
               key={g.group}
               onClick={() => {
                 // 切组时落到该组第一个模式；已经在组内就不动，免得把用户选的子项打掉
-                if (!active && g.modes[0]) setMode(g.modes[0].mode);
+                if (!active && g.modes[0]) switchMode(g.modes[0].mode);
               }}
               className={`mode-tab flex-1 md:flex-none px-5 py-3 text-sm font-semibold rounded-3xl flex items-center justify-center gap-x-2 border ${
                 active ? "active border-orange-600" : "bg-black/[0.03] border-line"
@@ -1261,7 +1343,7 @@ function MakePageInner() {
             return (
               <button
                 key={m.mode}
-                onClick={() => setMode(m.mode)}
+                onClick={() => switchMode(m.mode)}
                 className={`px-3.5 py-1.5 text-xs font-medium rounded-2xl border transition-colors flex items-center gap-1.5 ${
                   active
                     ? "bg-orange-600/20 border-orange-500 text-orange-700"
