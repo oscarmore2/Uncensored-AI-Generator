@@ -84,7 +84,18 @@ export async function settleSuccess(opts: {
    * 否则两个重查会各自跑一遍出口审查和镜像，白花钱还可能写花记录。
    */
   const claimed = await db.generation.updateMany({
-    where: { id: genId, status: { notIn: ["succeeded", "failed"] } },
+    where: {
+      id: genId,
+      /*
+       * 「已完成但 resultUrls 是空的」也允许抢——那不是终局，是坏掉的记录
+       * （上游报了成功、我们没能解析出地址）。不放行的话重查拿回了结果也写不进去。
+       */
+      OR: [
+        { status: { notIn: ["succeeded", "failed"] } },
+        { status: "succeeded", resultUrls: null },
+        { status: "succeeded", resultUrls: "[]" },
+      ],
+    },
     data: { status: "processing", progress: 99 },
   });
   if (claimed.count === 0) return "gone";

@@ -35,11 +35,33 @@ export type RecheckOutcome = {
 };
 
 /** 这条记录还没有终局，而且已经没人在管它了 */
-export function needsRecheck(row: { status: string; updatedAt: Date }): boolean {
+export function needsRecheck(row: {
+  status: string;
+  updatedAt: Date;
+  resultUrls?: string | null;
+}): boolean {
+  /*
+   * 「已完成却没有任何媒体」不是终局，是坏掉的记录：上游报了成功、我们却没能
+   * 把结果地址捞出来。这种记录点开只有一块占位图，而且不接管的话它永远不会
+   * 自己好——所以按未决处理，回上游再要一次。
+   */
+  if (row.status === "succeeded") return !hasResult(row.resultUrls);
+
   if (!(OPEN_STATUSES as readonly string[]).includes(row.status)) return false;
   // 超时是明确交接出来的，不必等；其余非终局状态要等轮询确实死了才接手
   if (row.status === "timeout") return true;
   return Date.now() - row.updatedAt.getTime() > TAKEOVER_AFTER_MS;
+}
+
+/** resultUrls 里到底有没有东西。空数组、坏 JSON 都当没有 */
+function hasResult(raw: string | null | undefined): boolean {
+  if (!raw) return false;
+  try {
+    const v = JSON.parse(raw) as unknown;
+    return Array.isArray(v) && v.some((u) => typeof u === "string" && u.length > 0);
+  } catch {
+    return false;
+  }
 }
 
 /**
@@ -52,7 +74,12 @@ export async function recheckUserGenerations(userId: number): Promise<RecheckOut
     where: {
       userId,
       deletedAt: null,
-      status: { in: [...OPEN_STATUSES] },
+      // 「已完成但没有媒体」也要捞：那种记录不接管就永远不会自己好
+      OR: [
+        { status: { in: [...OPEN_STATUSES] } },
+        { status: "succeeded", resultUrls: null },
+        { status: "succeeded", resultUrls: "[]" },
+      ],
       providerJobId: { not: null },
     },
     orderBy: { createdAt: "desc" },
@@ -64,6 +91,7 @@ export async function recheckUserGenerations(userId: number): Promise<RecheckOut
       providerJobId: true,
       createdAt: true,
       updatedAt: true,
+      resultUrls: true,
     },
   });
 

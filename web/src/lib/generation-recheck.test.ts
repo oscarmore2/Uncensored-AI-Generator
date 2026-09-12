@@ -29,8 +29,17 @@ describe("哪些任务该回上游重查", () => {
   });
 
   it("已有终局的一概不动", () => {
-    for (const status of ["succeeded", "failed", "partial"]) {
+    const ok = JSON.stringify(["https://cdn.example.com/a.mp4"]);
+    expect(needsRecheck({ status: "succeeded", updatedAt: ago(99 * MIN), resultUrls: ok })).toBe(false);
+    for (const status of ["failed", "partial"]) {
       expect(needsRecheck({ status, updatedAt: ago(99 * MIN) })).toBe(false);
+    }
+  });
+
+  it("**「已完成却没有任何媒体」要接管**——那不是终局，是坏掉的记录", () => {
+    // 上游报了成功、我们却没能把地址捞出来。不接管的话它永远不会自己好
+    for (const resultUrls of [null, undefined, "[]", "坏掉的 JSON", JSON.stringify([""])]) {
+      expect(needsRecheck({ status: "succeeded", updatedAt: new Date(), resultUrls })).toBe(true);
     }
   });
 

@@ -318,11 +318,22 @@ export async function processGeneration(genId: number): Promise<void> {
       thumbnails = result.thumbnails;
       lastError = result.error;
 
+      /*
+       * **轮询只写进度和「还在跑」的状态，终局状态一律交给收尾函数。**
+       *
+       * 以前这里会把 succeeded 直接写进去。一旦上游说成功、但 outputs 解析出来
+       * 是空的（新模型的响应结构没被认出来就会这样），后面的收尾就被自己堵死了：
+       * markTimeout 的抢占条件是「状态不是 succeeded/failed」，而状态已经是
+       * succeeded 了——于是记录永远停在「已完成、但没有任何媒体」，
+       * 点开详情只有一块占位图，而且重查也不会来管它。
+       */
+      const inFlight = mapped === "pending" ? "queued" : mapped === "processing" ? "processing" : null;
       await db.generation.update({
         where: { id: genId },
         data: {
-          status: mapped === "pending" ? "queued" : mapped,
-          progress: mapped === "succeeded" ? 100 : Math.min(95, 10 + i * 2),
+          ...(inFlight ? { status: inFlight } : {}),
+          // 拿到终局也先停在 99：真正的 100 由 settleSuccess 落
+          progress: mapped === "succeeded" ? 99 : Math.min(95, 10 + i * 2),
           ...(lastError ? { providerError: lastError.slice(0, 500) } : {}),
         },
       });
@@ -343,6 +354,15 @@ export async function processGeneration(genId: number): Promise<void> {
         costUsd,
         inputUrls: imageUrl ? [imageUrl] : [],
       });
+    } else if (mapped === "succeeded") {
+      /*
+       * 上游说成功，我们却一个 URL 都没解析出来——这是**我们的解析跟不上**
+       * 上游的响应结构，不是任务失败。把原始回包记下来，否则只能靠猜。
+       */
+      console.error(
+        `[generation] ${genId} 上游报成功但没解析出任何输出，provider=${provider} job=${task.id}`
+      );
+      await markTimeout(genId, "上游已完成但未能解析出结果地址，正在重新确认");
     } else if (mapped === "failed") {
       // 上游给了明确的失败结论，这才是真失败
       await failAndRefund(genId, lastError || "上游返回失败");

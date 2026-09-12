@@ -250,18 +250,53 @@ export async function pollAtlasResult(apiKey: string, taskId: string): Promise<P
   };
 }
 
-function normalizeOutputs(raw: unknown): string[] {
-  if (!raw) return [];
-  if (typeof raw === "string") return raw.startsWith("http") ? [raw] : [];
-  if (!Array.isArray(raw)) return [];
-  const urls: string[] = [];
-  for (const item of raw) {
-    if (typeof item === "string" && item.startsWith("http")) urls.push(item);
-    else if (item && typeof item === "object") {
-      const o = item as Record<string, unknown>;
-      const u = o.url || o.download_url || o.image || o.video || o.audio;
-      if (typeof u === "string" && u.startsWith("http")) urls.push(u);
+/** 可能装着媒体地址的字段名，按可信度排序 */
+const URL_KEYS = [
+  "url",
+  "download_url",
+  "video_url",
+  "image_url",
+  "audio_url",
+  "video",
+  "image",
+  "audio",
+  "file",
+  "output",
+  "src",
+];
+
+/**
+ * 从上游回包里把媒体地址捞出来。
+ *
+ * 早先只认「字符串」和「字符串/对象的数组」。新模型（seedance-2.5 这一批）
+ * 的 output 是个**对象**而不是数组，于是一条都捞不到——上游明明出了片，
+ * 我们这边记录里没有任何地址，详情页只剩一块占位图。
+ *
+ * 所以改成按结构走一遍：已知字段优先，其余字段兜底扫。宁可多捞到一个缩略图
+ * （画廊自己会挑出主体），也不要因为不认识结构就整个丢掉。
+ */
+function collectUrls(raw: unknown, out: string[], depth = 0): void {
+  if (out.length >= 16 || depth > 4) return;
+  if (typeof raw === "string") {
+    if (/^https?:\/\//i.test(raw)) out.push(raw);
+    return;
+  }
+  if (Array.isArray(raw)) {
+    for (const item of raw) collectUrls(item, out, depth + 1);
+    return;
+  }
+  if (raw && typeof raw === "object") {
+    const o = raw as Record<string, unknown>;
+    // 先走已知字段，保证主体排在缩略图前面
+    for (const key of URL_KEYS) if (key in o) collectUrls(o[key], out, depth + 1);
+    for (const [key, value] of Object.entries(o)) {
+      if (!URL_KEYS.includes(key)) collectUrls(value, out, depth + 1);
     }
   }
-  return urls;
+}
+
+export function normalizeOutputs(raw: unknown): string[] {
+  const out: string[] = [];
+  collectUrls(raw, out);
+  return [...new Set(out)];
 }
