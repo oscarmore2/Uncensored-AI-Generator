@@ -112,15 +112,25 @@ export async function recheckOne(row: {
 }): Promise<boolean> {
   if (!row.providerJobId) return false;
 
+  /*
+   * 上游**已经说过成功**的记录（只是我们没把地址捞出来）绝不允许降级。
+   *
+   * 判它失败等于把一条确实出了片的作品变成「失败并退款」——那正是重查本身
+   * 要治的病，只是从另一个门又走了一遍。捞不回来就原样留着，下次再问；
+   * 一条「已完成但没媒体」难看，一条「失败」是错的。
+   */
+  const confirmedUpstream = row.status === "succeeded";
   const tooOld = Date.now() - row.createdAt.getTime() > GIVE_UP_AFTER_MS;
+  /** 等太久、可以收尾了——但上游认过的成功不在此列 */
+  const mayGiveUp = tooOld && !confirmedUpstream;
 
   try {
     const adapter = getAdapter(row.provider);
     const creds = await adapter.getCredentials();
     if (!creds) {
       // 渠道凭据被换掉/停用了，问不出来。等下次，别把记录判死
-      if (tooOld) await failAndRefund(row.id, "超过 24 小时未能向上游确认结果");
-      return tooOld;
+      if (mayGiveUp) await failAndRefund(row.id, "超过 24 小时未能向上游确认结果");
+      return mayGiveUp;
     }
 
     const result = await adapter.poll(creds.apiKey, row.providerJobId);
@@ -141,13 +151,26 @@ export async function recheckOne(row: {
       return outcome !== "gone";
     }
 
+    if (confirmedUpstream) {
+      /*
+       * 到这里说明这条「已完成却没有媒体」没能救回来：上游要么还是给不出地址，
+       * 要么这次干脆说失败（多半是任务记录被清理了，不是真失败）。
+       * 保持原样，把现场打出来——地址捞不出来是**我们的解析跟不上**，得有人看见。
+       */
+      console.error(
+        `[recheck] #${row.id} 已完成却没有媒体，回上游仍未取回地址：` +
+          `provider=${row.provider} job=${row.providerJobId} 上游状态=${result.status}`
+      );
+      return false;
+    }
+
     if (mapped === "failed") {
       await failAndRefund(row.id, result.error || "上游返回失败");
       return true;
     }
 
     // 上游还在跑
-    if (tooOld) {
+    if (mayGiveUp) {
       await failAndRefund(row.id, "上游超过 24 小时仍未出结果");
       return true;
     }
@@ -159,7 +182,7 @@ export async function recheckOne(row: {
      * 只有确实等太久了才收尾。
      */
     console.warn(`[recheck] ${row.id} 查询失败:`, err);
-    if (tooOld) await failAndRefund(row.id, "超过 24 小时未能向上游确认结果");
-    return tooOld;
+    if (mayGiveUp) await failAndRefund(row.id, "超过 24 小时未能向上游确认结果");
+    return mayGiveUp;
   }
 }
