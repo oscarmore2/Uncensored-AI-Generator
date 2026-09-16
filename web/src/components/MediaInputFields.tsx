@@ -2,6 +2,12 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { MediaInputSpec } from "@/lib/client";
+import {
+  clipboardImageName,
+  imageFilesFrom,
+  pasteTargetField,
+  yieldsToText,
+} from "@/lib/clipboard-image";
 import { Reorderable } from "./Reorderable";
 
 /**
@@ -105,6 +111,15 @@ function labelOf(spec: MediaInputSpec): string {
   return FIELD_LABELS[spec.field] ?? spec.field;
 }
 
+/** ⌘V 还是 Ctrl+V。只能在客户端判，否则首屏水合会对不上 */
+function usePasteKeyLabel(): string {
+  const [label, setLabel] = useState("Ctrl + V");
+  useEffect(() => {
+    if (/Mac|iPhone|iPad|iPod/.test(navigator.userAgent)) setLabel("⌘ + V");
+  }, []);
+  return label;
+}
+
 export function MediaInputFields({
   specs,
   value,
@@ -119,6 +134,56 @@ export function MediaInputFields({
   onError: (message: string) => void;
   disabled?: boolean;
 }) {
+  /*
+   * 每个图片位把自己的「收下这些文件」登记进来，粘贴时按 pasteTargetField
+   * 选中的字段名分发。做成注册表是因为上传逻辑和进度都在 MediaSlot 里，
+   * 提到父组件来就得把 items/busy/预览全搬上去。
+   */
+  const sinks = useRef(new Map<string, (files: File[]) => void>());
+  const registerSink = useCallback((field: string, fn: ((files: File[]) => void) | null) => {
+    if (fn) sinks.current.set(field, fn);
+    else sinks.current.delete(field);
+  }, []);
+
+  /* 监听器只挂一次，要读的又是每次渲染都在变的 props——用 ref 转一手 */
+  const latest = useRef({ specs, value, disabled });
+  useEffect(() => {
+    latest.current = { specs, value, disabled };
+  });
+
+  useEffect(() => {
+    const onPaste = (e: ClipboardEvent) => {
+      const { specs, value, disabled } = latest.current;
+      if (disabled) return;
+      const images = imageFilesFrom(e.clipboardData);
+      if (!images.length) return;
+      if (yieldsToText(e.clipboardData, e.target)) return;
+
+      const field = pasteTargetField(specs, value);
+      const sink = field ? sinks.current.get(field) : null;
+      /* 没有空位就别拦：让默认粘贴照常走，总比「按了没反应」强 */
+      if (!sink) return;
+
+      /*
+       * **捕获阶段拦下并停止传播**，而不是等冒泡上来。
+       * 提示词编辑器（Lexical）在它自己的根节点上挂了 paste 监听，冒泡阶段
+       * 轮到我们时它已经处理完了——两处都动手，一次粘贴会既插进编辑器
+       * 又进上传位。这里先手拦住，Lexical 根本不会看到这个事件。
+       */
+      e.preventDefault();
+      e.stopPropagation();
+      sink(images);
+    };
+    /*
+     * 挂在 document 上：用户按 ⌘V 时焦点多半在提示词编辑器里，甚至不在任何
+     * 可聚焦元素上，挂在上传区自己身上根本收不到。
+     */
+    document.addEventListener("paste", onPaste, true);
+    return () => document.removeEventListener("paste", onPaste, true);
+  }, []);
+
+  const target = pasteTargetField(specs, value);
+
   if (!specs.length) return null;
   return (
     <div className="mb-5 space-y-4">
@@ -130,11 +195,16 @@ export function MediaInputFields({
           onChange={(items) => onChange({ ...value, [spec.field]: items })}
           onError={onError}
           disabled={disabled}
+          isPasteTarget={!disabled && spec.field === target}
+          registerSink={registerSink}
         />
       ))}
     </div>
   );
 }
+
+/** 正在上传、还没拿到 URL 的一件。previewUrl 是本地 objectURL，用完必须 revoke */
+type PendingMedia = { id: string; previewUrl: string | null; name: string };
 
 function MediaSlot({
   spec,
@@ -142,29 +212,83 @@ function MediaSlot({
   onChange,
   onError,
   disabled,
+  isPasteTarget,
+  registerSink,
 }: {
   spec: MediaInputSpec;
   items: UploadedMedia[];
   onChange: (items: UploadedMedia[]) => void;
   onError: (message: string) => void;
   disabled?: boolean;
+  isPasteTarget?: boolean;
+  registerSink: (field: string, fn: ((files: File[]) => void) | null) => void;
 }) {
   const [busy, setBusy] = useState(false);
+  const [pending, setPending] = useState<PendingMedia[]>([]);
+  const pasteKey = usePasteKeyLabel();
   const meta = KIND_META[spec.kind];
-  const full = items.length >= spec.maxItems;
+  /* 在传的也算占了位：单图位粘贴中还显示「点击上传」会让人以为没生效 */
+  const full = items.length + pending.length >= spec.maxItems;
   const required = spec.minItems > 0;
   /* 这个位能装多件、且确实装了两件以上，排序才有意义 */
   const sortable = spec.maxItems > 1 && items.length > 1;
   const inputRef = useRef<HTMLInputElement>(null);
 
+  /* 本地预览的 objectURL 全记在这儿，卸载时统一释放，别留内存 */
+  const previews = useRef(new Set<string>());
+  const dropPreview = useCallback((url: string | null) => {
+    if (!url) return;
+    URL.revokeObjectURL(url);
+    previews.current.delete(url);
+  }, []);
+  useEffect(() => {
+    const held = previews.current;
+    return () => {
+      for (const url of held) URL.revokeObjectURL(url);
+      held.clear();
+    };
+  }, []);
+
+  /*
+   * 同一时刻只许一批在传。
+   *
+   * upload 的闭包里捏着当时那份 items，收尾时做 [...items, ...added]——
+   * 两批并发的话，后收尾的那批会拿着过期的 items 把先收尾的成果覆盖掉。
+   * 点击那条路本来就被 disabled={busy} 挡住了，粘贴这条得自己挡。
+   */
+  const busyRef = useRef(false);
   const upload = useCallback(
-    async (files: FileList) => {
-      const room = spec.maxItems - items.length;
+    async (files: File[], fromClipboard = false) => {
+      if (busyRef.current) return;
+      const room = spec.maxItems - items.length - pending.length;
       if (room <= 0) return;
+      const batch = files.slice(0, room);
+      if (!batch.length) return;
+
+      /*
+       * **先出缩略图再上传。** 上传一张手机照片走几秒很正常，这段时间里
+       * 没有任何反馈的话，用户只会以为粘贴没生效然后再按一次。
+       * 图片和视频能直接用 objectURL 预览，音频没有可看的画面，留空走图标。
+       */
+      const queued: PendingMedia[] = batch.map((file, i) => {
+        let previewUrl: string | null = null;
+        if (spec.kind !== "audio") {
+          previewUrl = URL.createObjectURL(file);
+          previews.current.add(previewUrl);
+        }
+        const name = fromClipboard ? clipboardImageName(file, i) : file.name;
+        return { id: newMediaId(), previewUrl, name };
+      });
+      setPending((p) => [...p, ...queued]);
+      busyRef.current = true;
       setBusy(true);
+
       const added: UploadedMedia[] = [];
+      let duplicates = 0;
       try {
-        for (const file of Array.from(files).slice(0, room)) {
+        for (let i = 0; i < batch.length; i++) {
+          const file = batch[i];
+          const slot = queued[i];
           const form = new FormData();
           form.append("file", file);
           form.append("kind", spec.kind);
@@ -175,27 +299,53 @@ function MediaSlot({
           if (dims?.height) form.append("height", String(dims.height));
           if (dims?.duration) form.append("duration_sec", String(dims.duration));
 
-          const resp = await fetch("/api/uploads", { method: "POST", body: form });
-          const data = (await resp.json().catch(() => null)) as
-            | { url?: string; error?: string }
-            | null;
-          if (!resp.ok || !data?.url) {
-            throw new Error(data?.error || `${file.name} 上传失败`);
+          try {
+            const resp = await fetch("/api/uploads", { method: "POST", body: form });
+            const data = (await resp.json().catch(() => null)) as
+              | { url?: string; error?: string }
+              | null;
+            if (!resp.ok || !data?.url) {
+              throw new Error(data?.error || `${slot.name} 上传失败`);
+            }
+            /*
+             * 同一张图不进两次。上传是内容寻址的（uploads/sha256/…），
+             * 同样的字节必然拿回同一个 URL——所以比对 URL 就等于比对内容，
+             * 不用在前端自己算哈希。
+             */
+            if (items.some((it) => it.url === data.url) || added.some((a) => a.url === data.url)) {
+              duplicates += 1;
+              continue;
+            }
+            added.push({ id: slot.id, url: data.url, name: slot.name, kind: spec.kind });
+          } finally {
+            // 这一件有结论了就撤掉它的占位，别等整批跑完
+            setPending((p) => p.filter((q) => q.id !== slot.id));
+            dropPreview(slot.previewUrl);
           }
-          added.push({ id: newMediaId(), url: data.url, name: file.name, kind: spec.kind });
         }
-        if (added.length) onChange([...items, ...added]);
       } catch (err) {
         onError(err instanceof Error ? err.message : String(err));
+      } finally {
         // 已经传成功的那几个仍然留下，重传只补缺的那些
         if (added.length) onChange([...items, ...added]);
-      } finally {
+        // 整批都是重复时也得说一声，否则就是「按了没反应」
+        if (!added.length && duplicates) onError("这张图已经在列表里了");
+        setPending((p) => p.filter((q) => !queued.some((x) => x.id === q.id)));
+        for (const q of queued) dropPreview(q.previewUrl);
+        busyRef.current = false;
         setBusy(false);
         if (inputRef.current) inputRef.current.value = "";
       }
     },
-    [items, onChange, onError, spec.field, spec.kind, spec.maxItems]
+    [dropPreview, items, onChange, onError, pending.length, spec.field, spec.kind, spec.maxItems]
   );
+
+  /* 只有当前的粘贴目标位才登记，省得多个位同时抢同一次粘贴 */
+  useEffect(() => {
+    if (!isPasteTarget) return;
+    registerSink(spec.field, (files) => void upload(files, true));
+    return () => registerSink(spec.field, null);
+  }, [isPasteTarget, registerSink, spec.field, upload]);
 
   return (
     <div>
@@ -218,38 +368,47 @@ function MediaSlot({
         <p className="mb-2 line-clamp-2 text-[11px] text-ink-subtle">{spec.description}</p>
       )}
 
-      {items.length > 0 && (
+      {(items.length > 0 || pending.length > 0) && (
         <>
-          <Reorderable
-            items={items}
-            getKey={(item) => item.id}
-            onReorder={onChange}
-            /* 只有一件时没什么可排的，别给出 grab 光标这种假暗示 */
-            disabled={disabled || !sortable}
-            describeItem={(item) => item.name}
-            className="mb-3 flex flex-wrap gap-2"
-            itemClassName="relative h-24 w-24 overflow-hidden rounded-2xl border border-line bg-stage"
-          >
-            {(item, { index }) => (
-              <>
-                <MediaChip item={item} />
-                <button
-                  type="button"
-                  disabled={disabled}
-                  onClick={() => onChange(items.filter((it) => it.id !== item.id))}
-                  aria-label="移除"
-                  className="absolute right-1 top-1 flex h-6 w-6 items-center justify-center rounded-full bg-black/70 text-xs text-white hover:bg-black/85"
-                >
-                  <i className="fas fa-times" />
-                </button>
-                {spec.maxItems > 1 && (
-                  <span className="absolute bottom-1 left-1 rounded-full bg-black/70 px-1.5 text-[10px] text-white">
-                    {index + 1}
-                  </span>
-                )}
-              </>
-            )}
-          </Reorderable>
+          {items.length > 0 && (
+            <Reorderable
+              items={items}
+              getKey={(item) => item.id}
+              onReorder={onChange}
+              /* 只有一件时没什么可排的，别给出 grab 光标这种假暗示 */
+              disabled={disabled || !sortable}
+              describeItem={(item) => item.name}
+              className="mb-3 flex flex-wrap gap-2"
+              itemClassName="relative h-24 w-24 overflow-hidden rounded-2xl border border-line bg-stage"
+            >
+              {(item, { index }) => (
+                <>
+                  <MediaChip item={item} />
+                  <button
+                    type="button"
+                    disabled={disabled}
+                    onClick={() => onChange(items.filter((it) => it.id !== item.id))}
+                    aria-label="移除"
+                    className="absolute right-1 top-1 flex h-6 w-6 items-center justify-center rounded-full bg-black/70 text-xs text-white hover:bg-black/85"
+                  >
+                    <i className="fas fa-times" />
+                  </button>
+                  {spec.maxItems > 1 && (
+                    <span className="absolute bottom-1 left-1 rounded-full bg-black/70 px-1.5 text-[10px] text-white">
+                      {index + 1}
+                    </span>
+                  )}
+                </>
+              )}
+            </Reorderable>
+          )}
+          {pending.length > 0 && (
+            <div className={`flex flex-wrap gap-2 ${items.length ? "-mt-1 mb-3" : "mb-3"}`}>
+              {pending.map((p) => (
+                <PendingChip key={p.id} item={p} kind={spec.kind} />
+              ))}
+            </div>
+          )}
           {sortable && (
             <p className="mb-3 -mt-1 text-[11px] text-ink-subtle">
               <i className="fas fa-arrows-up-down-left-right mr-1" />
@@ -274,7 +433,7 @@ function MediaSlot({
             className="hidden"
             disabled={disabled || busy}
             onChange={(e) => {
-              if (e.target.files?.length) void upload(e.target.files);
+              if (e.target.files?.length) void upload(Array.from(e.target.files));
             }}
           />
           <i className={`fas ${busy ? "fa-spinner fa-spin" : meta.icon} mb-2 text-2xl text-ink-subtle`} />
@@ -282,8 +441,36 @@ function MediaSlot({
             {busy ? "上传中…" : `点击上传${meta.label}`}
             {spec.maxItems > 1 && !busy && <span className="text-ink-subtle">（可多选）</span>}
           </p>
+          {isPasteTarget && !busy && (
+            /* 贴到哪个位上得看得见，否则多个图片位时用户只能猜 */
+            <p className="mt-1 text-[11px] text-ink-subtle">
+              或按 <kbd className="rounded border border-line px-1 font-sans">{pasteKey}</kbd> 粘贴剪贴板里的图片
+            </p>
+          )}
         </label>
       )}
+    </div>
+  );
+}
+
+/** 已经在传、还没拿到 URL 的一件：缩略图先出来，上面盖一层转圈 */
+function PendingChip({ item, kind }: { item: PendingMedia; kind: MediaInputSpec["kind"] }) {
+  return (
+    <div
+      className="relative h-24 w-24 overflow-hidden rounded-2xl border border-line bg-stage"
+      title={item.name}
+    >
+      {item.previewUrl && kind === "image" && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={item.previewUrl} alt={item.name} className="h-full w-full object-cover" />
+      )}
+      {item.previewUrl && kind === "video" && (
+        <video src={item.previewUrl} className="h-full w-full object-cover" preload="metadata" muted playsInline />
+      )}
+      <div className="absolute inset-0 flex items-center justify-center bg-black/45">
+        <i className="fas fa-spinner fa-spin text-lg text-white" />
+      </div>
+      <span className="sr-only">{item.name} 上传中</span>
     </div>
   );
 }

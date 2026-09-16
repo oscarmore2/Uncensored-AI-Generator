@@ -321,6 +321,8 @@
     "removeImage": "移除图片",
     "uploadReference": "点击上传参考图片",
     "uploadHint": "支持 JPG / PNG，最大 10MB",
+    "imageReadFailed": "图片读取失败，换一张试试",
+    "pasteImageHint": "或按 {key} 粘贴剪贴板里的图片",
     "advanced": "高级设置",
     "collapse": "收起",
     "expand": "展开",

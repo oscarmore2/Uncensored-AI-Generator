@@ -321,6 +321,8 @@
     "removeImage": "Remove image",
     "uploadReference": "Select a reference image",
     "uploadHint": "JPG / PNG, up to 10 MB",
+    "imageReadFailed": "Couldn't read that image — try another one",
+    "pasteImageHint": "or press {key} to paste an image from your clipboard",
     "advanced": "Advanced settings",
     "collapse": "Collapse",
     "expand": "Expand",

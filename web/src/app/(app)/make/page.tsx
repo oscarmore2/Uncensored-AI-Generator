@@ -21,6 +21,7 @@ import {
   type GenerationMode,
   type ModeGroup,
 } from "@/lib/generation-modes";
+import { imageFilesFrom, yieldsToText } from "@/lib/clipboard-image";
 import { UNDRESS_GENDERS, UNDRESS_LOCKED_UI_KEYS, type UndressGender } from "@/lib/undress-prompts";
 import {
   DEFAULT_UNDRESS_ADVANCED,
@@ -101,6 +102,13 @@ function MakePageInner() {
   const [imageFilename, setImageFilename] = useState<string | null>(null);
   /** 套用历史任务时复用的参考图 URL：有它就不必再传一份 base64 */
   const [reusedImageUrl, setReusedImageUrl] = useState<string | null>(null);
+  /** 正在读的那张图的本地预览。读完就撤，撤之前它是「转圈缩略图」的底图 */
+  const [imagePending, setImagePending] = useState<string | null>(null);
+  /** ⌘V 还是 Ctrl+V。只能在客户端判，写死任何一个都会让另一半用户看到错的键 */
+  const [pasteKeyLabel, setPasteKeyLabel] = useState("Ctrl + V");
+  useEffect(() => {
+    if (/Mac|iPhone|iPad|iPod/.test(navigator.userAgent)) setPasteKeyLabel("⌘ + V");
+  }, []);
   const [retryPrompt, setRetryPrompt] = useState(false);
   const [phase, setPhase] = useState<Phase>("idle");
   const [progress, setProgress] = useState(0);
@@ -855,18 +863,73 @@ function MakePageInner() {
   // 本次预估扣点超过余额；档位/时长/批量任何改动都会实时重算
   const insufficientCredits = Boolean(selectedProduct) && cost > balance;
 
+  /**
+   * 收下一张参考图。点击选择和 ⌘V 粘贴走同一条路——两份实现迟早会长歪一份。
+   *
+   * 读之前先挂本地预览：大图转 base64 要几百毫秒，这段空白里用户会以为没生效。
+   */
+  const acceptImage = useCallback(
+    (file: File) => {
+      if (file.size > 10 * 1024 * 1024) return toast(t("imageTooLarge"), true);
+      const preview = URL.createObjectURL(file);
+      setImagePending(preview);
+      const settle = () => {
+        URL.revokeObjectURL(preview);
+        setImagePending(null);
+      };
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        setImageBase64(ev.target?.result as string);
+        setImageFilename(file.name || null);
+        setReusedImageUrl(null);
+        settle();
+      };
+      reader.onerror = () => {
+        settle();
+        toast(t("imageReadFailed"), true);
+      };
+      reader.readAsDataURL(file);
+    },
+    [t, toast]
+  );
+
   function handleImageUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
-    if (!file) return;
-    if (file.size > 10 * 1024 * 1024) return toast(t("imageTooLarge"), true);
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      setImageBase64(ev.target?.result as string);
-      setImageFilename(file.name || null);
-      setReusedImageUrl(null);
-    };
-    reader.readAsDataURL(file);
+    if (file) acceptImage(file);
+    // 同一个文件连选两次也要触发 change，否则删掉再选原图没反应
+    e.target.value = "";
   }
+
+  /*
+   * 脱衣模式那张参考图也能 ⌘V 贴进来。
+   *
+   * 它走的是老的单图 base64 链路（服务端要读原图像素尺寸来保比例），
+   * 和 MediaInputFields 不是一套代码，所以这里单独挂一次——但判断
+   * 「这次粘贴归不归我」用的是同一对函数，规则不会两边长歪。
+   *
+   * **已经有图时不拦**：让默认粘贴照常走，⌘V 永远不会顶掉已经选好的图。
+   */
+  const pasteableUndress =
+    isUndress && meta.needsMedia && phase === "idle" && !imageBase64 && !reusedImageUrl && !imagePending;
+  const pasteGate = useRef({ open: pasteableUndress, accept: acceptImage });
+  useEffect(() => {
+    pasteGate.current = { open: pasteableUndress, accept: acceptImage };
+  });
+  useEffect(() => {
+    const onPaste = (e: ClipboardEvent) => {
+      const { open, accept } = pasteGate.current;
+      if (!open) return;
+      const [image] = imageFilesFrom(e.clipboardData);
+      if (!image) return;
+      if (yieldsToText(e.clipboardData, e.target)) return;
+      // 捕获阶段拦下，别让提示词编辑器也处理一遍同一次粘贴
+      e.preventDefault();
+      e.stopPropagation();
+      accept(image);
+    };
+    document.addEventListener("paste", onPaste, true);
+    return () => document.removeEventListener("paste", onPaste, true);
+  }, []);
 
   function selectTier(product: CatalogProduct) {
     if (product.requires_vip && !isVip) {
@@ -1620,7 +1683,20 @@ function MakePageInner() {
                   <label className="text-sm font-semibold text-ink-muted mb-2 block">{t("referenceImage")}</label>
                   <label className="block border-2 border-dashed border-line-strong hover:border-orange-500/40 rounded-3xl p-8 text-center cursor-pointer transition-colors">
                     <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
-                    {imageBase64 || reusedImageUrl ? (
+                    {imagePending ? (
+                      /* 读图的这段空白里得有东西可看，否则用户会以为粘贴没生效 */
+                      <div className="relative mx-auto mb-3 inline-block">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={imagePending}
+                          alt={t("preview")}
+                          className="max-h-48 rounded-2xl shadow-xl"
+                        />
+                        <div className="absolute inset-0 flex items-center justify-center rounded-2xl bg-black/45">
+                          <i className="fas fa-spinner fa-spin text-2xl text-white" />
+                        </div>
+                      </div>
+                    ) : imageBase64 || reusedImageUrl ? (
                       <div>
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img
@@ -1648,6 +1724,11 @@ function MakePageInner() {
                         <i className="fas fa-cloud-upload-alt text-4xl text-ink-subtle mb-3" />
                         <p className="text-sm">{t("uploadReference")}</p>
                         <p className="text-xs text-ink-subtle mt-1">{t("uploadHint")}</p>
+                        {pasteableUndress && (
+                          <p className="mt-1 text-[11px] text-ink-subtle">
+                            {t("pasteImageHint", { key: pasteKeyLabel })}
+                          </p>
+                        )}
                       </div>
                     )}
                   </label>
